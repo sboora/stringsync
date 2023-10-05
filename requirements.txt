@@ -1,0 +1,10 @@
+streamlit
+librosa
+pandas
+fastdtw
+scipy
+scikit-learn
+
+
+
+
