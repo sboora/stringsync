@@ -1,1 +1,1 @@
-audioread
+libsndfile1-dev
