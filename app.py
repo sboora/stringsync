@@ -7,13 +7,13 @@ import pandas as pd
 import streamlit as st
 
 
-def distance_to_score(distance, min_distance=0, max_distance=1000):
+def distance_to_score(distance, min_distance=0, max_distance=500):
     if distance <= min_distance:
         return 10
     elif distance >= max_distance:
         return 0
     else:
-        return 10 - ((distance - min_distance) / (max_distance - min_distance) * 10)
+        return round(10 - ((distance - min_distance) / (max_distance - min_distance) * 10))
 
 
 def extract_features(audio_path):
@@ -22,14 +22,12 @@ def extract_features(audio_path):
     return chroma_stft
 
 
-def compare_audio(teacher_path, student_path, distance_function):
+def compare_audio(teacher_path, student_path):
     teacher_features = extract_features(teacher_path)
     student_features = extract_features(student_path)
 
     distance, _ = fastdtw(teacher_features.T, student_features.T, dist=cosine)
-    score = distance
-
-    return score
+    return distance
 
 
 def audio_display(filename):
@@ -59,7 +57,7 @@ def main():
     st.write("""# String Sync""")
 
     # Assuming teacher_files is a list of all teacher audio files
-    teacher_files = [f for f in os.listdir() if f.startswith('teacher') and f.endswith('.m4a')]
+    lessons = ["lessons/w1_l1"]
 
     # Create a header
     col1, col2, col3 = st.columns([0.4, 0.5, 0.1])
@@ -70,7 +68,12 @@ def main():
     with col3:
         st.write("Score")
 
-    for teacher_file in teacher_files:
+    # Compare it with the reference as build an offset
+
+    for lesson in lessons:
+        lesson_file = f"{lesson}.m4a"
+        lesson_ref_file = f"{lesson}_ref.m4a"
+        offset_distance = compare_audio(lesson_file, lesson_ref_file)
         # Create columns for Teacher File, Upload Button, and Distance
         col1, col2, col3 = st.columns([0.4, 0.5, 0.1])
 
@@ -78,7 +81,7 @@ def main():
         with col1:
             st.write("")
             st.write("")
-            st.audio(teacher_file, format='audio/m4a')
+            st.audio(lesson_file, format='audio/m4a')
 
         # Display file uploader in the second column
         with col2:
@@ -92,9 +95,12 @@ def main():
                 with open(student_path, "wb") as f:
                     f.write(uploaded_student_file.getbuffer())
 
-                distance = compare_audio(teacher_file, student_path, cosine)
+                distance = compare_audio(lesson_file, student_path)
+                relative_distance = distance - offset_distance
                 st.write("")
-                st.write(f"{distance}")
+                st.write("")
+                st.write("")
+                st.write(f"{distance_to_score(relative_distance)}")
 
                 # Optionally, you can delete the uploaded student file after processing
                 os.remove(student_path)
@@ -107,9 +113,9 @@ def process_student_files(teacher_path):
     print("+----------------+--------------+")
     print("| Student File   | Final Score  |")
     print("+----------------+--------------+")
-    audio_display("teacher.m4a")
+    audio_display("lessons/w1_l1.m4a")
     for student_path in student_paths:
-        score = compare_audio(teacher_path, student_path, cosine)
+        score = compare_audio(teacher_path, student_path)
         new_row = pd.DataFrame({"Student File": [student_path], "Final Score": [score]})
         df = pd.concat([df, new_row], ignore_index=True)
     # Display the DataFrame in the console
