@@ -42,31 +42,50 @@ def audio_display(filename):
 
 
 def main():
-    # Add custom CSS for table borders and left alignment
+    st.set_page_config(layout='wide')
+    st.write("""# String Sync""")
     st.markdown(
         """
-        <style>
-            .stTable {
-                text-align: left !important;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True,
+        ## Welcome to String Sync! 🎶
+
+        ### What is String Sync?
+        String Sync is an innovative platform designed to help music teachers and students enhance their learning experience. By leveraging advanced audio analysis, this app allows you to compare your musical performance with a reference recording, providing you with a quantifiable score based on the similarity.
+
+        ### How Does it Work?
+        1. **Listen to the Lesson**: Each lesson comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
+        2. **Upload Your Recording**: Record your own performance and upload it here.
+        3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match.
+
+        ### Why Use String Sync?
+        - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
+        - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
+        - **Flexible**: Suitable for any instrument and skill level.
+
+        Ready to get started? Scroll down to find your lesson and upload your performance!
+        """
     )
-
-    st.write("""# String Sync""")
-
+    # Sidebar for Student Login
+    st.sidebar.header("Student Login")
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Login"):
+        if username and password:  # Add your authentication logic here
+            st.sidebar.success(f"Welcome, {username}!")
+        else:
+            st.sidebar.error("Invalid credentials")
     # Assuming teacher_files is a list of all teacher audio files
     lessons = ["lessons/w1_l1"]
 
     # Create a header
-    col1, col2, col3 = st.columns([0.4, 0.5, 0.1])
+    col1, col2, col3, col4 = st.columns([3, 4, 1, 2])
     with col1:
         st.write("Lesson")
     with col2:
         st.write("Student Recording")
     with col3:
         st.write("Score")
+    with col4:
+        st.write("Remarks")
 
     # Compare it with the reference as build an offset
 
@@ -75,7 +94,7 @@ def main():
         lesson_ref_file = f"{lesson}_ref.m4a"
         offset_distance = compare_audio(lesson_file, lesson_ref_file)
         # Create columns for Teacher File, Upload Button, and Distance
-        col1, col2, col3 = st.columns([0.4, 0.5, 0.1])
+        col1, col2, col3, col4 = st.columns([3, 4, 1, 2])
 
         # Display teacher file in the first column
         with col1:
@@ -104,6 +123,11 @@ def main():
 
                 # Optionally, you can delete the uploaded student file after processing
                 os.remove(student_path)
+
+        with col4:
+            st.write("")
+            st.write("")
+            st.write("")
 
 
 def process_student_files(teacher_path):
