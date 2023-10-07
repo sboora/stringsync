@@ -121,10 +121,10 @@ def freq_to_note(freq):
     Returns:
         str: The corresponding musical note.
     """
-    A4_freq = 440.0
+    G5_freq = 783.99
     all_notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    swaras = ['N3', 'S', 'R1', 'R2', 'G2', 'G3', 'M1', 'M2', 'P', 'D1', 'D2', 'N2']
-    num_semitones = int(round(12.0 * np.log2(freq / A4_freq)))
+    swaras = ['D2', 'N2', 'N3', 'S', 'R1', 'R2', 'G2', 'G3', 'M1', 'M2', 'P', 'D1']
+    num_semitones = int(round(12.0 * np.log2(freq / G5_freq)))
     return swaras[num_semitones % 12]
 
 
