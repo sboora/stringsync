@@ -190,7 +190,22 @@ def setup_streamlit_app():
     st.header('**String Sync**', divider='rainbow')
     st.markdown(
         """
-        String Sync is an innovative platform designed to help music teachers and students enhance their learning experience. By leveraging advanced audio analysis, this app allows you to compare your musical performance with a reference recording, providing you with a quantifiable score based on the similarity.
+        String Sync is an innovative platform designed to help music teachers and students enhance 
+        their learning experience. By leveraging advanced audio analysis, this app allows you to 
+        compare your musical performance with a reference recording, providing you with a 
+        quantifiable score based on the similarity.
+        
+        ### How Does it Work?
+        1. **Listen to the Lesson**: Each lesson comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
+        2. **Upload Your Recording**: Record your own performance and upload it here.
+        3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match.
+        
+        ### Why Use String Sync?
+        - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
+        - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
+        - **Flexible**: Suitable for any instrument and skill level.
+        
+        Ready to get started? Scroll down to find your lesson and upload your performance!        
         """
     )
 
