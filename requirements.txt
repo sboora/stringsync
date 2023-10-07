@@ -4,6 +4,7 @@ pandas
 fastdtw
 scipy
 scikit-learn
+audio-recorder-streamlit
 
 
 
