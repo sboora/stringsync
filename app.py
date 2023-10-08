@@ -5,7 +5,7 @@ from scipy.spatial.distance import cosine
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
 import tempfile
-from collections import Counter
+import os
 
 
 def distance_to_score(distance, min_distance=0, max_distance=500):
@@ -90,7 +90,11 @@ def record_audio(text):
         icon_name="microphone",
         icon_size="2x",
     )
-    return audio_data
+    st.empty().audio(audio_data, format="audio/wav")
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio_file:
+        tmp_audio_file.write(audio_data)
+    recorded_audio_file = tmp_audio_file.name
+    return recorded_audio_file
 
 
 def error_and_missing_notes(A, B):
@@ -228,17 +232,13 @@ def create_lesson_headers():
     """
     Create headers for the lesson section.
     """
-    col1, col2, col3, col4, col5 = st.columns([2, 1, 2, 2, 3])
+    col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
         st.subheader('Lesson', divider='rainbow')
     with col2:
-        st.subheader('Record', divider='rainbow')
-    with col3:
         st.subheader('Play', divider='rainbow')
-    with col4:
-        st.subheader('Remarks', divider='rainbow')
-    with col5:
-        st.subheader('Notation', divider='rainbow')
+    with col3:
+        st.subheader('Analysis', divider='rainbow')
 
 
 def display_lesson_files(lesson_file):
@@ -269,21 +269,14 @@ def handle_audio_recording():
     return audio_data
 
 
-def handle_file_upload(audio_data):
+def handle_file_upload(lesson):
     student_path = ""
-    if audio_data:
-        print("found recorded data")
-        st.write("")
-        st.empty().audio(audio_data, format="audio/wav")
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio_file:
-            tmp_audio_file.write(audio_data)
-        student_path = tmp_audio_file.name
-    else:
-        uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
-        if uploaded_student_file is not None:
-            student_path = "student_temp.m4a"
-            with open(student_path, "wb") as f:
-                f.write(uploaded_student_file.getbuffer())
+    uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
+    if uploaded_student_file is not None:
+        student_path = f"{lesson}-student-recording.m4a"
+        with open(student_path, "wb") as f:
+            f.write(uploaded_student_file.getbuffer())
+    st.audio(uploaded_student_file, format='audio/m4a')
     return student_path
 
 
@@ -298,18 +291,18 @@ def display_student_performance(lesson_file, student_path, offset_distance):
     """
     st.write("")
     st.write("")
-    lesson_notes = []
-    student_notes = []
     if student_path:
         distance = compare_audio(lesson_file, student_path)
         relative_distance = distance - offset_distance
-        lesson_notes = filter_consecutive_notes(get_notes(lesson_file))
-        student_notes = filter_consecutive_notes(get_notes(student_path))
+        lesson_notes = get_notes(lesson_file)
+        lesson_notes = filter_consecutive_notes(lesson_notes)
+        print("Lesson notes:", lesson_notes)
+        student_notes = get_notes(student_path)
+        student_notes = filter_consecutive_notes(student_notes)
+        print("Student notes:", student_notes)
         error_notes, missing_notes = error_and_missing_notes(lesson_notes, student_notes)
         score = distance_to_score(relative_distance)
         display_score_and_remarks(score, error_notes, missing_notes)
-
-    return lesson_notes, student_notes
 
 
 def display_score_and_remarks(score, error_notes, missing_notes):
@@ -321,11 +314,53 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         error_notes (list): The list of error notes.
         missing_notes (list): The list of missing notes.
     """
-    message = f"Your score: {score}.\n"
-    if error_notes:
-        message += f"Error notes: {error_notes}.\n"
-    if missing_notes:
-        message += f"Missing notes: {missing_notes}.\n"
+    message = f"Similarity score: {score}\n"
+    if score <= 3:
+        st.error(message)
+    elif score <= 7:
+        st.warning(message)
+    elif score <= 9:
+        st.success(message)
+    else:
+        st.success(message)
+
+    message = ""
+    # Create dictionaries to hold the first alphabet of each note and the corresponding notes
+    error_dict = {}
+    missing_dict = {}
+
+    for note in error_notes:
+        first_letter = note[0]
+        if first_letter not in error_dict:
+            error_dict[first_letter] = []
+        error_dict[first_letter].append(note)
+
+    for note in missing_notes:
+        first_letter = note[0]
+        if first_letter not in missing_dict:
+            missing_dict[first_letter] = []
+        missing_dict[first_letter].append(note)
+
+    # Correlate error notes with missing notes
+    message = "Note analysis:\n"
+    if error_dict == missing_dict:
+        message += f"Your recording had all the notes that the lesson had.\n"
+        st.success(message)
+    else:
+        for first_letter, error_note_list in error_dict.items():
+            if first_letter in missing_dict:
+                for error_note in error_note_list:
+                    message += f"Play {missing_dict[first_letter][0]} instead of {error_note}\n"
+            else:
+                for error_note in error_note_list:
+                    message += f"You played the note {error_note}, however that is not present in the lesson\n"
+
+        for first_letter, missing_note_list in missing_dict.items():
+            if first_letter not in error_dict:
+                for missing_note in missing_note_list:
+                    message += f"You missed playing the note {missing_note}\n"
+    st.info(message)
+    message = ""
     if score <= 3:
         message += "Keep trying. You can do better!"
         st.error(message)
@@ -334,10 +369,10 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         st.warning(message)
     elif score <= 9:
         message += "Great work. Keep it up!"
-        st.info(message)
+        st.success(message)
     else:
         message += "Excellent! You've mastered this lesson!"
-        st.info(message)
+        st.success(message)
 
 
 def display_notation(lesson_notes, student_notes, student_path):
@@ -362,27 +397,24 @@ def main():
     handle_student_login()
     create_lesson_headers()
 
-    lessons = ["lessons/w1_l1"]
-    lesson_notes = []
-    student_notes = []
+    # List all files in the 'lessons' folder
+    # List all files in the 'lessons' folder, remove extensions, and filter out files that end with '_ref'
+    lesson_files = [os.path.splitext(f)[0] for f in os.listdir('lessons') if not f.endswith('_ref.m4a')]
+    selected_lesson = st.sidebar.selectbox("Select a Lesson", lesson_files)
 
-    for lesson in lessons:
-        lesson_file = f"{lesson}.m4a"
-        lesson_ref_file = f"{lesson}_ref.m4a"
-        offset_distance = compare_audio(lesson_file, lesson_ref_file)
+    # Use the selected lesson
+    lesson_file = f"lessons/{selected_lesson}.m4a"
+    lesson_ref_file = f"lessons/{selected_lesson}_ref.m4a"
 
-        col1, col2, col3, col4, col5 = st.columns([2, 1, 2, 2, 3])
-        with col1:
-            display_lesson_files(lesson_file)
-        with col2:
-            audio_data = handle_audio_recording()
-        with col3:
-            student_path = handle_file_upload(audio_data)
-        with col4:
-            lesson_notes, student_notes = \
-                display_student_performance(lesson_file, student_path, offset_distance)
-        with col5:
-            display_notation(lesson_notes, student_notes, student_path)
+    offset_distance = compare_audio(lesson_file, lesson_ref_file)
+
+    col1, col2, col3 = st.columns([3, 3, 4])
+    with col1:
+        display_lesson_files(lesson_file)
+    with col2:
+        student_path = handle_file_upload(selected_lesson)
+    with col3:
+        display_student_performance(lesson_file, student_path, offset_distance)
 
 
 if __name__ == "__main__":
