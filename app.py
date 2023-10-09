@@ -1,14 +1,47 @@
 import librosa
 import numpy as np
 from fastdtw import fastdtw
-from scipy.spatial.distance import cosine
+from scipy.spatial.distance import cosine, euclidean
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
 import tempfile
 import os
+from scipy.stats import zscore
 
 
-def distance_to_score(distance, min_distance=0, max_distance=500):
+def load_and_normalize_audio(audio_path):
+    y, sr = librosa.load(audio_path)
+    y = librosa.util.normalize(y)
+    return y, sr
+
+
+def compute_mfcc(audio, sr):
+    return librosa.feature.mfcc(y=audio, sr=sr)
+
+
+def compute_chromagram(audio, sr):
+    return librosa.feature.chroma_stft(y=audio, sr=sr)
+
+
+def euclidean_distance(feature1, feature2):
+    return euclidean(feature1.flatten(), feature2.flatten())
+
+
+def cosine_distance(feature1, feature2):
+    return cosine(feature1.flatten(), feature2.flatten())
+
+
+def dtw_euclidean_distance(feature1, feature2):
+    distance, _ = fastdtw(feature1.T, feature2.T, dist=euclidean)
+    return distance
+
+
+def dtw_cosine_distance(feature1, feature2):
+    distance, _ = fastdtw(feature1.T, feature2.T, dist=cosine)
+    return distance
+
+
+def distance_to_score(distance, min_distance=0, max_distance=1000):
     """
     Convert a distance value to a score between 0 and 10.
 
@@ -20,6 +53,7 @@ def distance_to_score(distance, min_distance=0, max_distance=500):
     Returns:
         int: The converted score.
     """
+    print(distance)
     if distance <= min_distance:
         return 10
     elif distance >= max_distance:
@@ -39,8 +73,12 @@ def extract_features(audio_path):
         np.ndarray: The chroma STFT features.
     """
     y, sr = librosa.load(audio_path)
-    chroma_stft = librosa.feature.chroma_stft(y=y, sr=sr)
-    return chroma_stft
+    y = librosa.util.normalize(y)
+    # Chroma
+    chroma1 = compute_chromagram(y, sr)
+    # mfcc
+    mfcc = compute_mfcc(y, sr)
+    return chroma1, zscore(mfcc)
 
 
 def compare_audio(teacher_path, student_path):
@@ -54,10 +92,10 @@ def compare_audio(teacher_path, student_path):
     Returns:
         float: The distance between the two audio files.
     """
-    teacher_features = extract_features(teacher_path)
-    student_features = extract_features(student_path)
-    distance, _ = fastdtw(teacher_features.T, student_features.T, dist=cosine)
-    return distance
+    t_chroma, t_mfcc = extract_features(teacher_path)
+    s_chroma, s_mfcc = extract_features(student_path)
+    # Compute distances
+    return np.mean([dtw_euclidean_distance(t_chroma, s_chroma)])
 
 
 def audio_display(filename):
@@ -80,6 +118,9 @@ def record_audio(text):
     Returns:
         bytes: The recorded audio data.
     """
+    st.markdown('<span style="font-size: smaller; font-style: italic;">Record your performance</span>',
+                unsafe_allow_html=True)
+
     audio_data = audio_recorder(
         key=text,
         text="",
@@ -90,10 +131,13 @@ def record_audio(text):
         icon_name="microphone",
         icon_size="2x",
     )
+
     st.empty().audio(audio_data, format="audio/wav")
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio_file:
-        tmp_audio_file.write(audio_data)
-    recorded_audio_file = tmp_audio_file.name
+    recorded_audio_file = ""
+    if audio_data:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio_file:
+            tmp_audio_file.write(audio_data)
+        recorded_audio_file = tmp_audio_file.name
     return recorded_audio_file
 
 
@@ -125,10 +169,10 @@ def freq_to_note(freq):
     Returns:
         str: The corresponding musical note.
     """
-    G5_freq = 783.99
+    A4_freq = 440.0
     all_notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    swaras = ['D2', 'N2', 'N3', 'S', 'R1', 'R2', 'G2', 'G3', 'M1', 'M2', 'P', 'D1']
-    num_semitones = int(round(12.0 * np.log2(freq / G5_freq)))
+    swaras = ['N3', 'S', 'R1', 'R2', 'G2', 'G3', 'M1', 'M2', 'P', 'D1', 'D2', 'N2']
+    num_semitones = int(round(12.0 * np.log2(freq / A4_freq)))
     return swaras[num_semitones % 12]
 
 
@@ -209,7 +253,7 @@ def setup_streamlit_app():
         - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
         - **Flexible**: Suitable for any instrument and skill level.
         
-        Ready to get started? Scroll down to find your lesson and upload your performance!        
+        "Ready to get started? Select your lesson from the sidebar and either directly record or upload your performance!"        
         """
     )
 
@@ -234,11 +278,11 @@ def create_lesson_headers():
     """
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        st.subheader('Lesson', divider='rainbow')
+        st.subheader('Lesson', divider='gray')
     with col2:
-        st.subheader('Play', divider='rainbow')
+        st.subheader('Upload', divider='gray')
     with col3:
-        st.subheader('Analysis', divider='rainbow')
+        st.subheader('Analysis', divider='gray')
 
 
 def display_lesson_files(lesson_file):
@@ -250,23 +294,33 @@ def display_lesson_files(lesson_file):
     """
     st.write("")
     st.write("")
-    st.write("")
     st.audio(lesson_file, format='audio/m4a')
 
 
+def download_lesson(lesson):
+    # Provide a download button for the original audio file
+    st.write("")
+    with open(lesson, "rb") as f:
+        audio_bytes = f.read()
+    st.download_button(
+        label="Download Lesson",
+        data=audio_bytes,
+        file_name=lesson,
+        mime="audio/mp3",
+        type="primary"
+    )
+
+
+def handle_audio_option():
+    option = st.radio("", ["Upload Audio File", "Use Audio Recorder"])
+    if option == "Use Audio Recorder":
+        return True
+    return False
+
+
 def handle_audio_recording():
-    """
-    Handle audio recording and uploading.
-
-    Returns:
-        str: The path to the recorded or uploaded audio file.
-    """
     st.write("")
-    st.write("")
-    st.write("")
-    audio_data = record_audio("Record")
-
-    return audio_data
+    return record_audio("Record")
 
 
 def handle_file_upload(lesson):
@@ -293,6 +347,7 @@ def display_student_performance(lesson_file, student_path, offset_distance):
     st.write("")
     if student_path:
         distance = compare_audio(lesson_file, student_path)
+        print("Distance: ", distance)
         relative_distance = distance - offset_distance
         lesson_notes = get_notes(lesson_file)
         lesson_notes = filter_consecutive_notes(lesson_notes)
@@ -345,7 +400,6 @@ def display_score_and_remarks(score, error_notes, missing_notes):
     message = "Note analysis:\n"
     if error_dict == missing_dict:
         message += f"Your recording had all the notes that the lesson had.\n"
-        st.success(message)
     else:
         for first_letter, error_note_list in error_dict.items():
             if first_letter in missing_dict:
@@ -395,10 +449,10 @@ def display_notation(lesson_notes, student_notes, student_path):
 def main():
     setup_streamlit_app()
     handle_student_login()
+    use_recorder = handle_audio_option()
     create_lesson_headers()
 
     # List all files in the 'lessons' folder
-    # List all files in the 'lessons' folder, remove extensions, and filter out files that end with '_ref'
     lesson_files = [os.path.splitext(f)[0] for f in os.listdir('lessons') if not f.endswith('_ref.m4a')]
     selected_lesson = st.sidebar.selectbox("Select a Lesson", lesson_files)
 
@@ -407,14 +461,21 @@ def main():
     lesson_ref_file = f"lessons/{selected_lesson}_ref.m4a"
 
     offset_distance = compare_audio(lesson_file, lesson_ref_file)
+    print("Offset:", offset_distance)
 
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        display_lesson_files(lesson_file)
+        if not use_recorder:
+            display_lesson_files(lesson_file)
+        else:
+            download_lesson(lesson_file)
     with col2:
-        student_path = handle_file_upload(selected_lesson)
+        if use_recorder:
+            student_recording = handle_audio_recording()
+        else:
+            student_recording = handle_file_upload(lesson_file)
     with col3:
-        display_student_performance(lesson_file, student_path, offset_distance)
+        display_student_performance(lesson_file, student_recording, offset_distance)
 
 
 if __name__ == "__main__":
