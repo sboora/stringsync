@@ -8,7 +8,7 @@ import tempfile
 import os
 from scipy.stats import zscore
 import re
-from AudioRepository import AudioRepository
+from TrackRepository import TrackRepository
 
 
 def load_and_normalize_audio(audio_path):
@@ -247,7 +247,7 @@ def setup_streamlit_app():
         quantifiable score based on the similarity.
         
         ### How Does it Work?
-        1. **Listen to the Lesson**: Each lesson comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
+        1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
         2. **Upload Your Recording**: Record your own performance and upload it here.
         3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match.
         
@@ -256,7 +256,7 @@ def setup_streamlit_app():
         - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
         - **Flexible**: Suitable for any instrument and skill level.
         
-        "Ready to get started? Select your lesson from the sidebar and either directly record or upload your performance!"        
+        "Ready to get started? Select your track from the sidebar and either directly record or upload your performance!"        
         """
     )
 
@@ -275,34 +275,34 @@ def handle_student_login():
             st.sidebar.error("Invalid credentials")
 
 
-def create_lesson_headers():
+def create_track_headers():
     """
-    Create headers for the lesson section.
+    Create headers for the track section.
     """
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        st.subheader('Lesson', divider='gray')
+        st.subheader('track', divider='gray')
     with col2:
         st.subheader('Upload', divider='gray')
     with col3:
         st.subheader('Analysis', divider='gray')
 
 
-def display_lesson_files(lesson_file):
+def display_track_files(track_file):
     """
-    Display the teacher's lesson files.
+    Display the teacher's track files.
 
     Parameters:
-        lesson_file (str): The path to the lesson file.
+        track_file (str): The path to the track file.
     """
     st.write("")
     st.write("")
-    st.audio(lesson_file, format='audio/m4a')
+    st.audio(track_file, format='audio/m4a')
 
 
 def display_notation_pdf_link():
     """
-    Display a link to the musical notation PDF for the lesson and an option to download it.
+    Display a link to the musical notation PDF for the track and an option to download it.
     """
     notation_pdf_path = "notations/Practice Worksheet 1.pdf"
 
@@ -318,15 +318,15 @@ def display_notation_pdf_link():
     )
 
 
-def download_lesson(lesson):
+def download_track(track):
     # Provide a download button for the original audio file
     st.write("")
-    with open(lesson, "rb") as f:
+    with open(track, "rb") as f:
         audio_bytes = f.read()
     st.download_button(
-        label="Download Lesson",
+        label="Download track",
         data=audio_bytes,
-        file_name=lesson,
+        file_name=track,
         mime="audio/mp3",
         type="primary"
     )
@@ -344,42 +344,42 @@ def handle_audio_recording():
     return record_audio("Record")
 
 
-def handle_file_upload(lesson):
+def handle_file_upload(track):
     student_path = ""
     uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
     if uploaded_student_file is not None:
-        student_path = f"{lesson}-student-recording.m4a"
+        student_path = f"{track}-student-recording.m4a"
         with open(student_path, "wb") as f:
             f.write(uploaded_student_file.getbuffer())
     st.audio(uploaded_student_file, format='audio/m4a')
     return student_path
 
 
-def display_student_performance(lesson_file, student_path, lesson_notes, offset_distance):
+def display_student_performance(track_file, student_path, track_notes, offset_distance):
     """
     Display the student's performance score and remarks.
 
     Parameters:
-        lesson_file (str): The path to the lesson file.
+        track_file (str): The path to the track file.
         student_path (str): The path to the student's recorded or uploaded file.
-        offset_distance: The distance between the lesson file and its reference.
-        lesson_notes: The unique notes in the lesson
+        offset_distance: The distance between the track file and its reference.
+        track_notes: The unique notes in the track
     """
     st.write("")
     st.write("")
     if student_path:
-        distance = compare_audio(lesson_file, student_path)
+        distance = compare_audio(track_file, student_path)
         print("Distance: ", distance)
         relative_distance = distance - offset_distance
-        if len(lesson_notes) == 0:
-            lesson_notes = get_notes(lesson_file)
-            lesson_notes = filter_consecutive_notes(lesson_notes)
-        print("Lesson notes:", lesson_notes)
+        if len(track_notes) == 0:
+            track_notes = get_notes(track_file)
+            track_notes = filter_consecutive_notes(track_notes)
+        print("track notes:", track_notes)
         student_notes = get_notes(student_path)
         print(student_notes)
         student_notes = filter_consecutive_notes(student_notes)
         print("Student notes:", student_notes)
-        error_notes, missing_notes = error_and_missing_notes(lesson_notes, student_notes)
+        error_notes, missing_notes = error_and_missing_notes(track_notes, student_notes)
         score = distance_to_score(relative_distance)
         display_score_and_remarks(score, error_notes, missing_notes)
         os.remove(student_path)
@@ -424,7 +424,7 @@ def display_score_and_remarks(score, error_notes, missing_notes):
     # Correlate error notes with missing notes
     message = "Note analysis:\n"
     if error_dict == missing_dict:
-        message += f"Your recording had all the notes that the lesson had.\n"
+        message += f"Your recording had all the notes that the track had.\n"
     else:
         for first_letter, error_note_list in error_dict.items():
             if first_letter in missing_dict:
@@ -432,7 +432,7 @@ def display_score_and_remarks(score, error_notes, missing_notes):
                     message += f"Play {missing_dict[first_letter][0]} instead of {error_note}\n"
             else:
                 for error_note in error_note_list:
-                    message += f"You played the note {error_note}, however that is not present in the lesson\n"
+                    message += f"You played the note {error_note}, however that is not present in the track\n"
 
         for first_letter, missing_note_list in missing_dict.items():
             if first_letter not in error_dict:
@@ -450,68 +450,76 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         message += "Great work. Keep it up!"
         st.success(message)
     else:
-        message += "Excellent! You've mastered this lesson!"
+        message += "Excellent! You've mastered this track!"
         st.success(message)
 
 
-def display_notation(lesson, notation_path):
-    """
-    Gets the notation from the corresponding lesson file
-    under the notations folder and displays as uneditable
-    text under the lesson file.
-    :param lesson: The name of the lesson for which to display the notation.
-    :return: A list of unique notes.
-    """
-    # Initialize an empty list to store unique notes
+def display_notation(track, notation_path):
     unique_notes = []
-
-    # Check if the notation file exists
     if os.path.exists(notation_path):
-        # Read the notation file
         with open(notation_path, "r") as f:
             notation_content = f.read()
-
         st.markdown(f"**Notation:**")
         display_notes_with_subscript(notation_content)
-
-        # Extract unique notes
         notes = re.split(r'[,\s]+', notation_content.strip())
         unique_notes = list(set(notes))
-
     else:
-        st.warning(f"No notation file found for lesson: {lesson}")
-
+        st.warning(f"No notation file found for track: {track}")
     return unique_notes
 
 
 def display_notes_with_subscript(notation_content):
     formatted_notes = ""
     buffer = ""
+    bold_flag = False
+    section_flag = False
 
     for char in notation_content:
-        if char.isalpha():
+        if char.isalpha() and char != 'b':
+            buffer += char
+        elif char == ':':
             buffer += char
         elif char.isdigit():
             buffer += char
+        elif char == 'b':
+            bold_flag = True
         else:
-            if len(buffer) > 1:
-                formatted_notes += f"{buffer[0]}<sub>{buffer[1:]}</sub>"
+            if section_flag:
+                formatted_notes += f"<b>{buffer}</b>"
+                section_flag = False
             else:
-                formatted_notes += buffer
-            formatted_notes += char
+                if len(buffer) > 1:
+                    note = f"{buffer[0]}<sub>{buffer[1:]}</sub>"
+                else:
+                    note = buffer
+
+                if bold_flag:
+                    formatted_notes += f"<b>{note}</b>"
+                else:
+                    formatted_notes += note
+
+            if char in ['_', ',', '\n', ' ']:
+                formatted_notes += char if char != '\n' else "<br>"
+
+            buffer = ""
+            bold_flag = False
+
+        if buffer == "Section:":
+            section_flag = True
             buffer = ""
 
-    # Handle the last buffer if it exists
     if buffer:
         if len(buffer) > 1:
-            formatted_notes += f"{buffer[0]}<sub>{buffer[1:]}</sub>"
+            note = f"{buffer[0]}<sub>{buffer[1:]}</sub>"
         else:
-            formatted_notes += buffer
+            note = buffer
 
-    # Replace newlines with HTML line breaks
-    notation_content_html = formatted_notes.replace("\n", "<br>")
+        if bold_flag:
+            formatted_notes += f"<b>{note}</b>"
+        else:
+            formatted_notes += note
 
-    st.markdown(f"<div style='font-size: 16px; font-weight: normal;'>{notation_content_html}</div>",
+    st.markdown(f"<div style='font-size: 16px; font-weight: normal;'>{formatted_notes}</div>",
                 unsafe_allow_html=True)
 
 
@@ -519,52 +527,53 @@ def main():
     setup_streamlit_app()
     handle_student_login()
     use_recorder = handle_audio_option()
-    create_lesson_headers()
+    create_track_headers()
     # Initialize the AudioRepository
-    audio_repo = AudioRepository()
+    track_repo = TrackRepository()
 
     # Fetch all levels, ragams, and tags
-    all_levels = audio_repo.get_all_levels()
-    all_ragams = audio_repo.get_all_ragams()
-    all_tags = audio_repo.get_all_tags()
+    all_levels = track_repo.get_all_levels()
+    all_ragams = track_repo.get_all_ragams()
+    all_tags = track_repo.get_all_tags()
 
     # Add filters in the sidebar
+    selected_track_type = st.sidebar.multiselect("Filter by Track Type", all_tags)
     selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
     selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
     selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
 
-    # Fetch lessons based on selected filters
-    lessons = audio_repo.search_lessons(
+    # Fetch tracks based on selected filters
+    tracks = track_repo.search_tracks(
         ragam=None if selected_ragam == "All" else selected_ragam,
         level=None if selected_level == "All" else selected_level,
         tags=selected_tags if selected_tags else None
     )
-    if len(lessons) == 0:
+    if len(tracks) == 0:
         return
 
-    # Convert lessons to a list of lesson names for the selectbox
-    lesson_names = [lesson[1] for lesson in lessons]
-    selected_lesson = st.sidebar.selectbox("Select a Lesson", lesson_names)
-    selected_lesson_details = next((lesson for lesson in lessons if lesson[1] == selected_lesson), None)
+    # Convert tracks to a list of track names for the selectbox
+    track_names = [track[1] for track in tracks]
+    selected_track = st.sidebar.selectbox("Select a Track", track_names)
+    selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
 
-    # Use the selected lesson
-    lesson_file = selected_lesson_details[2]
-    lesson_ref_file = selected_lesson_details[3]
-    notation_file = selected_lesson_details[4]
-    offset_distance = compare_audio(lesson_file, lesson_ref_file)
+    # Use the selected track
+    track_file = selected_track_details[2]
+    track_ref_file = selected_track_details[3]
+    notation_file = selected_track_details[4]
+    offset_distance = compare_audio(track_file, track_ref_file)
     print("Offset:", offset_distance)
 
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        display_lesson_files(lesson_file)
-        unique_notes = display_notation(selected_lesson, notation_file)
+        display_track_files(track_file)
+        unique_notes = display_notation(selected_track, notation_file)
     with col2:
         if use_recorder:
             student_recording = handle_audio_recording()
         else:
-            student_recording = handle_file_upload(lesson_file)
+            student_recording = handle_file_upload(track_file)
     with col3:
-        display_student_performance(lesson_file, student_recording, unique_notes, offset_distance)
+        display_student_performance(track_file, student_recording, unique_notes, offset_distance)
 
     show_copyright()
 
