@@ -566,7 +566,20 @@ def main():
     with col3:
         display_student_performance(lesson_file, student_recording, unique_notes, offset_distance)
 
+    show_copyright()
+
+
+def show_copyright():
+    st.write("")
+    st.write("")
+    st.write("")
+    footer_html = """
+        <div style="text-align: center; color: gray;">
+            <p style="font-size: 14px;">© 2023 KA Academy of Indian Music and Dance. All rights reserved.</p>
+        </div>
+        """
+    st.markdown(footer_html, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
-
