@@ -8,6 +8,7 @@ import tempfile
 import os
 from scipy.stats import zscore
 import re
+from AudioRepository import AudioRepository
 
 
 def load_and_normalize_audio(audio_path):
@@ -190,7 +191,7 @@ def get_notes(audio_path):
     """
     y, sr = librosa.load(audio_path)
     o_env = librosa.onset.onset_strength(y=y, sr=sr)
-    onset_frames = librosa.onset.onset_detect(onset_envelope=o_env, normalize=True, sr=sr)
+    onset_frames = librosa.onset.onset_detect(onset_envelope=o_env, normalize=False, sr=sr)
     onset_samples = librosa.frames_to_samples(onset_frames)
     slices = [y[start:end] for start, end in zip(onset_samples[:-1], onset_samples[1:])]
     notes = []
@@ -205,7 +206,7 @@ def get_notes(audio_path):
     return notes
 
 
-def filter_consecutive_notes(notes, min_consecutive=2):
+def filter_consecutive_notes(notes, min_consecutive=5):
     """
     Filters out notes that don't appear consecutively at least `min_consecutive` times.
 
@@ -372,10 +373,10 @@ def display_student_performance(lesson_file, student_path, lesson_notes, offset_
         relative_distance = distance - offset_distance
         if len(lesson_notes) == 0:
             lesson_notes = get_notes(lesson_file)
-            print(lesson_notes)
             lesson_notes = filter_consecutive_notes(lesson_notes)
         print("Lesson notes:", lesson_notes)
         student_notes = get_notes(student_path)
+        print(student_notes)
         student_notes = filter_consecutive_notes(student_notes)
         print("Student notes:", student_notes)
         error_notes, missing_notes = error_and_missing_notes(lesson_notes, student_notes)
@@ -453,7 +454,7 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         st.success(message)
 
 
-def display_notation(lesson):
+def display_notation(lesson, notation_path):
     """
     Gets the notation from the corresponding lesson file
     under the notations folder and displays as uneditable
@@ -461,16 +462,13 @@ def display_notation(lesson):
     :param lesson: The name of the lesson for which to display the notation.
     :return: A list of unique notes.
     """
-    # Construct the path to the notation file
-    notation_file_path = os.path.join("notations", f"{lesson}.txt")
-
     # Initialize an empty list to store unique notes
     unique_notes = []
 
     # Check if the notation file exists
-    if os.path.exists(notation_file_path):
+    if os.path.exists(notation_path):
         # Read the notation file
-        with open(notation_file_path, "r") as f:
+        with open(notation_path, "r") as f:
             notation_content = f.read()
 
         st.markdown(f"**Notation:**")
@@ -522,22 +520,44 @@ def main():
     handle_student_login()
     use_recorder = handle_audio_option()
     create_lesson_headers()
+    # Initialize the AudioRepository
+    audio_repo = AudioRepository()
 
-    # List all files in the 'lessons' folder
-    lesson_files = [os.path.splitext(f)[0] for f in os.listdir('lessons') if not f.endswith('_ref.m4a')]
-    selected_lesson = st.sidebar.selectbox("Select a Lesson", lesson_files)
+    # Fetch all levels, ragams, and tags
+    all_levels = audio_repo.get_all_levels()
+    all_ragams = audio_repo.get_all_ragams()
+    all_tags = audio_repo.get_all_tags()
+
+    # Add filters in the sidebar
+    selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
+    selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
+    selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
+
+    # Fetch lessons based on selected filters
+    lessons = audio_repo.search_lessons(
+        ragam=None if selected_ragam == "All" else selected_ragam,
+        level=None if selected_level == "All" else selected_level,
+        tags=selected_tags if selected_tags else None
+    )
+    if len(lessons) == 0:
+        return
+
+    # Convert lessons to a list of lesson names for the selectbox
+    lesson_names = [lesson[1] for lesson in lessons]
+    selected_lesson = st.sidebar.selectbox("Select a Lesson", lesson_names)
+    selected_lesson_details = next((lesson for lesson in lessons if lesson[1] == selected_lesson), None)
 
     # Use the selected lesson
-    lesson_file = f"lessons/{selected_lesson}.m4a"
-    lesson_ref_file = f"lessons/{selected_lesson}_ref.m4a"
-
+    lesson_file = selected_lesson_details[2]
+    lesson_ref_file = selected_lesson_details[3]
+    notation_file = selected_lesson_details[4]
     offset_distance = compare_audio(lesson_file, lesson_ref_file)
     print("Offset:", offset_distance)
 
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
         display_lesson_files(lesson_file)
-        unique_notes = display_notation(selected_lesson)
+        unique_notes = display_notation(selected_lesson, notation_file)
     with col2:
         if use_recorder:
             student_recording = handle_audio_recording()
@@ -549,3 +569,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
