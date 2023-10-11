@@ -7,6 +7,7 @@ from audio_recorder_streamlit import audio_recorder
 import tempfile
 import os
 from scipy.stats import zscore
+import re
 
 
 def load_and_normalize_audio(audio_path):
@@ -126,6 +127,7 @@ def record_audio(text):
         text="",
         energy_threshold=0.01,
         pause_threshold=5,
+        sample_rate=96000,
         neutral_color="#303030",
         recording_color="#de1212",
         icon_name="microphone",
@@ -297,6 +299,24 @@ def display_lesson_files(lesson_file):
     st.audio(lesson_file, format='audio/m4a')
 
 
+def display_notation_pdf_link():
+    """
+    Display a link to the musical notation PDF for the lesson and an option to download it.
+    """
+    notation_pdf_path = "notations/Practice Worksheet 1.pdf"
+
+    # Provide a download button for the PDF
+    with open(notation_pdf_path, "rb") as f:
+        pdf_bytes = f.read()
+    st.download_button(
+        label="Download Notations",
+        data=pdf_bytes,
+        file_name="Practice Worksheet 1.pdf",
+        mime="application/pdf",
+        type="primary"
+    )
+
+
 def download_lesson(lesson):
     # Provide a download button for the original audio file
     st.write("")
@@ -334,14 +354,15 @@ def handle_file_upload(lesson):
     return student_path
 
 
-def display_student_performance(lesson_file, student_path, offset_distance):
+def display_student_performance(lesson_file, student_path, lesson_notes, offset_distance):
     """
     Display the student's performance score and remarks.
 
     Parameters:
         lesson_file (str): The path to the lesson file.
         student_path (str): The path to the student's recorded or uploaded file.
-        offset_distance:
+        offset_distance: The distance between the lesson file and its reference.
+        lesson_notes: The unique notes in the lesson
     """
     st.write("")
     st.write("")
@@ -349,8 +370,10 @@ def display_student_performance(lesson_file, student_path, offset_distance):
         distance = compare_audio(lesson_file, student_path)
         print("Distance: ", distance)
         relative_distance = distance - offset_distance
-        lesson_notes = get_notes(lesson_file)
-        lesson_notes = filter_consecutive_notes(lesson_notes)
+        if len(lesson_notes) == 0:
+            lesson_notes = get_notes(lesson_file)
+            print(lesson_notes)
+            lesson_notes = filter_consecutive_notes(lesson_notes)
         print("Lesson notes:", lesson_notes)
         student_notes = get_notes(student_path)
         student_notes = filter_consecutive_notes(student_notes)
@@ -358,6 +381,7 @@ def display_student_performance(lesson_file, student_path, offset_distance):
         error_notes, missing_notes = error_and_missing_notes(lesson_notes, student_notes)
         score = distance_to_score(relative_distance)
         display_score_and_remarks(score, error_notes, missing_notes)
+        os.remove(student_path)
 
 
 def display_score_and_remarks(score, error_notes, missing_notes):
@@ -429,21 +453,68 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         st.success(message)
 
 
-def display_notation(lesson_notes, student_notes, student_path):
+def display_notation(lesson):
     """
-    Display the musical notation for the lesson and student performance.
+    Gets the notation from the corresponding lesson file
+    under the notations folder and displays as uneditable
+    text under the lesson file.
+    :param lesson: The name of the lesson for which to display the notation.
+    :return: A list of unique notes.
+    """
+    # Construct the path to the notation file
+    notation_file_path = os.path.join("notations", f"{lesson}.txt")
 
-    Parameters:
-        lesson_notes (list): The list of notes in the lesson.
-        student_notes (list): The list of notes recorded by the student.
-        student_path
-    """
-    st.write("")
-    st.write("")
-    message = f"**Lesson notes:** {str(lesson_notes)}"
-    if student_path:
-        message += f"\n**Student notes:** {str(student_notes)}"
-    st.write(message)
+    # Initialize an empty list to store unique notes
+    unique_notes = []
+
+    # Check if the notation file exists
+    if os.path.exists(notation_file_path):
+        # Read the notation file
+        with open(notation_file_path, "r") as f:
+            notation_content = f.read()
+
+        st.markdown(f"**Notation:**")
+        display_notes_with_subscript(notation_content)
+
+        # Extract unique notes
+        notes = re.split(r'[,\s]+', notation_content.strip())
+        unique_notes = list(set(notes))
+
+    else:
+        st.warning(f"No notation file found for lesson: {lesson}")
+
+    return unique_notes
+
+
+def display_notes_with_subscript(notation_content):
+    formatted_notes = ""
+    buffer = ""
+
+    for char in notation_content:
+        if char.isalpha():
+            buffer += char
+        elif char.isdigit():
+            buffer += char
+        else:
+            if len(buffer) > 1:
+                formatted_notes += f"{buffer[0]}<sub>{buffer[1:]}</sub>"
+            else:
+                formatted_notes += buffer
+            formatted_notes += char
+            buffer = ""
+
+    # Handle the last buffer if it exists
+    if buffer:
+        if len(buffer) > 1:
+            formatted_notes += f"{buffer[0]}<sub>{buffer[1:]}</sub>"
+        else:
+            formatted_notes += buffer
+
+    # Replace newlines with HTML line breaks
+    notation_content_html = formatted_notes.replace("\n", "<br>")
+
+    st.markdown(f"<div style='font-size: 16px; font-weight: normal;'>{notation_content_html}</div>",
+                unsafe_allow_html=True)
 
 
 def main():
@@ -465,17 +536,15 @@ def main():
 
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        if not use_recorder:
-            display_lesson_files(lesson_file)
-        else:
-            download_lesson(lesson_file)
+        display_lesson_files(lesson_file)
+        unique_notes = display_notation(selected_lesson)
     with col2:
         if use_recorder:
             student_recording = handle_audio_recording()
         else:
             student_recording = handle_file_upload(lesson_file)
     with col3:
-        display_student_performance(lesson_file, student_recording, offset_distance)
+        display_student_performance(lesson_file, student_recording, unique_notes, offset_distance)
 
 
 if __name__ == "__main__":
