@@ -191,7 +191,7 @@ def get_notes(audio_path):
     """
     y, sr = librosa.load(audio_path)
     o_env = librosa.onset.onset_strength(y=y, sr=sr)
-    onset_frames = librosa.onset.onset_detect(onset_envelope=o_env, normalize=False, sr=sr)
+    onset_frames = librosa.onset.onset_detect(onset_envelope=o_env, normalize=True, sr=sr)
     onset_samples = librosa.frames_to_samples(onset_frames)
     slices = [y[start:end] for start, end in zip(onset_samples[:-1], onset_samples[1:])]
     notes = []
@@ -206,7 +206,7 @@ def get_notes(audio_path):
     return notes
 
 
-def filter_consecutive_notes(notes, min_consecutive=5):
+def filter_consecutive_notes(notes, min_consecutive=3):
     """
     Filters out notes that don't appear consecutively at least `min_consecutive` times.
 
@@ -281,7 +281,7 @@ def create_track_headers():
     """
     col1, col2, col3 = st.columns([3, 3, 4])
     with col1:
-        st.subheader('track', divider='gray')
+        st.subheader('T rack', divider='gray')
     with col2:
         st.subheader('Upload', divider='gray')
     with col3:
@@ -461,8 +461,11 @@ def display_notation(track, notation_path):
             notation_content = f.read()
         st.markdown(f"**Notation:**")
         display_notes_with_subscript(notation_content)
-        notes = re.split(r'[,\s]+', notation_content.strip())
-        unique_notes = list(set(notes))
+
+        # Extract and filter notes
+        notes = re.split(r'[,\s_]+', notation_content.replace('b', '').strip())
+        valid_notes = {'S', 'R1', 'R2', 'R3', 'G1', 'G2', 'G3', 'M1', 'M2', 'P', 'D1', 'D2', 'D3', 'N1', 'N2', 'N3'}
+        unique_notes = list(set(notes).intersection(valid_notes))
     else:
         st.warning(f"No notation file found for track: {track}")
     return unique_notes

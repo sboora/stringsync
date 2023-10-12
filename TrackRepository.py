@@ -18,7 +18,8 @@ class TrackRepository:
                 notation_path TEXT,
                 level INTEGER,
                 ragam TEXT,
-                type TEXT
+                type TEXT,
+                offset INTEGER
             );
         """)
 
@@ -71,7 +72,7 @@ class TrackRepository:
         return [row[0] for row in self.cursor.fetchall()]
 
     def add_track(self, name, track_path, track_ref_path, notation_path, level,
-                  ragam, tags, track_type):
+                  ragam, tags, track_type, offset):
         # Check if the track already exists
         self.cursor.execute("SELECT id FROM tracks WHERE name = ?", (name,))
         existing_track = self.cursor.fetchone()
@@ -80,16 +81,16 @@ class TrackRepository:
             # Update the existing track
             self.cursor.execute("""
                 UPDATE tracks
-                SET track_path = ?, track_ref_path = ?, notation_path = ?, level = ?, ragam = ?, type = ?
+                SET track_path = ?, track_ref_path = ?, notation_path = ?, level = ?, ragam = ?, type = ?, offset = ?
                 WHERE name = ?
-            """, (track_path, track_ref_path, notation_path, level, ragam, track_type, name))
+            """, (track_path, track_ref_path, notation_path, level, ragam, track_type, offset, name))
             track_id = existing_track[0]
         else:
             # Insert a new track
             self.cursor.execute("""
-                INSERT INTO tracks (name, track_path, track_ref_path, notation_path, level, ragam, type)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (name, track_path, track_ref_path, notation_path, level, ragam, track_type))
+                INSERT INTO tracks (name, track_path, track_ref_path, notation_path, level, ragam, type, offset)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (name, track_path, track_ref_path, notation_path, level, ragam, track_type, offset))
             track_id = self.cursor.lastrowid
 
         # Delete existing tags for the track
@@ -149,13 +150,13 @@ class TrackRepository:
     def create_seed_data(self):
         self.add_track("Lesson 1", "tracks/lesson1.m4a", "tracks/lesson1_ref.m4a",
                        "notations/lesson1.txt", 1, "Shankarabharanam",
-                       ["Sarali Varisai"], "Lesson")
+                       ["Sarali Varisai"], "Lesson", 510)
         self.add_track("Lesson 2", "tracks/lesson2.m4a", "tracks/lesson2_ref.m4a",
                        "notations/lesson2.txt", 1, "Shankarabharanam",
-                       ["Sarali Varisai"], "Lesson")
+                       ["Sarali Varisai"], "Lesson", 700)
         self.add_track("Shree Guruguha", "tracks/Shree Guruguha.m4a", "tracks/Shree Guruguha_ref.m4a",
                        "notations/Shree Guruguha.txt", 2, "Suddha Saveri",
-                       ["Krithi"], "Song")
+                       ["Krithi"], "Song", 6250)
 
 
 
