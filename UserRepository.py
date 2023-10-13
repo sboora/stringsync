@@ -38,7 +38,9 @@ class UserRepository:
         cursor = self.connection.cursor()
         create_table_query = """CREATE TABLE IF NOT EXISTS users (
                                     id INT AUTO_INCREMENT PRIMARY KEY,
+                                    name VARCHAR(255) UNIQUE,
                                     username VARCHAR(255) UNIQUE,
+                                    email VARCHAR(255) UNIQUE,
                                     password VARCHAR(255),
                                     is_enabled BOOLEAN DEFAULT TRUE
                                 ); """
@@ -65,7 +67,17 @@ class UserRepository:
             return False
         return True
 
-    def register_user(self, username, password):
+    @staticmethod
+    def is_valid_email(email):
+        # Regular expression for validating an Email
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+        if re.search(email_regex, email):
+            return True
+        else:
+            return False
+
+    def register_user(self, name, username, email, password):
         cursor = self.connection.cursor()
         if not self.is_valid_username(username):
             return False, "Invalid username. It should be at least 5 characters and only contain alphanumeric " \
@@ -75,19 +87,21 @@ class UserRepository:
             return False, "Invalid password. It should be at least 8 characters, contain at least one digit, " \
                           "one lowercase, one uppercase, and one special character. "
 
-        # Check if the username already exists
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if not self.is_valid_email(email):
+            return False, "Invalid email. Please enter a valid email address."
+
+        # Check if the username or email already exists
+        cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
         existing_user = cursor.fetchone()
-        st.write(existing_user)
         if existing_user:
-            return False, "Username already exists."
+            return False, "Username or email already exists."
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        add_user_query = """INSERT INTO users (username, password)
-                            VALUES (%s, %s);"""
-        cursor.execute(add_user_query, (username, hashed_password))
+        add_user_query = """INSERT INTO users (name, username, email, password)
+                            VALUES (%s, %s, %s, %s);"""
+        cursor.execute(add_user_query, (name, username, email, hashed_password))
         self.connection.commit()
-        return True, f"User {username} registered successfully."
+        return True, f"User {username} with email {email} registered successfully."
 
     def enable_disable_user(self, username, enable=True):
         cursor = self.connection.cursor()

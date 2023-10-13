@@ -1,3 +1,5 @@
+import time
+
 import librosa
 import numpy as np
 from fastdtw import fastdtw
@@ -108,7 +110,7 @@ def audio_display(filename):
     Parameters:
         filename (str): The path of the audio file.
     """
-    audio_id = st.empty().audio(filename, format='audio/wav')
+    st.empty().audio(filename, format='audio/wav')
 
 
 def record_audio(text):
@@ -145,22 +147,22 @@ def record_audio(text):
     return recorded_audio_file
 
 
-def error_and_missing_notes(A, B):
+def error_and_missing_notes(set_a, set_b):
     """
     Find notes that are incorrect or missing between two lists.
 
     Parameters:
-        A (list): The list of correct notes.
-        B (list): The list of notes to check.
+        set_a (list): The list of correct notes.
+        set_b (list): The list of notes to check.
 
     Returns:
         tuple: Two sets containing notes that are incorrect and missing.
     """
-    set_A = set(A)
-    set_B = set(B)
-    elements_in_B_not_in_A = set_B - set_A
-    elements_in_A_not_in_B = set_A - set_B
-    return elements_in_B_not_in_A, elements_in_A_not_in_B
+    set_a = set(set_a)
+    set_b = set(set_b)
+    elements_in_b_not_in_a = set_b - set_a
+    elements_in_a_not_in_b = set_a - set_b
+    return elements_in_b_not_in_a, elements_in_a_not_in_b
 
 
 def freq_to_note(freq):
@@ -173,10 +175,10 @@ def freq_to_note(freq):
     Returns:
         str: The corresponding musical note.
     """
-    A4_freq = 440.0
+    a4_freq = 440.0
     all_notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
     swaras = ['N3', 'S', 'R1', 'R2', 'G2', 'G3', 'M1', 'M2', 'P', 'D1', 'D2', 'N2']
-    num_semitones = int(round(12.0 * np.log2(freq / A4_freq)))
+    num_semitones = int(round(12.0 * np.log2(freq / a4_freq)))
     return swaras[num_semitones % 12]
 
 
@@ -196,8 +198,8 @@ def get_notes(audio_path):
     onset_samples = librosa.frames_to_samples(onset_frames)
     slices = [y[start:end] for start, end in zip(onset_samples[:-1], onset_samples[1:])]
     notes = []
-    for slice in slices:
-        fft_result = np.fft.fft(slice)
+    for audio_slice in slices:
+        fft_result = np.fft.fft(audio_slice)
         frequencies = np.fft.fftfreq(len(fft_result))
         magnitude = np.abs(fft_result)
         peak_frequency = frequencies[np.argmax(magnitude)]
@@ -247,18 +249,18 @@ def setup_streamlit_app():
         compare your musical performance with a reference recording, providing you with a 
         quantifiable score based on the similarity.
         
-        ### How Does it Work?
-        1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
-        2. **Upload Your Recording**: Record your own performance and upload it here.
-        3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match.
+        ### How Does it Work? 
+        1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve. 
+        2. **Upload Your Recording**: Record your own performance and upload it here. 
+        3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match. 
         
         ### Why Use String Sync?
         - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
         - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
         - **Flexible**: Suitable for any instrument and skill level.
         
-        "Ready to get started? Select your track from the sidebar and either directly record or upload your performance!"        
-        """
+        "Ready to get started? Select your track from the sidebar and either directly record or upload your 
+        performance!" """
     )
 
 
@@ -269,40 +271,56 @@ def handle_student_login():
     user_repo = UserRepository()  # Initialize UserRepository
     user_repo.connect()
 
-    if "user_logged_in" not in st.session_state or not st.session_state["user_logged_in"]:
-        st.sidebar.header("Student Login")
-        username = st.sidebar.text_input("Username")
-        password = st.sidebar.text_input("Password", type="password")
-        is_authenticated = False
-
-        # Create two columns for the buttons
-        col1, col2, col3 = st.sidebar.columns([4, 5, 3])
-        # Login button in the first column
-        with col1:
-            if st.button("Login", type="primary"):
-                if username and password:
-                    is_authenticated = user_repo.authenticate_user(username, password)
-                    if is_authenticated:
-                        st.sidebar.success(f"Welcome, {username}!")
-                        st.session_state["user_logged_in"] = True
-                        st.session_state['user'] = username
-                        st.rerun()
+    is_authenticated = False
+    if user_not_logged_in():
+        if not register_user():
+            st.sidebar.header("Student Login")
+            is_authenticated = False
+            password, username = show_login_screen()
+            # Create two columns for the buttons
+            col1, col2, col3 = st.sidebar.columns([4, 5, 3])
+            # Login button in the first column
+            with col1:
+                if login():
+                    if username and password:
+                        is_authenticated = user_repo.authenticate_user(username, password)
+                        if is_authenticated:
+                            login_user(username)
+                        else:
+                            fail_login()
                     else:
-                        st.sidebar.error("Invalid credentials")
-                else:
-                    st.sidebar.error("Both username and password are required")
+                        st.sidebar.error("Both username and password are required")
 
-        # Register button in the second column
-        with col2:
-            if st.button("Register", type="primary"):
-                if username and password:
-                    is_registered, message = user_repo.register_user(username, password)
-                    if is_registered:
-                        st.sidebar.success(message)
+            # Register button in the second column
+            with col2:
+                if register():
+                    st.session_state["show_register_section"] = True
+                    st.rerun()
+        else:
+            st.sidebar.subheader("Register")
+            reg_email, reg_name, reg_password, reg_username = show_user_registration_screen()
+
+            # Create two columns for the buttons
+            col1, col2, col3 = st.sidebar.columns([3, 5, 4])
+            # Ok button
+            with col1:
+                if ok():
+                    if reg_name and reg_username and reg_email and reg_password:
+                        is_registered, message = user_repo.register_user(reg_name, reg_username, reg_email,
+                                                                         reg_password)
+                        if is_registered:
+                            st.sidebar.success(message)
+                            st.session_state["show_register_section"] = False
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.sidebar.error(message)
                     else:
-                        st.sidebar.error(message)
-                else:
-                    st.sidebar.error("Both username and password are required for registration")
+                        st.sidebar.error("All fields are required for registration")
+            with col2:
+                if cancel():
+                    st.session_state["show_register_section"] = False
+                    st.rerun()
     else:
         st.sidebar.success(f"You are already logged in.")
 
@@ -310,17 +328,80 @@ def handle_student_login():
     return is_authenticated
 
 
+def register_user():
+    return st.session_state["show_register_section"]
+
+
+def show_user_registration_screen():
+    reg_name = st.sidebar.text_input("Name")
+    reg_email = st.sidebar.text_input("Email")
+    reg_username = st.sidebar.text_input(key="registration_username", label="User")
+    reg_password = st.sidebar.text_input(key="registration_password", type="password", label="Password")
+    return reg_email, reg_name, reg_password, reg_username
+
+
+def init_session():
+    if "user_logged_in" not in st.session_state:
+        st.session_state["user_logged_in"] = False
+
+    if "show_register_section" not in st.session_state:
+        st.session_state["show_register_section"] = False
+
+
+def fail_login():
+    st.sidebar.error("Invalid credentials")
+
+
+def login_user(username):
+    st.sidebar.success(f"Welcome, {username}!")
+    st.session_state["user_logged_in"] = True
+    st.session_state['user'] = username
+    st.rerun()
+
+
+def login():
+    return st.button("Login", type="primary")
+
+
+def register():
+    return st.button("Register", type="primary")
+
+
+def ok():
+    return st.button("Ok", type="primary")
+
+
+def cancel():
+    return st.button("Cancel", type="primary")
+
+
+def show_login_screen():
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
+    return password, username
+
+
+def user_logged_in():
+    return st.session_state["user_logged_in"]
+
+
+def user_not_logged_in():
+    return "user_logged_in" not in st.session_state or not user_logged_in()
+
+
 def create_track_headers():
     """
     Create headers for the track section.
     """
-    col1, col2, col3 = st.columns([3, 3, 4])
+    col1, col2, col3, col4 = st.columns([3, 3, 2.25, 2.25])
     with col1:
-        st.subheader('T rack', divider='gray')
+        st.subheader('Track', divider='gray')
     with col2:
         st.subheader('Upload', divider='gray')
     with col3:
         st.subheader('Analysis', divider='gray')
+    with col4:
+        st.subheader('Remarks', divider='gray')
 
 
 def display_track_files(track_file):
@@ -390,6 +471,10 @@ def handle_file_upload(track):
     return student_path
 
 
+def display_teacher_remarks():
+    pass
+
+
 def display_student_performance(track_file, student_path, track_notes, offset_distance):
     """
     Display the student's performance score and remarks.
@@ -439,7 +524,6 @@ def display_score_and_remarks(score, error_notes, missing_notes):
     else:
         st.success(message)
 
-    message = ""
     # Create dictionaries to hold the first alphabet of each note and the corresponding notes
     error_dict = {}
     missing_dict = {}
@@ -575,15 +659,11 @@ def set_env():
 def main():
     set_env()
     setup_streamlit_app()
-    print("Started...")
-    # Check if the user is logged in
-    if "user_logged_in" not in st.session_state:
-        st.session_state["user_logged_in"] = False
-
-    if not st.session_state["user_logged_in"]:
+    init_session()
+    if not user_logged_in():
         st.session_state["user_logged_in"] = handle_student_login()
 
-    if st.session_state["user_logged_in"]:
+    if user_logged_in():
         st.sidebar.success(f"Welcome {st.session_state['user']}")
         use_recorder = handle_audio_option()
         create_track_headers()
@@ -594,9 +674,10 @@ def main():
         all_levels = track_repo.get_all_levels()
         all_ragams = track_repo.get_all_ragams()
         all_tags = track_repo.get_all_tags()
+        all_track_types = track_repo.get_all_track_types()
 
         # Add filters in the sidebar
-        selected_track_type = st.sidebar.multiselect("Filter by Track Type", all_tags)
+        selected_track_type = st.sidebar.selectbox("Filter by Track Type", ["All"] + all_track_types)
         selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
         selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
         selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
@@ -605,7 +686,8 @@ def main():
         tracks = track_repo.search_tracks(
             ragam=None if selected_ragam == "All" else selected_ragam,
             level=None if selected_level == "All" else selected_level,
-            tags=selected_tags if selected_tags else None
+            tags=selected_tags if selected_tags else None,
+            track_type=None if selected_track_type == "All" else selected_track_type,
         )
         if len(tracks) == 0:
             return
@@ -622,7 +704,7 @@ def main():
         offset_distance = compare_audio(track_file, track_ref_file)
         print("Offset:", offset_distance)
 
-        col1, col2, col3 = st.columns([3, 3, 4])
+        col1, col2, col3, col4 = st.columns([3, 3, 2.25, 2.25])
         with col1:
             display_track_files(track_file)
             unique_notes = display_notation(selected_track, notation_file)
@@ -633,6 +715,8 @@ def main():
                 student_recording = handle_file_upload(track_file)
         with col3:
             display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+        with col4:
+            display_teacher_remarks()
 
         # Display a Logout button when the user is logged in
         if st.sidebar.button("Logout", type="primary"):

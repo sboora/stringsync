@@ -54,6 +54,10 @@ class TrackRepository:
         self.cursor.execute("SELECT DISTINCT tag_name FROM tags")
         return [row[0] for row in self.cursor.fetchall()]
 
+    def get_all_track_types(self):
+        self.cursor.execute("SELECT DISTINCT type FROM tracks")
+        return [row[0] for row in self.cursor.fetchall()]
+
     def get_all_ragams(self):
         self.cursor.execute("SELECT DISTINCT ragam FROM tracks")
         return [row[0] for row in self.cursor.fetchall()]
@@ -117,7 +121,7 @@ class TrackRepository:
 
         where_clauses = []
 
-        if ragam:
+        if ragam is not None:
             where_clauses.append("ragam = ?")
             params.append(ragam)
 
