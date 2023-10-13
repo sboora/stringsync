@@ -9,6 +9,7 @@ import os
 from scipy.stats import zscore
 import re
 from TrackRepository import TrackRepository
+from UserRepository import UserRepository
 
 
 def load_and_normalize_audio(audio_path):
@@ -263,16 +264,49 @@ def setup_streamlit_app():
 
 def handle_student_login():
     """
-    Handle student login through the sidebar.
+    Handle student login and registration through the sidebar.
     """
-    st.sidebar.header("Student Login")
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Login"):
-        if username and password:  # Add your authentication logic here
-            st.sidebar.success(f"Welcome, {username}!")
-        else:
-            st.sidebar.error("Invalid credentials")
+    user_repo = UserRepository()  # Initialize UserRepository
+    user_repo.connect()
+
+    if "user_logged_in" not in st.session_state or not st.session_state["user_logged_in"]:
+        st.sidebar.header("Student Login")
+        username = st.sidebar.text_input("Username")
+        password = st.sidebar.text_input("Password", type="password")
+        is_authenticated = False
+
+        # Create two columns for the buttons
+        col1, col2, col3 = st.sidebar.columns([4, 5, 3])
+        # Login button in the first column
+        with col1:
+            if st.button("Login", type="primary"):
+                if username and password:
+                    is_authenticated = user_repo.authenticate_user(username, password)
+                    if is_authenticated:
+                        st.sidebar.success(f"Welcome, {username}!")
+                        st.session_state["user_logged_in"] = True
+                        st.rerun()
+                    else:
+                        st.sidebar.error("Invalid credentials")
+                else:
+                    st.sidebar.error("Both username and password are required")
+
+        # Register button in the second column
+        with col2:
+            if st.button("Register", type="primary"):
+                if username and password:
+                    is_registered, message = user_repo.register_user(username, password)
+                    if is_registered:
+                        st.sidebar.success(message)
+                    else:
+                        st.sidebar.error(message)
+                else:
+                    st.sidebar.error("Both username and password are required for registration")
+    else:
+        st.sidebar.success(f"You are already logged in.")
+
+    user_repo.close()  # Close the database connection
+    return is_authenticated
 
 
 def create_track_headers():
@@ -526,57 +560,82 @@ def display_notes_with_subscript(notation_content):
                 unsafe_allow_html=True)
 
 
+def set_env():
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
+    os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
+    os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]
+    os.environ["SQL_USERNAME"] = st.secrets["SQL_USERNAME"]
+    os.environ["SQL_PASSWORD"] = st.secrets["SQL_PASSWORD"]
+    os.environ["MYSQL_CONNECTION_STRING"] = st.secrets["MYSQL_CONNECTION_STRING"]
+    os.environ["EMAIL_ID"] = st.secrets["EMAIL_ID"]
+    os.environ["EMAIL_PASSWORD"] = st.secrets["EMAIL_PASSWORD"]
+
+
 def main():
+    set_env()
     setup_streamlit_app()
-    handle_student_login()
-    use_recorder = handle_audio_option()
-    create_track_headers()
-    # Initialize the AudioRepository
-    track_repo = TrackRepository()
+    print("Started...")
+    # Check if the user is logged in
+    if "user_logged_in" not in st.session_state:
+        st.session_state["user_logged_in"] = False
 
-    # Fetch all levels, ragams, and tags
-    all_levels = track_repo.get_all_levels()
-    all_ragams = track_repo.get_all_ragams()
-    all_tags = track_repo.get_all_tags()
+    if not st.session_state["user_logged_in"]:
+        st.session_state["user_logged_in"] = handle_student_login()
 
-    # Add filters in the sidebar
-    selected_track_type = st.sidebar.multiselect("Filter by Track Type", all_tags)
-    selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
-    selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
-    selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
+    if st.session_state["user_logged_in"]:
+        use_recorder = handle_audio_option()
+        create_track_headers()
+        # Initialize the AudioRepository
+        track_repo = TrackRepository()
 
-    # Fetch tracks based on selected filters
-    tracks = track_repo.search_tracks(
-        ragam=None if selected_ragam == "All" else selected_ragam,
-        level=None if selected_level == "All" else selected_level,
-        tags=selected_tags if selected_tags else None
-    )
-    if len(tracks) == 0:
-        return
+        # Fetch all levels, ragams, and tags
+        all_levels = track_repo.get_all_levels()
+        all_ragams = track_repo.get_all_ragams()
+        all_tags = track_repo.get_all_tags()
 
-    # Convert tracks to a list of track names for the selectbox
-    track_names = [track[1] for track in tracks]
-    selected_track = st.sidebar.selectbox("Select a Track", track_names)
-    selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
+        # Add filters in the sidebar
+        selected_track_type = st.sidebar.multiselect("Filter by Track Type", all_tags)
+        selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
+        selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
+        selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
 
-    # Use the selected track
-    track_file = selected_track_details[2]
-    track_ref_file = selected_track_details[3]
-    notation_file = selected_track_details[4]
-    offset_distance = compare_audio(track_file, track_ref_file)
-    print("Offset:", offset_distance)
+        # Fetch tracks based on selected filters
+        tracks = track_repo.search_tracks(
+            ragam=None if selected_ragam == "All" else selected_ragam,
+            level=None if selected_level == "All" else selected_level,
+            tags=selected_tags if selected_tags else None
+        )
+        if len(tracks) == 0:
+            return
 
-    col1, col2, col3 = st.columns([3, 3, 4])
-    with col1:
-        display_track_files(track_file)
-        unique_notes = display_notation(selected_track, notation_file)
-    with col2:
-        if use_recorder:
-            student_recording = handle_audio_recording()
-        else:
-            student_recording = handle_file_upload(track_file)
-    with col3:
-        display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+        # Convert tracks to a list of track names for the selectbox
+        track_names = [track[1] for track in tracks]
+        selected_track = st.sidebar.selectbox("Select a Track", track_names)
+        selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
+
+        # Use the selected track
+        track_file = selected_track_details[2]
+        track_ref_file = selected_track_details[3]
+        notation_file = selected_track_details[4]
+        offset_distance = compare_audio(track_file, track_ref_file)
+        print("Offset:", offset_distance)
+
+        col1, col2, col3 = st.columns([3, 3, 4])
+        with col1:
+            display_track_files(track_file)
+            unique_notes = display_notation(selected_track, notation_file)
+        with col2:
+            if use_recorder:
+                student_recording = handle_audio_recording()
+            else:
+                student_recording = handle_file_upload(track_file)
+        with col3:
+            display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+
+        # Display a Logout button when the user is logged in
+        if st.sidebar.button("Logout", type="primary"):
+            st.session_state["user_logged_in"] = False
+            st.rerun()
 
     show_copyright()
 

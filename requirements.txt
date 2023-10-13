@@ -5,6 +5,9 @@ fastdtw
 scipy
 scikit-learn
 audio-recorder-streamlit
+cloud-sql-python-connector
+PyMySQL
+bcrypt
 
 
 
