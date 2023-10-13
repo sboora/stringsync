@@ -1,65 +1,52 @@
 # String Sync: Enhance Your Musical Learning Experience
 
+## Table of Contents
+
+- [Overview](#overview)
+- [How Does it Work?](#how-does-it-work)
+  - [Steps to Follow](#steps-to-follow)
+- [Why Use String Sync?](#why-use-string-sync)
+- [Features](#features)
+  - [General Features](#general-features)
+  - [Student Account Features](#student-account-features)
+- [Getting Started](#getting-started)
+
 ## Overview
 
-String Sync is an innovative platform designed to help music teachers and students enhance their learning experience. Leveraging advanced audio analysis, String Sync allows you to compare your musical performance with a reference recording, providing you with a quantifiable score based on the similarity.
+String Sync is an innovative platform designed to help music teachers and students enhance their learning experience. By leveraging advanced audio analysis, String Sync provides you with a quantifiable score based on the similarity between your musical performance and a reference recording.
 
 ## How Does it Work?
 
 ### Steps to Follow
 
-1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
-2. **Upload Your Recording**: Record your own performance and upload it here.
-3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match.
+1. **Listen to the Track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve.
+2. **Upload Your Recording**: Record your own performance and upload it to the platform.
+3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and provide you with a score based on how closely they match.
 
 ## Why Use String Sync?
 
-- **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
-- **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
-- **Flexible**: Suitable for any instrument and skill level.
+- **Objective Feedback**: Receive unbiased, data-driven feedback on your performance.
+- **Progress Tracking**: Monitor your scores over time to track your improvement.
+- **Flexibility**: Suitable for learners and musicians of all skill levels and instruments.
 
 ## Features
 
-- Store tracks with metadata like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
-- Support for tags to categorize tracks.
-- Search functionality based on `ragam`, `level`, and `tags`.
-- Support for `offset`, which represents the distance between the track and track_ref.
+### General Features
 
-## Table Schema
+- **Metadata Storage**: Store tracks with metadata attributes like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
+- **Tag Support**: Categorize tracks using tags for easier search and identification.
+- **Advanced Search**: Search functionality based on `ragam`, `level`, and `tags`.
+- **Offset Support**: Utilizes an `offset` value that represents the distance between the track and its reference, enhancing the scoring algorithm.
 
-### Tracks Table
+### Student Account Features
 
-| Field          | Type    | Description                          |
-| -------------- | ------- | ------------------------------------ |
-| id             | INTEGER | Auto-incremented primary key         |
-| name           | TEXT    | Name of the track                    |
-| track_path     | TEXT    | Path to the track file               |
-| track_ref_path | TEXT    | Path to the reference track file     |
-| notation_path  | TEXT    | Path to the notation file            |
-| level          | INTEGER | Level of difficulty                  |
-| ragam          | TEXT    | Musical scale or mode                |
-| type           | TEXT    | Type of track (e.g., Lesson, Song)   |
-| offset         | INTEGER | Offset between track and track_ref   |
+- **User Authentication**: Secure login and registration features for students.
+- **Personalized Dashboard**: View your past performances, scores, and progress over time.
+- **Track Favorites**: Save your favorite tracks for quick access.
+- **Feedback and Remarks**: Receive personalized feedback and remarks based on your performance.
+- **Downloadable Resources**: Access and download musical notations and other learning resources.
 
-### Tags Table
+## Getting Started
 
-| Field     | Type    | Description                  |
-| --------- | ------- | ---------------------------- |
-| id        | INTEGER | Auto-incremented primary key |
-| tag_name  | TEXT    | Name of the tag              |
+Ready to enhance your musical journey? Select your track from the sidebar and either directly record or upload your performance to get started!
 
-### Track_Tags Table
-
-| Field    | Type    | Description                  |
-| -------- | ------- | ---------------------------- |
-| track_id | INTEGER | Foreign key to Tracks table  |
-| tag_id   | INTEGER | Foreign key to Tags table    |
-
-## Setup
-
-1. Clone the repository.
-2. Run `your_script.py` to initialize the SQLite database and seed data.
-
-## Ready to Get Started?
-
-Select your track from the sidebar and either directly record or upload your performance!
