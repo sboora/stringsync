@@ -1,4 +1,4 @@
-# String Sync: Enhance Your Musical Learning Experience
+# String Sync
 
 ## Table of Contents
 
