@@ -285,6 +285,7 @@ def handle_student_login():
                     if is_authenticated:
                         st.sidebar.success(f"Welcome, {username}!")
                         st.session_state["user_logged_in"] = True
+                        st.session_state['user'] = username
                         st.rerun()
                     else:
                         st.sidebar.error("Invalid credentials")
@@ -583,6 +584,7 @@ def main():
         st.session_state["user_logged_in"] = handle_student_login()
 
     if st.session_state["user_logged_in"]:
+        st.sidebar.success(f"Welcome {st.session_state['user']}")
         use_recorder = handle_audio_option()
         create_track_headers()
         # Initialize the AudioRepository
