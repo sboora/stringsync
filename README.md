@@ -37,9 +37,6 @@ String Sync is an innovative platform designed to help music teachers and studen
 - **Tag Support**: Categorize tracks using tags for easier search and identification.
 - **Advanced Search**: Search functionality based on `ragam`, `level`, and `tags`.
 - **Auto scoring**: Automatically scores the performance by similarity and note detection.
-
-### Student Account Features
-
 - **User Authentication**: Secure login and registration features for students.
 - **Personalized Dashboard**: View your past performances, scores, and progress over time.
 - **Track Favorites**: Save your favorite tracks for quick access.
