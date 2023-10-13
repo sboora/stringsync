@@ -29,7 +29,9 @@ String Sync is an innovative platform designed to help music teachers and studen
 
 ## Features
 
-- **Metadata Storage**: Store tracks with metadata attributes like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
+- **Track uploads**: Store tracks with metadata attributes like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
+- **Performance upload**: Upload recordings for a given track.
+- **Record Performance**: Directly record a performance.
 - **Tag Support**: Categorize tracks using tags for easier search and identification.
 - **Advanced Search**: Search functionality based on `ragam`, `level`, and `tags`.
 - **Auto scoring**: Automatically scores the performance by similarity and note detection.
