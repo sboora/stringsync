@@ -36,7 +36,7 @@ String Sync is an innovative platform designed to help music teachers and studen
 - **Metadata Storage**: Store tracks with metadata attributes like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
 - **Tag Support**: Categorize tracks using tags for easier search and identification.
 - **Advanced Search**: Search functionality based on `ragam`, `level`, and `tags`.
-- **Offset Support**: Utilizes an `offset` value that represents the distance between the track and its reference, enhancing the scoring algorithm.
+- **Auto scoring**: Automatically scores the performance by similarity and note detection.
 
 ### Student Account Features
 
