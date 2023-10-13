@@ -7,8 +7,6 @@
   - [Steps to Follow](#steps-to-follow)
 - [Why Use String Sync?](#why-use-string-sync)
 - [Features](#features)
-  - [General Features](#general-features)
-  - [Student Account Features](#student-account-features)
 - [Getting Started](#getting-started)
 
 ## Overview
@@ -30,8 +28,6 @@ String Sync is an innovative platform designed to help music teachers and studen
 - **Flexibility**: Suitable for learners and musicians of all skill levels and instruments.
 
 ## Features
-
-### General Features
 
 - **Metadata Storage**: Store tracks with metadata attributes like `name`, `track_path`, `track_ref_path`, `notation_path`, `level`, `ragam`, and `type`.
 - **Tag Support**: Categorize tracks using tags for easier search and identification.
