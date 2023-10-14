@@ -39,19 +39,28 @@ class RecordingRepository:
                                     timestamp DATETIME,
                                     duration INT,
                                     score INT,
-                                    analysis TEXT,  # New column
-                                    remarks TEXT    # New column
+                                    analysis TEXT,
+                                    remarks TEXT,
+                                    file_hash VARCHAR(32)  # New column
                                 ); """
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, analysis=None, remarks=None):
+    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis=None, remarks=None):
         cursor = self.connection.cursor()
-        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, analysis, remarks)
-                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
-        cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, analysis, remarks))
+        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""  # Include file_hash
+        cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
         self.connection.commit()
         return cursor.lastrowid  # Return the id of the newly inserted row
+
+    def is_duplicate_recording(self, user_id, track_id, file_hash):
+        cursor = self.connection.cursor()
+        query = """SELECT COUNT(*) FROM recordings
+                   WHERE user_id = %s AND track_id = %s AND file_hash = %s;"""
+        cursor.execute(query, (user_id, track_id, file_hash))
+        count = cursor.fetchone()[0]
+        return count > 0
 
     def get_all_recordings_by_user(self, user_id):
         cursor = self.connection.cursor()

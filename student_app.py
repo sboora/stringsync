@@ -1,7 +1,7 @@
 import datetime
 import time
 import pandas as pd
-
+import hashlib
 import librosa
 import numpy as np
 from fastdtw import fastdtw
@@ -408,15 +408,13 @@ def create_track_headers():
     """
     Create headers for the track section.
     """
-    col1, col2, col3, col4 = st.columns([3, 3, 2.25, 2.25])
+    col1, col2, col3 = st.columns([3, 3, 5])
     with col1:
         st.subheader('Track', divider='rainbow')
     with col2:
         st.subheader('Upload', divider='rainbow')
     with col3:
         st.subheader('Analysis', divider='rainbow')
-    with col4:
-        st.subheader('Remarks', divider='rainbow')
 
 
 def display_track_files(track_file):
@@ -486,6 +484,15 @@ def handle_file_upload(user_id, track_id):
         # Read the uploaded file into a bytes buffer
         recording_data = uploaded_student_file.getbuffer()
 
+        # Calculate the hash of the file
+        file_hash = hashlib.md5(recording_data).hexdigest()
+
+        # Check if a recording with the same hash already exists
+        recording_repository = RecordingRepository()
+        if recording_repository.is_duplicate_recording(user_id, track_id, file_hash):
+            st.error("You have already uploaded this recording.")
+            return student_path, recording_id, False
+
         # Calculate duration
         with open(student_path, "wb") as f:
             f.write(recording_data)
@@ -494,18 +501,13 @@ def handle_file_upload(user_id, track_id):
         duration = librosa.get_duration(y=y, sr=sr)
 
         # Store in database
-        recording_repository = RecordingRepository()
         storage_repository = StorageRepository("stringsync")
         url = storage_repository.upload_file(student_path, student_path)
         recording_id = recording_repository.add_recording(
-            get_user_id(), track_id, student_path, url, timestamp, duration)
+            get_user_id(), track_id, student_path, url, timestamp, duration, file_hash)
         st.audio(student_path, format='audio/m4a')
 
-    return student_path, recording_id
-
-
-def display_teacher_remarks():
-    pass
+    return student_path, recording_id, True
 
 
 def display_student_performance(track_file, student_path, track_notes, offset_distance):
@@ -754,7 +756,7 @@ def main():
         print("Offset:", offset_distance)
 
         student_recording = None
-        col1, col2, col3, col4 = st.columns([3, 3, 2.25, 2.25])
+        col1, col2, col3 = st.columns([3, 3, 5])
         with col1:
             display_track_files(track_file)
             unique_notes = display_notation(selected_track, notation_file)
@@ -762,12 +764,11 @@ def main():
             if use_recorder:
                 student_recording = handle_audio_recording()
             else:
-                student_recording, recording_id = handle_file_upload(get_user_id(), track_id)
+                student_recording, recording_id, is_success = handle_file_upload(get_user_id(), track_id)
         with col3:
-            score, analysis = display_student_performance(track_file, student_recording, unique_notes, offset_distance)
-            update_score_and_analysis(recording_id, score, analysis)
-        with col4:
-            display_teacher_remarks()
+            if is_success:
+                score, analysis = display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+                update_score_and_analysis(recording_id, score, analysis)
 
         # List all recordings for the track
         st.write("")
