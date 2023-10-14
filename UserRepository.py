@@ -3,7 +3,6 @@ import bcrypt
 from google.cloud.sql.connector import Connector
 import os
 import tempfile
-import streamlit as st
 
 
 class UserRepository:
@@ -12,7 +11,7 @@ class UserRepository:
 
     def connect(self):
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            temp_file.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+            temp_file.write(os.environ["GOOGLE_APP_CRED"])
             temp_file_path = temp_file.name
 
         # Use the temporary file path as the value for GOOGLE_APPLICATION_CREDENTIALS
@@ -111,18 +110,26 @@ class UserRepository:
 
     def authenticate_user(self, username, password):
         cursor = self.connection.cursor()
-        find_user_query = """SELECT password, is_enabled FROM users WHERE username = %s;"""
+        find_user_query = """SELECT id, password, is_enabled FROM users WHERE username = %s;"""
         cursor.execute(find_user_query, (username,))
         result = cursor.fetchone()
 
         if result:
-            stored_hashed_password, is_enabled = result
+            student_id, stored_hashed_password, is_enabled = result
             if is_enabled and bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
-                return True
+                return True, student_id
             else:
-                return False
+                return False, -1
         else:
-            return False
+            return False, -1
+
+    def get_all_users(self):
+        cursor = self.connection.cursor()
+        get_users_query = """SELECT id, username FROM users;"""
+        cursor.execute(get_users_query)
+        result = cursor.fetchall()
+        users = [{'user_id': row[0], 'username': row[1]} for row in result]
+        return users
 
     def close(self):
         if self.connection:

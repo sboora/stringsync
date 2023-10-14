@@ -8,6 +8,7 @@ audio-recorder-streamlit
 cloud-sql-python-connector
 PyMySQL
 bcrypt
+google-cloud-storage
 
 
 
