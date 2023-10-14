@@ -290,7 +290,7 @@ def handle_student_login():
                     if username and password:
                         is_authenticated, user_id = user_repo.authenticate_user(username, password)
                         if is_authenticated:
-                            login_user(username, user_id)
+                            login_user(username, user_id, password)
                         else:
                             fail_login()
                     else:
@@ -348,7 +348,10 @@ def show_user_registration_screen():
 def init_session():
     if "user_logged_in" not in st.session_state:
         st.session_state["user_logged_in"] = False
-
+    if "username" not in st.session_state:
+        st.session_state["username"] = None
+    if "password" not in st.session_state:
+        st.session_state["password"] = None
     if "show_register_section" not in st.session_state:
         st.session_state["show_register_section"] = False
 
@@ -357,11 +360,13 @@ def fail_login():
     st.sidebar.error("Invalid credentials")
 
 
-def login_user(username, user_id):
+def login_user(username, user_id, password):
     st.sidebar.success(f"Welcome, {username}!")
     st.session_state["user_logged_in"] = True
     st.session_state['user'] = username
     st.session_state['user_id'] = user_id
+    st.session_state['username'] = username  # Save username
+    st.session_state['password'] = password  # Save password
     st.rerun()
 
 
@@ -405,13 +410,13 @@ def create_track_headers():
     """
     col1, col2, col3, col4 = st.columns([3, 3, 2.25, 2.25])
     with col1:
-        st.subheader('Track', divider='gray')
+        st.subheader('Track', divider='rainbow')
     with col2:
-        st.subheader('Upload', divider='gray')
+        st.subheader('Upload', divider='rainbow')
     with col3:
-        st.subheader('Analysis', divider='gray')
+        st.subheader('Analysis', divider='rainbow')
     with col4:
-        st.subheader('Remarks', divider='gray')
+        st.subheader('Remarks', divider='rainbow')
 
 
 def display_track_files(track_file):
@@ -515,6 +520,8 @@ def display_student_performance(track_file, student_path, track_notes, offset_di
     """
     st.write("")
     st.write("")
+    score = -1
+    analysis = ""
     if student_path:
         distance = compare_audio(track_file, student_path)
         print("Distance: ", distance)
@@ -529,12 +536,13 @@ def display_student_performance(track_file, student_path, track_notes, offset_di
         print("Student notes:", student_notes)
         error_notes, missing_notes = error_and_missing_notes(track_notes, student_notes)
         score = distance_to_score(relative_distance)
-        display_score_and_remarks(score, error_notes, missing_notes)
+        analysis = display_score_and_analysis(score, error_notes, missing_notes)
         os.remove(student_path)
-        return score
+
+    return score, analysis
 
 
-def display_score_and_remarks(score, error_notes, missing_notes):
+def display_score_and_analysis(score, error_notes, missing_notes):
     """
     Display the student's score and any error or missing notes.
 
@@ -570,6 +578,7 @@ def display_score_and_remarks(score, error_notes, missing_notes):
         missing_dict[first_letter].append(note)
 
     # Correlate error notes with missing notes
+    analysis = ""
     message = "Note analysis:\n"
     if error_dict == missing_dict:
         message += f"Your recording had all the notes that the track had.\n"
@@ -587,6 +596,7 @@ def display_score_and_remarks(score, error_notes, missing_notes):
                 for missing_note in missing_note_list:
                     message += f"You missed playing the note {missing_note}\n"
     st.info(message)
+    analysis += message
     message = ""
     if score <= 3:
         message += "Keep trying. You can do better!"
@@ -600,6 +610,8 @@ def display_score_and_remarks(score, error_notes, missing_notes):
     else:
         message += "Excellent! You've mastered this track!"
         st.success(message)
+    analysis += message
+    return analysis
 
 
 def display_notation(track, notation_path):
@@ -724,6 +736,12 @@ def main():
         # Convert tracks to a list of track names for the selectbox
         track_names = [track[1] for track in tracks]
         selected_track = st.sidebar.selectbox("Select a Track", track_names)
+
+        # Display a Logout button when the user is logged in
+        if st.sidebar.button("Logout", type="primary"):
+            st.session_state["user_logged_in"] = False
+            st.rerun()
+
         selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
 
         # Use the selected track
@@ -746,8 +764,8 @@ def main():
             else:
                 student_recording, recording_id = handle_file_upload(get_user_id(), track_id)
         with col3:
-            score = display_student_performance(track_file, student_recording, unique_notes, offset_distance)
-            update_score(recording_id, score)
+            score, analysis = display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+            update_score_and_analysis(recording_id, score, analysis)
         with col4:
             display_teacher_remarks()
 
@@ -758,21 +776,23 @@ def main():
 
         list_recordings(st.session_state['user'], get_user_id())
 
-        # Display a Logout button when the user is logged in
-        if st.sidebar.button("Logout", type="primary"):
-            st.session_state["user_logged_in"] = False
-            st.rerun()
-
     show_copyright()
 
 
-def update_score(recording_id, score):
+def update_score_and_analysis(recording_id, score, analysis):
     recording_repository = RecordingRepository()
-    recording_repository.update_score(recording_id, score)
+    recording_repository.update_score_and_analysis(recording_id, score, analysis)
 
 
 def list_recordings(username, user_id):
-    st.write("**Past Recordings**")
+    # Center-align the subheader with reduced margin-bottom
+    st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Performances</h3>", unsafe_allow_html=True)
+
+    # Add a rainbow divider with reduced margin-top
+    st.markdown(
+        "<hr style='height:2px; margin-top: 0; border-width:0; background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);'>",
+        unsafe_allow_html=True)
+
     storage_repository = StorageRepository("stringsync")
     recording_repository = RecordingRepository()
     recordings = recording_repository.get_all_recordings_by_user(user_id)
@@ -785,14 +805,15 @@ def list_recordings(username, user_id):
     df = pd.DataFrame(recordings)
 
     # Create a table header
-    col1, col2, col3 = st.columns(3)
-    col1.write("Play")
+    col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
     col2.markdown("**Score**", unsafe_allow_html=True)
-    col3.markdown("**Time**", unsafe_allow_html=True)
+    col3.markdown("**Analysis**", unsafe_allow_html=True)
+    col4.markdown("**Remarks**", unsafe_allow_html=True)
+    col5.markdown("**Time**", unsafe_allow_html=True)
 
     # Loop through each recording and create a table row
     for index, recording in df.iterrows():
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
         if recording['blob_url']:
             filename = storage_repository.download_blob(recording['blob_name'])
             col1.audio(filename, format='audio/m4a')
@@ -800,8 +821,15 @@ def list_recordings(username, user_id):
             col1.write("No audio data available.")
 
         # Use Markdown to make the text black and larger
-        col2.markdown(f"<span style='color:black;font-size:14px;'>{recording['score']}</span>", unsafe_allow_html=True)
-        col3.markdown(f"<span style='color:black;font-size:14px;'>{recording['timestamp']}</span>",
+        col2.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['score']}</div>",
+                      unsafe_allow_html=True)
+        col3.markdown(
+            f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        col4.markdown(
+            f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        col5.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['timestamp']}</div>",
                       unsafe_allow_html=True)
 
     recording_repository.close()  # Close the database connection

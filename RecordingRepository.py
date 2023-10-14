@@ -38,22 +38,24 @@ class RecordingRepository:
                                     blob_url TEXT,
                                     timestamp DATETIME,
                                     duration INT,
-                                    score INT
+                                    score INT,
+                                    analysis TEXT,  # New column
+                                    remarks TEXT    # New column
                                 ); """
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration):
+    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, analysis=None, remarks=None):
         cursor = self.connection.cursor()
-        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration)
-                                 VALUES (%s, %s, %s, %s, %s, %s);"""
-        cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration))
+        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, analysis, remarks)
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
+        cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, analysis, remarks))
         self.connection.commit()
         return cursor.lastrowid  # Return the id of the newly inserted row
 
     def get_all_recordings_by_user(self, user_id):
         cursor = self.connection.cursor()
-        get_recordings_query = """SELECT blob_name, blob_url, timestamp, duration, track_id, score FROM recordings
+        get_recordings_query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks FROM recordings
                                   WHERE user_id = %s
                                   ORDER BY timestamp DESC;"""
         cursor.execute(get_recordings_query, (user_id,))
@@ -63,21 +65,24 @@ class RecordingRepository:
         recordings = []
         for row in result:
             recording = {
-                'blob_name': row[0],
-                'blob_url': row[1],
-                'timestamp': row[2],
-                'duration': row[3],
-                'track_id': row[4],
-                'score': row[5]
+                'id': row[0],  # New field
+                'blob_name': row[1],
+                'blob_url': row[2],
+                'timestamp': row[3],
+                'duration': row[4],
+                'track_id': row[5],
+                'score': row[6],
+                'analysis': row[7],  # New field
+                'remarks': row[8]  # New field
             }
             recordings.append(recording)
 
         return recordings
 
-    def update_score(self, recording_id, score):
+    def update_score_and_analysis(self, recording_id, score, analysis):
         cursor = self.connection.cursor()
-        update_query = """UPDATE recordings SET score = %s WHERE id = %s;"""
-        cursor.execute(update_query, (score, recording_id))
+        update_query = """UPDATE recordings SET score = %s, analysis = %s WHERE id = %s;"""
+        cursor.execute(update_query, (score, analysis, recording_id))
         self.connection.commit()
 
     def get_total_duration(self, user_id, track_id):
@@ -86,6 +91,12 @@ class RecordingRepository:
                                       WHERE user_id = %s AND track_id = %s;"""
         cursor.execute(get_total_duration_query, (user_id, track_id))
         return cursor.fetchone()[0]
+
+    def update_remarks(self, recording_id, remarks):
+        cursor = self.connection.cursor()
+        update_query = """UPDATE recordings SET remarks = %s WHERE id = %s;"""
+        cursor.execute(update_query, (remarks, recording_id))
+        self.connection.commit()
 
     def close(self):
         if self.connection:
