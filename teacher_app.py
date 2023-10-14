@@ -1,9 +1,9 @@
-from ConnectionBuilder import ConnectionBuilder
 from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
 from UserRepository import UserRepository
 import streamlit as st
 import os
+import pandas as pd
 
 
 def list_students():
@@ -19,26 +19,43 @@ def list_students():
 
 
 def list_recordings(username, user_id):
-    st.header(f"Recordings of {username}")
+    st.write("**Past Recordings**")
     storage_repository = StorageRepository("stringsync")
     recording_repository = RecordingRepository()
     recordings = recording_repository.get_all_recordings_by_user(user_id)
+
     if not recordings:
-        st.write("No recordings found for this user.")
+        st.write("No recordings found.")
         return
-    for recording in recordings:
+
+    # Create a DataFrame to hold the recording data
+    df = pd.DataFrame(recordings)
+
+    # Create a table header
+    col1, col2, col3 = st.columns(3)
+    col1.write("Play")
+    col2.markdown("**Score**", unsafe_allow_html=True)
+    col3.markdown("**Time**", unsafe_allow_html=True)
+
+    # Loop through each recording and create a table row
+    for index, recording in df.iterrows():
+        col1, col2, col3 = st.columns(3)
         if recording['blob_url']:
-            st.write(f"Track ID: {recording['track_id']}, Timestamp: {recording['timestamp']}")
             filename = storage_repository.download_blob(recording['blob_name'])
-            st.audio(filename, format='audio/m4a')
+            col1.audio(filename, format='audio/m4a')
         else:
-            st.write(f"Track ID: {recording['track_id']}, Timestamp: {recording['timestamp']}")
-            st.write("No audio data available.")
+            col1.write("No audio data available.")
+
+        # Use Markdown to make the text black and larger
+        col2.markdown(f"<span style='color:black;font-size:14px;'>{recording['score']}</span>", unsafe_allow_html=True)
+        col3.markdown(f"<span style='color:black;font-size:14px;'>{recording['timestamp']}</span>",
+                      unsafe_allow_html=True)
+
     recording_repository.close()  # Close the database connection
 
 
 def set_env():
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
+    os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
     os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
     os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]
     os.environ["SQL_USERNAME"] = st.secrets["SQL_USERNAME"]
