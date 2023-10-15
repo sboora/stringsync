@@ -73,11 +73,41 @@ class UserRepository:
         cursor.execute(assign_query, (group_id, user_id))
         self.connection.commit()
 
-    def create_group(self, group_name):
+    def get_group_by_user_id(self, user_id):
         cursor = self.connection.cursor()
-        create_query = """INSERT INTO user_groups (name) VALUES (%s);"""
-        cursor.execute(create_query, (group_name,))
+        query = """SELECT g.id, g.name 
+                   FROM user_groups g
+                   INNER JOIN users u ON g.id = u.group_id
+                   WHERE u.id = %s;"""
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchone()
         self.connection.commit()
+
+        if result:
+            return {'group_id': result[0], 'group_name': result[1]}
+        else:
+            return None
+
+    def create_user_group(self, group_name):
+        cursor = self.connection.cursor()
+
+        # Check if the group already exists
+        check_query = """SELECT COUNT(*) FROM user_groups WHERE name = %s;"""
+        cursor.execute(check_query, (group_name,))
+        count = cursor.fetchone()[0]
+
+        if count > 0:
+            return False, f"Group '{group_name}' already exists."
+
+        # If the group doesn't exist, proceed to create it
+        create_query = """INSERT INTO user_groups (name) VALUES (%s);"""
+        try:
+            cursor.execute(create_query, (group_name,))
+            self.connection.commit()
+            return True, f"Group '{group_name}' successfully created."
+        except Exception as e:
+            self.connection.rollback()  # Rollback the transaction in case of an error
+            return False, f"Failed to create group '{group_name}'. Error: {str(e)}"
 
     @staticmethod
     def is_valid_username(username):

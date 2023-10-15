@@ -64,7 +64,6 @@ def list_recordings(username, user_id, track_id):
     recording_repository = RecordingRepository()
 
     if user_id is None or track_id is None:
-        st.write("No recordings found.")
         return
 
     recordings = recording_repository.get_recordings_by_user_id_and_track_id(user_id, track_id)
@@ -171,7 +170,7 @@ def setup_streamlit_app():
     Set up the Streamlit app with headers and markdown text for the Teacher Dashboard.
     """
     st.set_page_config(layout='wide')
-    st.header('**String Sync - Teacher Dashboard**', divider='rainbow')
+    st.header('**String Sync**', divider='rainbow')
     st.markdown(
         """
         Welcome to the Teacher Dashboard of String Sync, an innovative platform designed to revolutionize 
@@ -221,48 +220,93 @@ def show_copyright():
     st.markdown(footer_html, unsafe_allow_html=True)
 
 
+# ... (import statements and other functions remain the same)
+
 def main():
     setup_streamlit_app()
     set_env()
 
-    # Sidebar for Group Management
-    st.sidebar.header("Group Management")
+    # Stylish Sidebar Header and Menu Options
+    st.sidebar.markdown(
+        """
+        <div style="background: repeating-linear-gradient(45deg, blue, lightblue);
+         padding: 10px; border-radius: 10px;">
+            <h2 style="color:white; text-align:center;">Dashboard Controls</h2>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    menu_selection = st.sidebar.radio(
+        "",
+        ["👥 Create Group", "🔀 Assign Users to Groups", "🎵 List Recordings"],
+        format_func=lambda x: x,
+    )
+    print(menu_selection)
+    if menu_selection == "👥 Create Group":
+        create_group()
+
+    elif menu_selection == "🔀 Assign Users to Groups":
+        assign_users_to_group()
+
+    elif menu_selection == "🎵 List Recordings":
+        username, user_id, track_id, track_name = list_students_and_tracks()
+        display_track_files(track_name)
+        if user_id is not None:
+            list_recordings(username, user_id, track_id)
+
+    show_copyright()
+
+
+def assign_users_to_group():
     user_repository = UserRepository()
     user_repository.connect()  # Make sure to connect to the database
 
-    # Sidebar feature to create a new group
-    new_group_name = st.sidebar.text_input("Create a new group:")
-    if st.sidebar.button("Create Group"):
-        if new_group_name:
-            user_repository.create_group(new_group_name)
-            st.sidebar.success(f"Group '{new_group_name}' created.")
-        else:
-            st.sidebar.warning("Group name cannot be empty.")
-
-    # Sidebar feature to assign a user to a group
+    # Feature to assign a user to a group
     groups = user_repository.get_all_groups()
     group_options = {group['group_name']: group['group_id'] for group in groups}
     users = user_repository.get_all_users()
     user_options = {user['username']: user['user_id'] for user in users}
 
-    selected_username = st.sidebar.selectbox("Select a student:", ['--Select a student--'] + list(user_options.keys()))
+    selected_username = st.selectbox("Select a student:", ['--Select a student--'] + list(user_options.keys()))
     selected_user_id = None
+
     if selected_username != '--Select a student--':
         selected_user_id = user_options[selected_username]
-        assign_to_group = st.sidebar.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()))
-        if assign_to_group != '--Select a group--':
+
+        # Get the current group of the user
+        current_group = user_repository.get_group_by_user_id(selected_user_id)
+        current_group_name = current_group['group_name'] if current_group else '--Select a group--'
+
+        # Dropdown to assign a new group, with the current group pre-selected
+        assign_to_group = st.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()),
+                                       index=list(group_options.keys()).index(
+                                           current_group_name)+1 if current_group else 0)
+
+        if assign_to_group != '--Select a group--' and assign_to_group != current_group_name:
             user_repository.assign_user_to_group(selected_user_id, group_options[assign_to_group])
-            st.sidebar.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
+            st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     user_repository.close()  # Close the database connection
 
-    # Main content
-    username, user_id, track_id, track_name = list_students_and_tracks()
-    display_track_files(track_name)
-    if user_id is not None:
-        list_recordings(username, user_id, track_id)
-    show_copyright()
+
+def create_group():
+    user_repository = UserRepository()
+    user_repository.connect()  # Make sure to connect to the database
+
+    # Feature to create a new group
+    new_group_name = st.text_input("Create a new group:")
+    if st.button("Create Group"):
+        if new_group_name:
+            success, message = user_repository.create_user_group(new_group_name)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+        else:
+            st.warning("Group name cannot be empty.")
+
+    user_repository.close()  # Close the database connection
 
 
 if __name__ == "__main__":
