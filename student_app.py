@@ -767,7 +767,8 @@ def main():
                 student_recording, recording_id, is_success = handle_file_upload(get_user_id(), track_id)
         with col3:
             if is_success:
-                score, analysis = display_student_performance(track_file, student_recording, unique_notes, offset_distance)
+                score, analysis = display_student_performance(track_file, student_recording, unique_notes,
+                                                              offset_distance)
                 update_score_and_analysis(recording_id, score, analysis)
 
         # List all recordings for the track
@@ -775,7 +776,7 @@ def main():
         st.write("")
         st.write("")
 
-        list_recordings(st.session_state['user'], get_user_id())
+        list_recordings(st.session_state['user'], get_user_id(), track_id)
 
     show_copyright()
 
@@ -785,7 +786,7 @@ def update_score_and_analysis(recording_id, score, analysis):
     recording_repository.update_score_and_analysis(recording_id, score, analysis)
 
 
-def list_recordings(username, user_id):
+def list_recordings(username, user_id, track_id):
     # Center-align the subheader with reduced margin-bottom
     st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Performances</h3>", unsafe_allow_html=True)
 
@@ -796,7 +797,7 @@ def list_recordings(username, user_id):
 
     storage_repository = StorageRepository("stringsync")
     recording_repository = RecordingRepository()
-    recordings = recording_repository.get_all_recordings_by_user(user_id)
+    recordings = recording_repository.get_recordings_by_user_id_and_track_id(user_id, track_id)
 
     if not recordings:
         st.write("No recordings found.")
@@ -805,12 +806,28 @@ def list_recordings(username, user_id):
     # Create a DataFrame to hold the recording data
     df = pd.DataFrame(recordings)
 
-    # Create a table header
     col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
-    col2.markdown("**Score**", unsafe_allow_html=True)
-    col3.markdown("**Analysis**", unsafe_allow_html=True)
-    col4.markdown("**Remarks**", unsafe_allow_html=True)
-    col5.markdown("**Time**", unsafe_allow_html=True)
+
+    header_html = """
+    <div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>
+        <div style='display:inline-block;width:28%;text-align:center;'>
+            <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Track</p>
+        </div>
+        <div style='display:inline-block;width:8%;text-align:left;'>
+            <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Score</p>
+        </div>
+        <div style='display:inline-block;width:24%;text-align:left;'>
+            <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Analysis</p>
+        </div>
+        <div style='display:inline-block;width:24%;text-align:left;'>
+            <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Remarks</p>
+        </div>
+        <div style='display:inline-block;width:10%;text-align:left;'>
+            <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Time</p>
+        </div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # Loop through each recording and create a table row
     for index, recording in df.iterrows():
@@ -822,18 +839,27 @@ def list_recordings(username, user_id):
             col1.write("No audio data available.")
 
         # Use Markdown to make the text black and larger
-        col2.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['score']}</div>",
+        col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
                       unsafe_allow_html=True)
         col3.markdown(
-            f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
         col4.markdown(
-            f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
             unsafe_allow_html=True)
-        col5.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['timestamp']}</div>",
+        formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + ordinal(
+            int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+        col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
 
     recording_repository.close()  # Close the database connection
+
+
+def ordinal(n):
+    suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    return str(n) + suffix
 
 
 def show_copyright():

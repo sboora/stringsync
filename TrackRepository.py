@@ -109,6 +109,12 @@ class TrackRepository:
 
         self.conn.commit()
 
+    def get_track_names_by_ids(self, track_ids):
+        query = "SELECT id, name FROM tracks WHERE id IN ({})".format(','.join(['?'] * len(track_ids)))
+        self.cursor.execute(query, track_ids)
+        result = self.cursor.fetchall()
+        return {row[0]: row[1] for row in result}
+
     def search_tracks(self, ragam=None, level=None, tags=None, track_type=None):
         query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam, type FROM tracks"
         params = []

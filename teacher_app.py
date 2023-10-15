@@ -1,12 +1,13 @@
 from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
+from TrackRepository import TrackRepository
 from UserRepository import UserRepository
 import streamlit as st
 import os
 import pandas as pd
 
 
-def list_students():
+def list_students_and_tracks():
     user_repository = UserRepository()
     user_repository.connect()  # Make sure to connect to the database
     st.header("Students")
@@ -24,14 +25,40 @@ def list_students():
         selected_user_id = None  # No student is selected
 
     user_repository.close()  # Close the database connection
-    return selected_username, selected_user_id
+
+    selected_track_id = None
+    track_path = None
+    if selected_user_id is not None:
+        recording_repository = RecordingRepository()
+        track_ids = recording_repository.get_unique_tracks_by_user(selected_user_id)
+        recording_repository.close()
+
+        if track_ids:
+            # Fetch track names by their IDs
+            track_repository = TrackRepository()
+            track_names = track_repository.get_track_names_by_ids(track_ids)
+
+            # Create a mapping for the dropdown
+            track_options = {track_names[id]: id for id in track_ids}
+
+            selected_track_name = st.selectbox("Select a track:", ['--Select a track--'] + list(track_options.keys()))
+            if selected_track_name != '--Select a track--':
+                selected_track_id = track_options[selected_track_name]
+            track = track_repository.get_track_by_name(selected_track_name)
+            track_path = track[2]
+            track_repository.close()
+
+    return selected_username, selected_user_id, selected_track_id, track_path
 
 
-def list_recordings(username, user_id):
+def list_recordings(username, user_id, track_id):
     storage_repository = StorageRepository("stringsync")
     recording_repository = RecordingRepository()
-    recordings = recording_repository.get_all_recordings_by_user(user_id)
 
+    if user_id is None or track_id is None:
+        return
+
+    recordings = recording_repository.get_recordings_by_user_id_and_track_id(user_id, track_id)
     if not recordings:
         st.write("No recordings found.")
         return
@@ -40,11 +67,26 @@ def list_recordings(username, user_id):
     df = pd.DataFrame(recordings)
 
     # Create a table header
-    col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
-    col2.markdown("**Score**", unsafe_allow_html=True)
-    col3.markdown("**Analysis**", unsafe_allow_html=True)
-    col4.markdown("**Remarks**", unsafe_allow_html=True)
-    col5.markdown("**Time**", unsafe_allow_html=True)
+    header_html = """
+        <div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>
+            <div style='display:inline-block;width:28%;text-align:center;'>
+                <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Track</p>
+            </div>
+            <div style='display:inline-block;width:8%;text-align:left;'>
+                <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Score</p>
+            </div>
+            <div style='display:inline-block;width:24%;text-align:left;'>
+                <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Analysis</p>
+            </div>
+            <div style='display:inline-block;width:24%;text-align:left;'>
+                <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Remarks</p>
+            </div>
+            <div style='display:inline-block;width:10%;text-align:left;'>
+                <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Time</p>
+            </div>
+        </div>
+        """
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # Initialize session_state if it doesn't exist
     if 'editable_states' not in st.session_state:
@@ -53,6 +95,7 @@ def list_recordings(username, user_id):
     # Loop through each recording and create a table row
     for index, recording in df.iterrows():
         col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
+
         if recording['blob_url']:
             filename = storage_repository.download_blob(recording['blob_name'])
             col1.audio(filename, format='audio/m4a')
@@ -60,10 +103,10 @@ def list_recordings(username, user_id):
             col1.write("No audio data available.")
 
         # Use Markdown to make the text black and larger
-        col2.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['score']}</div>",
+        col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
                       unsafe_allow_html=True)
         col3.markdown(
-            f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
 
         # Check if the remarks are editable
@@ -80,7 +123,7 @@ def list_recordings(username, user_id):
         else:
             # Show the remarks as markdown
             col4.markdown(
-                f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
             # Show an edit icon next to the remarks
@@ -88,10 +131,19 @@ def list_recordings(username, user_id):
                 st.session_state["editable_states"][recording['id']] = True  # Turn on editable state
                 st.rerun()
 
-        col5.markdown(f"<div style='padding-top:15px;color:black;font-size:14px;'>{recording['timestamp']}</div>",
+        formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + ordinal(
+            int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+        col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
 
     recording_repository.close()  # Close the database connection
+
+
+def ordinal(n):
+    suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    return str(n) + suffix
 
 
 def set_env():
@@ -133,14 +185,26 @@ def setup_streamlit_app():
     )
 
 
+def display_track_files(track_file):
+    """
+    Display the teacher's track files.
+
+    Parameters:
+        track_file (str): The path to the track file.
+    """
+    st.write("")
+    st.write("")
+    st.audio(track_file, format='audio/m4a')
+
+
 def main():
     setup_streamlit_app()
     set_env()
     # Select a user
-    username, user_id = list_students()
-    # Geet the recordings for the user
+    username, user_id, track_id, track_name = list_students_and_tracks()
+    display_track_files(track_name)
     if user_id is not None:
-        list_recordings(username, user_id)
+        list_recordings(username, user_id, track_id)
 
 
 if __name__ == "__main__":

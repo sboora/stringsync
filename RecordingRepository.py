@@ -62,6 +62,33 @@ class RecordingRepository:
         count = cursor.fetchone()[0]
         return count > 0
 
+    def get_recordings_by_user_id_and_track_id(self, user_id, track_id):
+        cursor = self.connection.cursor()
+        query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks 
+                   FROM recordings 
+                   WHERE user_id = %s AND track_id = %s 
+                   ORDER BY timestamp DESC;"""
+        cursor.execute(query, (user_id, track_id))
+        result = cursor.fetchall()
+
+        # Convert the result to a list of dictionaries for better readability
+        recordings = []
+        for row in result:
+            recording = {
+                'id': row[0],
+                'blob_name': row[1],
+                'blob_url': row[2],
+                'timestamp': row[3],
+                'duration': row[4],
+                'track_id': row[5],
+                'score': row[6],
+                'analysis': row[7],
+                'remarks': row[8]
+            }
+            recordings.append(recording)
+
+        return recordings
+
     def get_all_recordings_by_user(self, user_id):
         cursor = self.connection.cursor()
         get_recordings_query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks FROM recordings
@@ -87,6 +114,13 @@ class RecordingRepository:
             recordings.append(recording)
 
         return recordings
+
+    def get_unique_tracks_by_user(self, user_id):
+        cursor = self.connection.cursor()
+        query = """SELECT DISTINCT track_id FROM recordings WHERE user_id = %s;"""
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+        return [row[0] for row in result]
 
     def update_score_and_analysis(self, recording_id, score, analysis):
         cursor = self.connection.cursor()
