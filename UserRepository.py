@@ -31,19 +31,52 @@ class UserRepository:
             password=db_pass,
             db=db_name,
         )
+        self.create_user_groups_table()
         self.create_users_table()
 
     def create_users_table(self):
         cursor = self.connection.cursor()
-        create_table_query = """CREATE TABLE IF NOT EXISTS users (
+        create_table_query = """CREATE TABLE IF NOT EXISTS `users` (
                                     id INT AUTO_INCREMENT PRIMARY KEY,
                                     name VARCHAR(255) UNIQUE,
                                     username VARCHAR(255) UNIQUE,
                                     email VARCHAR(255) UNIQUE,
                                     password VARCHAR(255),
-                                    is_enabled BOOLEAN DEFAULT TRUE
+                                    is_enabled BOOLEAN DEFAULT TRUE,
+                                    group_id INT,
+                                    FOREIGN KEY (group_id) REFERENCES `user_groups`(id)
                                 ); """
         cursor.execute(create_table_query)
+        self.connection.commit()
+
+    def create_user_groups_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """CREATE TABLE IF NOT EXISTS `user_groups` (
+                                    id INT AUTO_INCREMENT PRIMARY KEY,
+                                    name VARCHAR(255) UNIQUE,
+                                    description TEXT
+                                ); """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+
+    def add_user_to_group(self, username, group_name):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id FROM user_groups WHERE name = %s", (group_name,))
+        group_id = cursor.fetchone()[0]
+
+        cursor.execute("UPDATE users SET group_id = %s WHERE username = %s", (group_id, username))
+        self.connection.commit()
+
+    def assign_user_to_group(self, user_id, group_id):
+        cursor = self.connection.cursor()
+        assign_query = """UPDATE users SET group_id = %s WHERE id = %s;"""
+        cursor.execute(assign_query, (group_id, user_id))
+        self.connection.commit()
+
+    def create_group(self, group_name):
+        cursor = self.connection.cursor()
+        create_query = """INSERT INTO user_groups (name) VALUES (%s);"""
+        cursor.execute(create_query, (group_name,))
         self.connection.commit()
 
     @staticmethod
@@ -127,6 +160,22 @@ class UserRepository:
         cursor = self.connection.cursor()
         get_users_query = """SELECT id, username FROM users;"""
         cursor.execute(get_users_query)
+        result = cursor.fetchall()
+        users = [{'user_id': row[0], 'username': row[1]} for row in result]
+        return users
+
+    def get_all_groups(self):
+        cursor = self.connection.cursor()
+        get_groups_query = """SELECT id, name FROM user_groups;"""
+        cursor.execute(get_groups_query)
+        result = cursor.fetchall()
+        groups = [{'group_id': row[0], 'group_name': row[1]} for row in result]
+        return groups
+
+    def get_users_by_group(self, group_id):
+        cursor = self.connection.cursor()
+        get_users_query = """SELECT id, username FROM users WHERE group_id = %s;"""
+        cursor.execute(get_users_query, (group_id,))
         result = cursor.fetchall()
         users = [{'user_id': row[0], 'username': row[1]} for row in result]
         return users

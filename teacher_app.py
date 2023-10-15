@@ -11,18 +11,26 @@ def list_students_and_tracks():
     user_repository = UserRepository()
     user_repository.connect()  # Make sure to connect to the database
     st.header("Students")
-    users = user_repository.get_all_users()
-    user_options = {user['username']: user['user_id'] for user in users}
 
-    # Add a placeholder to the list of options
+    # Show groups in a dropdown
+    groups = user_repository.get_all_groups()
+    group_options = {group['group_name']: group['group_id'] for group in groups}
+    selected_group_name = st.selectbox("Select a group:", ['--Select a group--'] + list(group_options.keys()))
+
+    # Filter users by the selected group
+    if selected_group_name != '--Select a group--':
+        selected_group_id = group_options[selected_group_name]
+        users = user_repository.get_users_by_group(selected_group_id)
+    else:
+        users = user_repository.get_all_users()
+
+    user_options = {user['username']: user['user_id'] for user in users}
     options = ['--Select a student--'] + list(user_options.keys())
     selected_username = st.selectbox("Select a student to view their recordings:", options)
 
-    # Check if a student is actually selected
+    selected_user_id = None
     if selected_username != '--Select a student--':
         selected_user_id = user_options[selected_username]
-    else:
-        selected_user_id = None  # No student is selected
 
     user_repository.close()  # Close the database connection
 
@@ -44,8 +52,8 @@ def list_students_and_tracks():
             selected_track_name = st.selectbox("Select a track:", ['--Select a track--'] + list(track_options.keys()))
             if selected_track_name != '--Select a track--':
                 selected_track_id = track_options[selected_track_name]
-            track = track_repository.get_track_by_name(selected_track_name)
-            track_path = track[2]
+                track = track_repository.get_track_by_name(selected_track_name)
+                track_path = track[2]
             track_repository.close()
 
     return selected_username, selected_user_id, selected_track_id, track_path
@@ -56,6 +64,7 @@ def list_recordings(username, user_id, track_id):
     recording_repository = RecordingRepository()
 
     if user_id is None or track_id is None:
+        st.write("No recordings found.")
         return
 
     recordings = recording_repository.get_recordings_by_user_id_and_track_id(user_id, track_id)
@@ -192,19 +201,68 @@ def display_track_files(track_file):
     Parameters:
         track_file (str): The path to the track file.
     """
+    if track_file is None:
+        return
+
     st.write("")
     st.write("")
     st.audio(track_file, format='audio/m4a')
 
 
+def show_copyright():
+    st.write("")
+    st.write("")
+    st.write("")
+    footer_html = """
+        <div style="text-align: center; color: gray;">
+            <p style="font-size: 14px;">© 2023 KA Academy of Indian Music and Dance. All rights reserved.</p>
+        </div>
+        """
+    st.markdown(footer_html, unsafe_allow_html=True)
+
+
 def main():
     setup_streamlit_app()
     set_env()
-    # Select a user
+
+    # Sidebar for Group Management
+    st.sidebar.header("Group Management")
+
+    user_repository = UserRepository()
+    user_repository.connect()  # Make sure to connect to the database
+
+    # Sidebar feature to create a new group
+    new_group_name = st.sidebar.text_input("Create a new group:")
+    if st.sidebar.button("Create Group"):
+        if new_group_name:
+            user_repository.create_group(new_group_name)
+            st.sidebar.success(f"Group '{new_group_name}' created.")
+        else:
+            st.sidebar.warning("Group name cannot be empty.")
+
+    # Sidebar feature to assign a user to a group
+    groups = user_repository.get_all_groups()
+    group_options = {group['group_name']: group['group_id'] for group in groups}
+    users = user_repository.get_all_users()
+    user_options = {user['username']: user['user_id'] for user in users}
+
+    selected_username = st.sidebar.selectbox("Select a student:", ['--Select a student--'] + list(user_options.keys()))
+    selected_user_id = None
+    if selected_username != '--Select a student--':
+        selected_user_id = user_options[selected_username]
+        assign_to_group = st.sidebar.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()))
+        if assign_to_group != '--Select a group--':
+            user_repository.assign_user_to_group(selected_user_id, group_options[assign_to_group])
+            st.sidebar.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
+
+    user_repository.close()  # Close the database connection
+
+    # Main content
     username, user_id, track_id, track_name = list_students_and_tracks()
     display_track_files(track_name)
     if user_id is not None:
         list_recordings(username, user_id, track_id)
+    show_copyright()
 
 
 if __name__ == "__main__":
