@@ -220,8 +220,6 @@ def show_copyright():
     st.markdown(footer_html, unsafe_allow_html=True)
 
 
-# ... (import statements and other functions remain the same)
-
 def main():
     setup_streamlit_app()
     set_env()
@@ -242,7 +240,7 @@ def main():
         ["👥 Create Group", "🔀 Assign Users to Groups", "🎵 List Recordings"],
         format_func=lambda x: x,
     )
-    print(menu_selection)
+
     if menu_selection == "👥 Create Group":
         create_group()
 

@@ -115,6 +115,32 @@ class RecordingRepository:
 
         return recordings
 
+    def get_track_statistics_by_user(self, user_id):
+        cursor = self.connection.cursor()
+
+        # Query to get the number of recordings, max, min, and avg score for each track for a given user
+        query = """SELECT track_id, COUNT(*), MAX(score), MIN(score), AVG(score) 
+                   FROM recordings 
+                   WHERE user_id = %s 
+                   GROUP BY track_id;"""
+
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+
+        # Convert the result to a list of dictionaries for better readability
+        track_statistics = []
+        for row in result:
+            stats = {
+                'track_id': row[0],
+                'num_recordings': row[1],
+                'max_score': row[2],
+                'min_score': row[3],
+                'avg_score': row[4]
+            }
+            track_statistics.append(stats)
+
+        return track_statistics
+
     def get_unique_tracks_by_user(self, user_id):
         cursor = self.connection.cursor()
         query = """SELECT DISTINCT track_id FROM recordings WHERE user_id = %s;"""

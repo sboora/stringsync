@@ -118,40 +118,6 @@ def audio_display(filename):
     st.empty().audio(filename, format='audio/wav')
 
 
-def record_audio(text):
-    """
-    Record audio using the Streamlit audio recorder plugin.
-
-    Parameters:
-        text (str): The text to display next to the recorder.
-
-    Returns:
-        bytes: The recorded audio data.
-    """
-    st.markdown('<span style="font-size: smaller; font-style: italic;">Record your performance</span>',
-                unsafe_allow_html=True)
-
-    audio_data = audio_recorder(
-        key=text,
-        text="",
-        energy_threshold=0.01,
-        pause_threshold=5,
-        sample_rate=96000,
-        neutral_color="#303030",
-        recording_color="#de1212",
-        icon_name="microphone",
-        icon_size="2x",
-    )
-
-    st.empty().audio(audio_data, format="audio/wav")
-    recorded_audio_file = ""
-    if audio_data:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio_file:
-            tmp_audio_file.write(audio_data)
-        recorded_audio_file = tmp_audio_file.name
-    return recorded_audio_file
-
-
 def error_and_missing_notes(set_a, set_b):
     """
     Find notes that are incorrect or missing between two lists.
@@ -240,33 +206,68 @@ def filter_consecutive_notes(notes, min_consecutive=3):
     return filtered_notes
 
 
-# Main function where the Streamlit app runs
 def setup_streamlit_app():
     """
     Set up the Streamlit app with headers and markdown text.
     """
-    st.set_page_config(layout='wide')
-    st.header('**String Sync**', divider='rainbow')
-    st.markdown(
-        """
-        String Sync is an innovative platform designed to help music teachers and students enhance 
-        their learning experience. By leveraging advanced audio analysis, this app allows you to 
-        compare your musical performance with a reference recording, providing you with a 
-        quantifiable score based on the similarity.
-        
-        ### How Does it Work? 
-        1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve. 
-        2. **Upload Your Recording**: Record your own performance and upload it here. 
-        3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match. 
-        
-        ### Why Use String Sync?
-        - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
-        - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
-        - **Flexible**: Suitable for any instrument and skill level.
-        
-        "Ready to get started? Select your track from the sidebar and either directly record or upload your 
-        performance!" """
+    st.set_page_config(
+        layout='wide'
     )
+    hide_streamlit_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}   
+        </style>
+
+        """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+    # Create columns for header and logout button
+    col1, col2 = st.columns([9.2, 0.8])  # Adjust the ratio as needed
+
+    with col1:
+        st.markdown("<h1 style='margin-bottom:0px;'>StringSync</h1>", unsafe_allow_html=True)
+
+    with col2:
+        if user_logged_in():
+            col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
+            with col2_2:
+                user_options = st.selectbox("", ["", "Settings", "Logout"], index=0,
+                                            format_func=lambda x: "👤" if x == "" else x)
+                if user_options == "Logout":
+                    st.session_state["user_logged_in"] = False
+                    st.rerun()
+                elif user_options == "Settings":
+                    # Navigate to settings page or open settings dialog
+                    pass
+
+    # Add a gradient rainbow divider with no gap
+    st.markdown("""
+        <hr style='height:2px; margin-top: 0; border-width:0; background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);'>
+    """, unsafe_allow_html=True)
+
+    if not user_logged_in():
+        st.markdown(
+            """
+            String Sync is an innovative platform designed to help music teachers and students enhance 
+            their learning experience. By leveraging advanced audio analysis, this app allows you to 
+            compare your musical performance with a reference recording, providing you with a 
+            quantifiable score based on the similarity.
+
+            ### How Does it Work? 
+            1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve. 
+            2. **Upload Your Recording**: Record your own performance and upload it here. 
+            3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match. 
+
+            ### Why Use String Sync?
+            - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
+            - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
+            - **Flexible**: Suitable for any instrument and skill level.
+
+            "Ready to get started? Select your track from the sidebar and either directly record or upload your 
+            performance!" """
+        )
 
 
 def handle_student_login():
@@ -409,12 +410,15 @@ def create_track_headers():
     Create headers for the track section.
     """
     col1, col2, col3 = st.columns([3, 3, 5])
+    custom_style = "<style>h2 {font-size: 20px;}</style>"
+    divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: grey;'>"
+
     with col1:
-        st.subheader('Track', divider='rainbow')
+        st.markdown(f"{custom_style}<h2>Track</h2>{divider}", unsafe_allow_html=True)
     with col2:
-        st.subheader('Upload', divider='rainbow')
+        st.markdown(f"{custom_style}<h2>Upload</h2>{divider}", unsafe_allow_html=True)
     with col3:
-        st.subheader('Analysis', divider='rainbow')
+        st.markdown(f"{custom_style}<h2>Analysis</h2>{divider}", unsafe_allow_html=True)
 
 
 def display_track_files(track_file):
@@ -459,18 +463,6 @@ def download_track(track):
         mime="audio/mp3",
         type="primary"
     )
-
-
-def handle_audio_option():
-    option = st.radio("", ["Upload Audio File", "Use Audio Recorder"])
-    if option == "Use Audio Recorder":
-        return True
-    return False
-
-
-def handle_audio_recording():
-    st.write("")
-    return record_audio("Record")
 
 
 def handle_file_upload(user_id, track_id):
@@ -701,84 +693,183 @@ def set_env():
 
 def main():
     set_env()
-    setup_streamlit_app()
     init_session()
+    setup_streamlit_app()
+
     if not user_logged_in():
         st.session_state["user_logged_in"] = handle_student_login()
 
     if user_logged_in():
-        st.sidebar.success(f"Welcome {st.session_state['user']}")
-        use_recorder = handle_audio_option()
-        create_track_headers()
-        # Initialize the AudioRepository
-        track_repo = TrackRepository()
+        st.success(f"Welcome {st.session_state['user']}")
 
-        # Fetch all levels, ragams, and tags
-        all_levels = track_repo.get_all_levels()
-        all_ragams = track_repo.get_all_ragams()
-        all_tags = track_repo.get_all_tags()
-        all_track_types = track_repo.get_all_track_types()
+        # Quick description of the tabs
+        st.write("""
+        - **🎵 Tracks**: Explore and manage tracks.
+        - **🎤 Record**: Record your own tracks.
+        - **📝 Assignments**: View and complete assignments.
+        """)
 
-        # Add filters in the sidebar
-        selected_track_type = st.sidebar.selectbox("Filter by Track Type", ["All"] + all_track_types)
-        selected_level = st.sidebar.selectbox("Filter by Level", ["All"] + all_levels)
-        selected_ragam = st.sidebar.selectbox("Filter by Ragam", ["All"] + all_ragams)
-        selected_tags = st.sidebar.multiselect("Filter by Tags", all_tags)
+        # Create tabs
+        tracks_tab, record_tab, assignments_tab = st.tabs(["🎵 Tracks", "🎤 Record", "📝 Assignments"])
 
-        # Fetch tracks based on selected filters
-        tracks = track_repo.search_tracks(
-            ragam=None if selected_ragam == "All" else selected_ragam,
-            level=None if selected_level == "All" else selected_level,
-            tags=selected_tags if selected_tags else None,
-            track_type=None if selected_track_type == "All" else selected_track_type,
-        )
-        if len(tracks) == 0:
-            return
+        with tracks_tab:
+            # Your code for displaying Tracks goes here
+            tracks = get_tracks()
+            display_tracks(tracks)
 
-        # Convert tracks to a list of track names for the selectbox
-        track_names = [track[1] for track in tracks]
-        selected_track = st.sidebar.selectbox("Select a Track", track_names)
+        with record_tab:
+            # Your code for Record functionality goes here
+            record()
 
-        # Display a Logout button when the user is logged in
-        if st.sidebar.button("Logout", type="primary"):
-            st.session_state["user_logged_in"] = False
-            st.rerun()
-
-        selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
-
-        # Use the selected track
-        track_id = selected_track_details[0]
-        track_name = selected_track_details[1]
-        track_file = selected_track_details[2]
-        track_ref_file = selected_track_details[3]
-        notation_file = selected_track_details[4]
-        offset_distance = compare_audio(track_file, track_ref_file)
-        print("Offset:", offset_distance)
-
-        student_recording = None
-        col1, col2, col3 = st.columns([3, 3, 5])
-        with col1:
-            display_track_files(track_file)
-            unique_notes = display_notation(selected_track, notation_file)
-        with col2:
-            if use_recorder:
-                student_recording = handle_audio_recording()
-            else:
-                student_recording, recording_id, is_success = handle_file_upload(get_user_id(), track_id)
-        with col3:
-            if is_success:
-                score, analysis = display_student_performance(track_file, student_recording, unique_notes,
-                                                              offset_distance)
-                update_score_and_analysis(recording_id, score, analysis)
-
-        # List all recordings for the track
-        st.write("")
-        st.write("")
-        st.write("")
-
-        list_recordings(st.session_state['user'], get_user_id(), track_id)
+        with assignments_tab:
+            # Your code for Assignments goes here
+            pass
 
     show_copyright()
+
+
+def display_tracks(tracks):
+    # Create an empty DataFrame with the desired columns
+    df = pd.DataFrame(columns=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
+
+    # Populate the DataFrame
+    for track_detail in tracks:
+        track_name = track_detail['track'][1]
+        num_recordings = track_detail['num_recordings']
+        avg_score = track_detail['avg_score']
+        min_score = track_detail['min_score']
+        max_score = track_detail['max_score']
+
+        # Create a DataFrame for this row
+        row_df = pd.DataFrame({
+            "Track Name": [track_name],
+            "Number of Recordings": [num_recordings],
+            "Average Score": [avg_score],
+            "Min Score": [min_score],
+            "Max Score": [max_score]
+        })
+
+        # Append this track's details to the DataFrame
+        df = pd.concat([df, row_df], ignore_index=True)
+
+    # Display the table using Streamlit
+    st.table(df)
+
+
+def get_tracks():
+    recording_repository = RecordingRepository()
+    track_repository = TrackRepository()  # Replace with your actual TrackRepository class
+
+    # Fetch all tracks
+    tracks = track_repository.get_all_tracks()  # Replace with your actual method to get all tracks
+
+    # Fetch track statistics for this user
+    track_statistics = recording_repository.get_track_statistics_by_user(get_user_id())
+
+    # Initialize an empty list to hold track details
+    track_details = []
+
+    for track in tracks:
+        track_id = track[0]  # Assuming the track object has an 'id' field
+
+        # Find statistics for this track if available
+        stats = next((item for item in track_statistics if item["track_id"] == track_id), None)
+
+        # Append track details to the list
+        if stats:
+            track_details.append({
+                'track': track,
+                'num_recordings': stats['num_recordings'],
+                'avg_score': stats['avg_score'],
+                'min_score': stats['min_score'],
+                'max_score': stats['max_score']
+            })
+        else:
+            track_details.append({
+                'track': track,
+                'num_recordings': 0,
+                'avg_score': 0,
+                'min_score': 0,
+                'max_score': 0
+            })
+
+    return track_details
+
+
+def logout_button():
+    if st.button("Logout", type="primary"):
+        st.session_state["user_logged_in"] = False
+        st.rerun()
+    st.markdown("<style>div.row-widget.stButton > div{margin-top: -10px; margin-bottom: -10px}</style>",
+                unsafe_allow_html=True)
+
+
+def record():
+    track_repo = TrackRepository()
+
+    # Fetch all levels, ragams, and tags
+    all_levels = track_repo.get_all_levels()
+    all_ragams = track_repo.get_all_ragams()
+    all_tags = track_repo.get_all_tags()
+    all_track_types = track_repo.get_all_track_types()
+
+    # Create four columns
+    col1, col2, col3, col4 = st.columns(4)
+
+    # Place a dropdown in each column
+    selected_track_type = col1.selectbox("Filter by Track Type", ["All"] + all_track_types)
+    selected_level = col2.selectbox("Filter by Level", ["All"] + all_levels)
+    selected_ragam = col3.selectbox("Filter by Ragam", ["All"] + all_ragams)
+    selected_tags = col4.multiselect("Filter by Tags", ["All"] + all_tags, default=["All"])
+
+    # Fetch tracks based on selected filters
+    tracks = track_repo.search_tracks(
+        ragam=None if selected_ragam == "All" else selected_ragam,
+        level=None if selected_level == "All" else selected_level,
+        tags=None if selected_tags == ["All"] else selected_tags,
+        track_type=None if selected_track_type == "All" else selected_track_type,
+    )
+    if len(tracks) == 0:
+        return
+
+    # Convert tracks to a list of track names for the selectbox
+    track_names = [track[1] for track in tracks]
+    selected_track = st.selectbox("Select a Track", ["Select a Track"] + track_names, index=0)
+
+    # Find the details of the selected track
+    selected_track_details = next((track for track in tracks if track[1] == selected_track), None)
+    if selected_track_details is None:
+        return
+
+    create_track_headers()
+    # Use the selected track
+    track_id = selected_track_details[0]
+    track_name = selected_track_details[1]
+    track_file = selected_track_details[2]
+    track_ref_file = selected_track_details[3]
+    notation_file = selected_track_details[4]
+    offset_distance = compare_audio(track_file, track_ref_file)
+    print("Offset:", offset_distance)
+
+    student_recording = None
+    col1, col2, col3 = st.columns([3, 3, 5])
+    with col1:
+        display_track_files(track_file)
+        unique_notes = display_notation(selected_track, notation_file)
+    with col2:
+        student_recording, recording_id, is_success = handle_file_upload(get_user_id(), track_id)
+    with col3:
+        if is_success:
+            score, analysis = display_student_performance(track_file, student_recording, unique_notes,
+                                                          offset_distance)
+            update_score_and_analysis(recording_id, score, analysis)
+
+    # List all recordings for the track
+    st.write("")
+    st.write("")
+    st.write("")
+
+    list_recordings(st.session_state['user'], get_user_id(), track_id)
 
 
 def update_score_and_analysis(recording_id, score, analysis):
@@ -790,10 +881,11 @@ def list_recordings(username, user_id, track_id):
     # Center-align the subheader with reduced margin-bottom
     st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Performances</h3>", unsafe_allow_html=True)
 
-    # Add a rainbow divider with reduced margin-top
+    # Add a divider with reduced margin-top
     st.markdown(
-        "<hr style='height:2px; margin-top: 0; border-width:0; background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);'>",
-        unsafe_allow_html=True)
+        "<hr style='height:2px; margin-top: 0; border-width:0; background: lightblue;'>",
+        unsafe_allow_html=True
+    )
 
     storage_repository = StorageRepository("stringsync")
     recording_repository = RecordingRepository()

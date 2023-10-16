@@ -135,7 +135,7 @@ class TrackRepository:
             where_clauses.append("level = ?")
             params.append(level)
 
-        if tags:
+        if tags is not None:
             tags_placeholder = ', '.join(['?'] * len(tags))
             where_clauses.append(f"tags.tag_name IN ({tags_placeholder})")
             params.extend(tags)
