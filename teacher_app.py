@@ -1,10 +1,12 @@
+import env
 from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
 from TrackRepository import TrackRepository
-from UserRepository import UserRepository
 import streamlit as st
 import os
 import pandas as pd
+
+from UserRepository import UserRepository
 
 
 def list_students_and_tracks():
@@ -153,18 +155,6 @@ def ordinal(n):
         suffix = 'th'
     return str(n) + suffix
 
-
-def set_env():
-    os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
-    os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
-    os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]
-    os.environ["SQL_USERNAME"] = st.secrets["SQL_USERNAME"]
-    os.environ["SQL_PASSWORD"] = st.secrets["SQL_PASSWORD"]
-    os.environ["MYSQL_CONNECTION_STRING"] = st.secrets["MYSQL_CONNECTION_STRING"]
-    os.environ["EMAIL_ID"] = st.secrets["EMAIL_ID"]
-    os.environ["EMAIL_PASSWORD"] = st.secrets["EMAIL_PASSWORD"]
-
-
 def setup_streamlit_app():
     """
     Set up the Streamlit app with headers and markdown text for the Teacher Dashboard.
@@ -222,7 +212,7 @@ def show_copyright():
 
 def main():
     setup_streamlit_app()
-    set_env()
+    env.set_env()
 
     # Stylish Sidebar Header and Menu Options
     st.sidebar.markdown(
@@ -273,7 +263,7 @@ def assign_users_to_group():
         selected_user_id = user_options[selected_username]
 
         # Get the current group of the user
-        current_group = user_repository.get_group_by_user_id(selected_user_id)
+        current_group = user_repository.get_group_by_student_id(selected_user_id)
         current_group_name = current_group['group_name'] if current_group else '--Select a group--'
 
         # Dropdown to assign a new group, with the current group pre-selected
@@ -282,7 +272,7 @@ def assign_users_to_group():
                                            current_group_name)+1 if current_group else 0)
 
         if assign_to_group != '--Select a group--' and assign_to_group != current_group_name:
-            user_repository.assign_user_to_group(selected_user_id, group_options[assign_to_group])
+            user_repository.assign_student_to_group(selected_user_id, group_options[assign_to_group])
             st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     user_repository.close()  # Close the database connection
@@ -296,15 +286,13 @@ def create_group():
     new_group_name = st.text_input("Create a new group:")
     if st.button("Create Group"):
         if new_group_name:
-            success, message = user_repository.create_user_group(new_group_name)
+            success, message = user_repository.create_student_group(new_group_name)
             if success:
                 st.success(message)
             else:
                 st.error(message)
         else:
             st.warning("Group name cannot be empty.")
-
-    user_repository.close()  # Close the database connection
 
 
 if __name__ == "__main__":

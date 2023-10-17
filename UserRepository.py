@@ -4,12 +4,17 @@ from google.cloud.sql.connector import Connector
 import os
 import tempfile
 
+from UserType import UserType
+
 
 class UserRepository:
     def __init__(self):
-        self.connection = None
+        self.connection = self.connect()
+        self.create_user_groups_table()
+        self.create_users_table()
 
-    def connect(self):
+    @staticmethod
+    def connect():
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
             temp_file.write(os.environ["GOOGLE_APP_CRED"])
             temp_file_path = temp_file.name
@@ -24,15 +29,13 @@ class UserRepository:
         db_pass = os.environ["SQL_PASSWORD"]
         db_name = os.environ["SQL_DATABASE"]
 
-        self.connection = Connector().connect(
+        return Connector().connect(
             instance_connection_name,
             "pymysql",
             user=db_user,
             password=db_pass,
             db=db_name,
         )
-        self.create_user_groups_table()
-        self.create_users_table()
 
     def create_users_table(self):
         cursor = self.connection.cursor()
@@ -43,8 +46,11 @@ class UserRepository:
                                     email VARCHAR(255) UNIQUE,
                                     password VARCHAR(255),
                                     is_enabled BOOLEAN DEFAULT TRUE,
+                                    user_type ENUM('admin', 'teacher', 'student') NOT NULL,
                                     group_id INT,
-                                    FOREIGN KEY (group_id) REFERENCES `user_groups`(id)
+                                    org_id INT,  # New column for organization ID
+                                    FOREIGN KEY (group_id) REFERENCES `user_groups`(id),
+                                    FOREIGN KEY (org_id) REFERENCES `organizations`(id)  # Foreign key relationship
                                 ); """
         cursor.execute(create_table_query)
         self.connection.commit()
@@ -111,10 +117,14 @@ class UserRepository:
 
     @staticmethod
     def is_valid_username(username):
-        # Add your username validation logic here
-        # For example, let's say the username should be at least 5 characters and only contain alphanumeric characters
-        if len(username) < 5 or not username.isalnum():
+        # The username should be at least 5 characters
+        if len(username) < 5:
             return False
+
+        # The username can contain alphanumeric characters and special characters
+        if not re.match("^[a-zA-Z0-9_!@#$%^&*()+=-]*$", username):
+            return False
+
         return True
 
     @staticmethod
@@ -139,7 +149,7 @@ class UserRepository:
         else:
             return False
 
-    def register_user(self, name, username, email, password):
+    def register_user(self, name, username, email, password, org_id, user_type=UserType.STUDENT.value):
         cursor = self.connection.cursor()
         if not self.is_valid_username(username):
             return False, "Invalid username. It should be at least 5 characters and only contain alphanumeric " \
@@ -159,11 +169,11 @@ class UserRepository:
             return False, "Username or email already exists."
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        add_user_query = """INSERT INTO users (name, username, email, password)
-                            VALUES (%s, %s, %s, %s);"""
-        cursor.execute(add_user_query, (name, username, email, hashed_password))
+        add_user_query = """INSERT INTO users (name, username, email, password, org_id, user_type)
+                                        VALUES (%s, %s, %s, %s, %s, %s);"""
+        cursor.execute(add_user_query, (name, username, email, hashed_password, org_id, user_type))
         self.connection.commit()
-        return True, f"User {username} with email {email} registered successfully."
+        return True, f"User {username} with email {email} registered successfully as {user_type}."
 
     def enable_disable_user(self, username, enable=True):
         cursor = self.connection.cursor()
@@ -173,18 +183,18 @@ class UserRepository:
 
     def authenticate_user(self, username, password):
         cursor = self.connection.cursor()
-        find_user_query = """SELECT id, password, is_enabled FROM users WHERE username = %s;"""
+        find_user_query = """SELECT id, org_id, password, is_enabled FROM users WHERE username = %s;"""
         cursor.execute(find_user_query, (username,))
         result = cursor.fetchone()
 
         if result:
-            student_id, stored_hashed_password, is_enabled = result
+            user_id, org_id, stored_hashed_password, is_enabled = result
             if is_enabled and bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
-                return True, student_id
+                return True, user_id, org_id
             else:
-                return False, -1
+                return False, -1, -1
         else:
-            return False, -1
+            return False, -1, -1
 
     def get_all_users(self):
         cursor = self.connection.cursor()
@@ -210,6 +220,17 @@ class UserRepository:
         users = [{'user_id': row[0], 'username': row[1]} for row in result]
         return users
 
+    def get_admin_users_by_org_id(self, org_id):
+        cursor = self.connection.cursor()
+        get_admin_users_query = """SELECT id, username FROM users WHERE org_id = %s AND user_type = 'admin';"""
+        cursor.execute(get_admin_users_query, (org_id,))
+        result = cursor.fetchall()
+        admin_users = [{'id': row[0], 'username': row[1]} for row in result]
+        return admin_users
+
     def close(self):
         if self.connection:
             self.connection.close()
+
+    def __del__(self):
+        self.close()

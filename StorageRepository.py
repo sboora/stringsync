@@ -1,9 +1,7 @@
 import os
-from urllib.parse import urlparse
 
 from google.cloud import storage
 import tempfile
-import json
 
 
 class StorageRepository:

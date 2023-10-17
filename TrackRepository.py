@@ -1,121 +1,145 @@
-import sqlite3
+import os
+import tempfile
+from google.cloud.sql.connector import Connector
 
 
 class TrackRepository:
-    def __init__(self, db_name="database/tracks.db"):
-        self.conn = sqlite3.connect(db_name)
-        self.cursor = self.conn.cursor()
+    def __init__(self):
+        self.connection = self.connect()
         self.create_tables()
         self.create_seed_data()
 
+    @staticmethod
+    def connect():
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            temp_file.write(os.environ["GOOGLE_APP_CRED"])
+            credentials_file_path = temp_file.name
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_file_path
+        instance_connection_name = os.environ["MYSQL_CONNECTION_STRING"]
+        db_user = os.environ["SQL_USERNAME"]
+        db_pass = os.environ["SQL_PASSWORD"]
+        db_name = os.environ["SQL_DATABASE"]
+
+        return Connector().connect(
+            instance_connection_name,
+            "pymysql",
+            user=db_user,
+            password=db_pass,
+            db=db_name,
+        )
+
     def create_tables(self):
-        self.cursor.execute("""
+        cursor = self.connection.cursor()
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255),
                 track_path TEXT,
                 track_ref_path TEXT,
                 notation_path TEXT,
-                level INTEGER,
-                ragam TEXT,
-                type TEXT,
-                offset INTEGER
+                level INT,
+                ragam VARCHAR(255),
+                type VARCHAR(255),
+                offset INT
             );
         """)
-
-        self.cursor.execute("""
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tag_name TEXT UNIQUE
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                tag_name VARCHAR(255) UNIQUE
             );
         """)
-
-        self.cursor.execute("""
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS track_tags (
-                track_id INTEGER,
-                tag_id INTEGER,
+                track_id INT,
+                tag_id INT,
                 FOREIGN KEY (track_id) REFERENCES tracks (id),
                 FOREIGN KEY (tag_id) REFERENCES tags (id),
                 PRIMARY KEY (track_id, tag_id)
             );
         """)
-
-        self.conn.commit()
+        self.connection.commit()
 
     def get_all_tracks(self):
-        self.cursor.execute("SELECT id, name, type FROM tracks")
-        return self.cursor.fetchall()
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id, name, type FROM tracks")
+        return cursor.fetchall()
 
     def get_track_by_name(self, name):
-        self.cursor.execute("SELECT * FROM tracks WHERE name = ?", (name,))
-        return self.cursor.fetchone()
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM tracks WHERE name = %s", (name,))
+        return cursor.fetchone()
 
     def get_all_tags(self):
-        self.cursor.execute("SELECT DISTINCT tag_name FROM tags")
-        return [row[0] for row in self.cursor.fetchall()]
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT DISTINCT tag_name FROM tags")
+        return [row[0] for row in cursor.fetchall()]
 
     def get_all_track_types(self):
-        self.cursor.execute("SELECT DISTINCT type FROM tracks")
-        return [row[0] for row in self.cursor.fetchall()]
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT DISTINCT type FROM tracks")
+        return [row[0] for row in cursor.fetchall()]
 
     def get_all_ragams(self):
-        self.cursor.execute("SELECT DISTINCT ragam FROM tracks")
-        return [row[0] for row in self.cursor.fetchall()]
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT DISTINCT ragam FROM tracks")
+        return [row[0] for row in cursor.fetchall()]
 
     def get_all_levels(self):
-        self.cursor.execute("SELECT DISTINCT level FROM tracks")
-        return [row[0] for row in self.cursor.fetchall()]
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT DISTINCT level FROM tracks")
+        return [row[0] for row in cursor.fetchall()]
 
     def get_tags_by_track_id(self, track_id):
-        self.cursor.execute("""
+        cursor = self.connection.cursor()
+        cursor.execute("""
             SELECT tags.tag_name
             FROM track_tags
             JOIN tags ON track_tags.tag_id = tags.id
-            WHERE track_tags.track_id = ?
+            WHERE track_tags.track_id = %s
         """, (track_id,))
-        return [row[0] for row in self.cursor.fetchall()]
+        return [row[0] for row in cursor.fetchall()]
 
     def add_track(self, name, track_path, track_ref_path, notation_path, level,
                   ragam, tags, track_type, offset):
-        # Check if the track already exists
-        self.cursor.execute("SELECT id FROM tracks WHERE name = ?", (name,))
-        existing_track = self.cursor.fetchone()
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id FROM tracks WHERE name = %s", (name,))
+        existing_track = cursor.fetchone()
 
         if existing_track:
-            # Update the existing track
-            self.cursor.execute("""
+            cursor.execute("""
                 UPDATE tracks
-                SET track_path = ?, track_ref_path = ?, notation_path = ?, level = ?, ragam = ?, type = ?, offset = ?
-                WHERE name = ?
+                SET track_path = %s, track_ref_path = %s, notation_path = %s, level = %s, ragam = %s, type = %s, offset = %s
+                WHERE name = %s
             """, (track_path, track_ref_path, notation_path, level, ragam, track_type, offset, name))
             track_id = existing_track[0]
         else:
-            # Insert a new track
-            self.cursor.execute("""
+            cursor.execute("""
                 INSERT INTO tracks (name, track_path, track_ref_path, notation_path, level, ragam, type, offset)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (name, track_path, track_ref_path, notation_path, level, ragam, track_type, offset))
-            track_id = self.cursor.lastrowid
+            track_id = cursor.lastrowid
 
-        # Delete existing tags for the track
-        self.cursor.execute("DELETE FROM track_tags WHERE track_id = ?", (track_id,))
+        cursor.execute("DELETE FROM track_tags WHERE track_id = %s", (track_id,))
 
-        # Insert new tags
         for tag in tags:
-            self.cursor.execute("INSERT OR IGNORE INTO tags (tag_name) VALUES (?)", (tag,))
-            self.cursor.execute("SELECT id FROM tags WHERE tag_name = ?", (tag,))
-            tag_id = self.cursor.fetchone()[0]
-            self.cursor.execute("INSERT INTO track_tags (track_id, tag_id) VALUES (?, ?)", (track_id, tag_id))
+            cursor.execute("INSERT IGNORE INTO tags (tag_name) VALUES (%s)", (tag,))
+            cursor.execute("SELECT id FROM tags WHERE tag_name = %s", (tag,))
+            tag_id = cursor.fetchone()[0]
+            cursor.execute("INSERT INTO track_tags (track_id, tag_id) VALUES (%s, %s)", (track_id, tag_id))
 
-        self.conn.commit()
+        self.connection.commit()
 
     def get_track_names_by_ids(self, track_ids):
-        query = "SELECT id, name FROM tracks WHERE id IN ({})".format(','.join(['?'] * len(track_ids)))
-        self.cursor.execute(query, track_ids)
-        result = self.cursor.fetchall()
+        cursor = self.connection.cursor()
+        query = "SELECT id, name FROM tracks WHERE id IN ({})".format(','.join(['%s'] * len(track_ids)))
+        cursor.execute(query, track_ids)
+        result = cursor.fetchall()
         return {row[0]: row[1] for row in result}
 
     def search_tracks(self, ragam=None, level=None, tags=None, track_type=None):
+        cursor = self.connection.cursor()
         query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam, type FROM tracks"
         params = []
 
@@ -128,34 +152,38 @@ class TrackRepository:
         where_clauses = []
 
         if ragam is not None:
-            where_clauses.append("ragam = ?")
+            where_clauses.append("ragam = %s")
             params.append(ragam)
 
         if level is not None:
-            where_clauses.append("level = ?")
+            where_clauses.append("level = %s")
             params.append(level)
 
         if tags is not None:
-            tags_placeholder = ', '.join(['?'] * len(tags))
+            tags_placeholder = ', '.join(['%s'] * len(tags))
             where_clauses.append(f"tags.tag_name IN ({tags_placeholder})")
             params.extend(tags)
 
         if track_type is not None:
-            where_clauses.append("type = ?")
+            where_clauses.append("type = %s")
             params.append(track_type)
 
         if where_clauses:
             query += " WHERE " + " AND ".join(where_clauses)
 
         if tags:
-            query += " GROUP BY tracks.id HAVING COUNT(tracks.id) = ?"
+            query += " GROUP BY tracks.id HAVING COUNT(tracks.id) = %s"
             params.append(len(tags))
 
-        self.cursor.execute(query, params)
-        return self.cursor.fetchall()
+        cursor.execute(query, params)
+        return cursor.fetchall()
 
     def close(self):
-        self.conn.close()
+        if self.connection:
+            self.connection.close()
+
+    def __del__(self):
+        self.close()
 
     def create_seed_data(self):
         self.add_track("Lesson 1", "tracks/lesson1.m4a", "tracks/lesson1_ref.m4a",
@@ -167,6 +195,3 @@ class TrackRepository:
         self.add_track("Shree Guruguha", "tracks/Shree Guruguha.m4a", "tracks/Shree Guruguha_ref.m4a",
                        "notations/Shree Guruguha.txt", 2, "Suddha Saveri",
                        ["Krithi"], "Song", 6250)
-
-
-

@@ -6,7 +6,11 @@ import json
 
 class RecordingRepository:
     def __init__(self):
-        self.connection = None
+        self.connection = self.connect()
+        self.create_recordings_table()
+
+    @staticmethod
+    def connect():
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
             temp_file.write(os.environ["GOOGLE_APP_CRED"])
             credentials_file_path = temp_file.name
@@ -19,14 +23,13 @@ class RecordingRepository:
         db_pass = os.environ["SQL_PASSWORD"]
         db_name = os.environ["SQL_DATABASE"]
 
-        self.connection = Connector().connect(
+        return Connector().connect(
             instance_connection_name,
             "pymysql",
             user=db_user,
             password=db_pass,
             db=db_name,
         )
-        self.create_recordings_table()
 
     def create_recordings_table(self):
         cursor = self.connection.cursor()
@@ -170,3 +173,6 @@ class RecordingRepository:
     def close(self):
         if self.connection:
             self.connection.close()
+
+    def __del__(self):
+        self.close()

@@ -7,16 +7,16 @@ import numpy as np
 from fastdtw import fastdtw
 from scipy.spatial.distance import cosine, euclidean
 import streamlit as st
-from audio_recorder_streamlit import audio_recorder
-import tempfile
 import os
 from scipy.stats import zscore
 import re
 
+import env
 from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
 from TrackRepository import TrackRepository
 from UserRepository import UserRepository
+from UserType import UserType
 
 
 def load_and_normalize_audio(audio_path):
@@ -275,7 +275,6 @@ def handle_student_login():
     Handle student login and registration through the sidebar.
     """
     user_repo = UserRepository()  # Initialize UserRepository
-    user_repo.connect()
 
     is_authenticated = False
     if user_not_logged_in():
@@ -313,7 +312,7 @@ def handle_student_login():
                 if ok():
                     if reg_name and reg_username and reg_email and reg_password:
                         is_registered, message = user_repo.register_user(reg_name, reg_username, reg_email,
-                                                                         reg_password)
+                                                                         reg_password, UserType.STUDENT.value)
                         if is_registered:
                             st.sidebar.success(message)
                             st.session_state["show_register_section"] = False
@@ -330,7 +329,6 @@ def handle_student_login():
     else:
         st.sidebar.success(f"You are already logged in.")
 
-    user_repo.close()  # Close the database connection
     return is_authenticated
 
 
@@ -680,19 +678,8 @@ def display_notes_with_subscript(notation_content):
                 unsafe_allow_html=True)
 
 
-def set_env():
-    os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
-    os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
-    os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]
-    os.environ["SQL_USERNAME"] = st.secrets["SQL_USERNAME"]
-    os.environ["SQL_PASSWORD"] = st.secrets["SQL_PASSWORD"]
-    os.environ["MYSQL_CONNECTION_STRING"] = st.secrets["MYSQL_CONNECTION_STRING"]
-    os.environ["EMAIL_ID"] = st.secrets["EMAIL_ID"]
-    os.environ["EMAIL_PASSWORD"] = st.secrets["EMAIL_PASSWORD"]
-
-
 def main():
-    set_env()
+    env.set_env()
     init_session()
     setup_streamlit_app()
 
@@ -943,8 +930,6 @@ def list_recordings(username, user_id, track_id):
             int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
         col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
-
-    recording_repository.close()  # Close the database connection
 
 
 def ordinal(n):
