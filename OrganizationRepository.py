@@ -101,11 +101,11 @@ class OrganizationRepository:
 
     def get_organizations_by_tenant_id(self, tenant_id):
         cursor = self.connection.cursor()
-        get_schools_query = """SELECT name, description, join_code FROM organizations WHERE tenant_id = %s AND 
+        get_schools_query = """SELECT id, name, description, join_code FROM organizations WHERE tenant_id = %s AND 
         is_root = 0; """
         cursor.execute(get_schools_query, (tenant_id,))
         result = cursor.fetchall()
-        organizations = [{'name': row[0], 'description': row[1], 'join_code': row[2]} for row in result]
+        organizations = [{'id': row[0], 'name': row[1], 'description': row[2], 'join_code': row[3]} for row in result]
         return organizations
 
     def get_organization_by_id(self, org_id):

@@ -237,6 +237,25 @@ class UserRepository:
         users = [{'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3]} for row in result]
         return users
 
+    def assign_user_to_org(self, user_id, org_id):
+        cursor = self.connection.cursor()
+        try:
+            # Prepare the SQL query to update the org_id for the given user_id
+            assign_query = """UPDATE users SET org_id = %s WHERE id = %s;"""
+
+            # Execute the query
+            cursor.execute(assign_query, (org_id, user_id))
+
+            # Commit the changes to the database
+            self.connection.commit()
+
+            return True, f"User with ID {user_id} has been successfully assigned to organization with ID {org_id}."
+        except Exception as e:
+            # Rollback the transaction in case of an error
+            self.connection.rollback()
+
+            return False, f"Failed to assign user to organization. Error: {str(e)}"
+
     def close(self):
         if self.connection:
             self.connection.close()
@@ -244,3 +263,5 @@ class UserRepository:
 
     def __del__(self):
         self.close()
+
+

@@ -6,11 +6,12 @@ import streamlit as st
 import pandas as pd
 
 from UserRepository import UserRepository
+from UserType import UserType
+
+user_repository = UserRepository()
 
 
 def list_students_and_tracks():
-    user_repository = UserRepository()
-    user_repository.connect()  # Make sure to connect to the database
     st.header("Students")
 
     # Show groups in a dropdown
@@ -33,14 +34,11 @@ def list_students_and_tracks():
     if selected_username != '--Select a student--':
         selected_user_id = user_options[selected_username]
 
-    user_repository.close()  # Close the database connection
-
     selected_track_id = None
     track_path = None
     if selected_user_id is not None:
         recording_repository = RecordingRepository()
         track_ids = recording_repository.get_unique_tracks_by_user(selected_user_id)
-        recording_repository.close()
 
         if track_ids:
             # Fetch track names by their IDs
@@ -55,7 +53,6 @@ def list_students_and_tracks():
                 selected_track_id = track_options[selected_track_name]
                 track = track_repository.get_track_by_name(selected_track_name)
                 track_path = track[2]
-            track_repository.close()
 
     return selected_username, selected_user_id, selected_track_id, track_path
 
@@ -145,8 +142,6 @@ def list_recordings(username, user_id, track_id):
         col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
 
-    recording_repository.close()  # Close the database connection
-
 
 def ordinal(n):
     suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
@@ -214,30 +209,28 @@ def main():
     setup_streamlit_app()
     env.set_env()
 
-    # Stylish Sidebar Header and Menu Options
-    st.sidebar.markdown(
-        """
-        <div style="background: repeating-linear-gradient(45deg, blue, lightblue);
-         padding: 10px; border-radius: 10px;">
-            <h2 style="color:white; text-align:center;">Dashboard Controls</h2>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    init_session()
 
-    menu_selection = st.sidebar.radio(
-        "",
-        ["👥 Create Group", "🔀 Assign Users to Groups", "🎵 List Recordings"],
-        format_func=lambda x: x,
-    )
+    if not st.session_state['teacher_logged_in']:
+        st.header("Teacher Login")
+        teacher_login()
+        return
 
-    if menu_selection == "👥 Create Group":
+    st.header(f"Welcome, {st.session_state['teacher_username']}!")
+    if st.button("Logout"):
+        teacher_logout()
+        return
+
+    create_group_tab, assign_student_to_group_tab, list_recording_tab = \
+        st.tabs(["👥 Create Group", "🔀 Assign Students to Groups", "🎵 List Recordings"])
+
+    with create_group_tab:
         create_group()
 
-    elif menu_selection == "🔀 Assign Users to Groups":
-        assign_users_to_group()
+    with assign_student_to_group_tab:
+        assign_students_to_group()
 
-    elif menu_selection == "🎵 List Recordings":
+    with list_recording_tab:
         username, user_id, track_id, track_name = list_students_and_tracks()
         display_track_files(track_name)
         if user_id is not None:
@@ -246,24 +239,43 @@ def main():
     show_copyright()
 
 
-def assign_users_to_group():
-    user_repository = UserRepository()
-    user_repository.connect()  # Make sure to connect to the database
+def teacher_login():
+    teacher_username = st.sidebar.text_input("Username")
+    teacher_password = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Login", type='primary'):
+        # Replace the following line with your actual authentication logic
+        success, teacher_id, org_id = user_repository.authenticate_user(teacher_username, teacher_password)
+        if success:
+            st.session_state['teacher_logged_in'] = True
+            st.session_state['teacher_id'] = teacher_id
+            st.session_state['org_id'] = org_id
+            st.session_state['teacher_username'] = teacher_username
+            st.rerun()
+        else:
+            st.sidebar.error("Invalid username or password.")
 
+
+def teacher_logout():
+    st.session_state['teacher_logged_in'] = False
+    st.session_state['teacher_id'] = None
+    st.session_state['org_id'] = None
+    st.session_state['teacher_username'] = None
+    st.rerun()
+
+
+def assign_students_to_group():
     # Feature to assign a user to a group
     groups = user_repository.get_all_groups()
     group_options = {group['group_name']: group['group_id'] for group in groups}
-    users = user_repository.get_all_users()
-    user_options = {user['username']: user['user_id'] for user in users}
+    users = user_repository.get_users_by_org_id_and_type(get_org_id(), UserType.STUDENT.value)
+    user_options = {user['username']: user['id'] for user in users}
 
     selected_username = st.selectbox("Select a student:", ['--Select a student--'] + list(user_options.keys()))
-    selected_user_id = None
-
     if selected_username != '--Select a student--':
         selected_user_id = user_options[selected_username]
 
         # Get the current group of the user
-        current_group = user_repository.get_group_by_student_id(selected_user_id)
+        current_group = user_repository.get_group_by_user_id(selected_user_id)
         current_group_name = current_group['group_name'] if current_group else '--Select a group--'
 
         # Dropdown to assign a new group, with the current group pre-selected
@@ -272,21 +284,31 @@ def assign_users_to_group():
                                            current_group_name) + 1 if current_group else 0)
 
         if assign_to_group != '--Select a group--' and assign_to_group != current_group_name:
-            user_repository.assign_student_to_group(selected_user_id, group_options[assign_to_group])
+            user_repository.assign_user_to_group(selected_user_id, group_options[assign_to_group])
             st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
-    user_repository.close()  # Close the database connection
+
+def init_session():
+    if 'teacher_logged_in' not in st.session_state:
+        st.session_state['teacher_logged_in'] = False
+    if 'teacher_id' not in st.session_state:
+        st.session_state['teacher_id'] = None
+    if 'org_id' not in st.session_state:
+        st.session_state['org_id'] = None
+    if 'teacher_username' not in st.session_state:
+        st.session_state['teacher_username'] = None
+
+
+def get_org_id():
+    return st.session_state['org_id']
 
 
 def create_group():
-    user_repository = UserRepository()
-    user_repository.connect()  # Make sure to connect to the database
-
     # Feature to create a new group
     new_group_name = st.text_input("Create a new group:")
-    if st.button("Create Group"):
+    if st.button("Create Group", type='primary'):
         if new_group_name:
-            success, message = user_repository.create_student_group(new_group_name)
+            success, message = user_repository.create_user_group(new_group_name)
             if success:
                 st.success(message)
             else:

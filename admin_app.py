@@ -31,7 +31,7 @@ def main():
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     # Create columns for header and logout button
-    col1, col2 = st.columns([9, 1])  # Adjust the ratio as needed
+    col1, col2 = st.columns([8.5, 1.5])  # Adjust the ratio as needed
 
     with col1:
         st.markdown("<h1 style='margin-bottom:0px;'>StringSync - Admin Portal</h1>", unsafe_allow_html=True)
@@ -41,7 +41,8 @@ def main():
             col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
             with col2_2:
                 user_options = st.selectbox("", ["", "Settings", "Logout"], index=0,
-                                            format_func=lambda x: "👤" if x == "" else x)
+                                            format_func=lambda x: f"👤\u2003{get_admin_username()}" if x == "" else x)
+
                 if user_options == "Logout":
                     st.session_state["user_logged_in"] = False
                     st.rerun()
@@ -77,7 +78,7 @@ def main():
             st.success(f"Welcome {get_admin_username()}!")
 
             add_school_tab, add_tutor_tab, assign_tutor_tab = \
-                st.tabs(["🏫 Add a School", "👩‍🏫 Add a Tutor", "📝 Assign Tutor to School"])
+                st.tabs(["🏫 Register a School", "👩‍🏫 Register a Tutor", "📝 Assign Tutor to School"])
 
             with add_school_tab:
                 add_school()
@@ -89,6 +90,7 @@ def main():
 
             with assign_tutor_tab:
                 assign_tutor()
+                list_tutor_assignments()
 
 
 def add_school():
@@ -206,7 +208,38 @@ def list_tutors():
 
 def assign_tutor():
     st.subheader("Assign Tutor to School")
-    # Add your code to assign a tutor to a school here
+
+    # Fetch the list of schools and tutors
+    schools = org_repo.get_organizations_by_tenant_id(get_tenant_id())
+    tutors = user_repo.get_users_by_org_id_and_type(get_org_id(), UserType.TEACHER.value)
+
+    # Create dropdowns for selecting a school and a tutor
+    school_options = {school['name']: school['id'] for school in schools}
+    tutor_options = {tutor['username']: tutor['id'] for tutor in tutors}
+
+    selected_school_name = st.selectbox("Select School", ['--Select a School--'] + list(school_options.keys()))
+    selected_tutor_name = st.selectbox("Select Tutor", ['--Select a Tutor--'] + list(tutor_options.keys()))
+
+    if st.button("Assign", key="assign_tutor", type='primary'):
+        # Validate that both a tutor and a school have been selected
+        if selected_school_name == '--Select a School--' or selected_tutor_name == '--Select a Tutor--':
+            st.error("Please select both a tutor and a school.")
+            return
+
+        selected_school_id = school_options[selected_school_name]
+        selected_tutor_id = tutor_options[selected_tutor_name]
+
+        # Assume you have a function like this in your repository
+        success, message = user_repo.assign_user_to_org(selected_tutor_id, selected_school_id)
+
+        if success:
+            st.success(f"Tutor {selected_tutor_name} has been assigned to {selected_school_name}")
+        else:
+            st.error(f"Failed to assign tutor: {message}")
+
+
+def list_tutor_assignments():
+    pass
 
 
 def init_session():
