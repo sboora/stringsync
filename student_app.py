@@ -15,8 +15,11 @@ import env
 from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
 from TrackRepository import TrackRepository
+from OrganizationRepository import OrganizationRepository
 from UserRepository import UserRepository
 from UserType import UserType
+
+org_repo = OrganizationRepository()
 
 
 def load_and_normalize_audio(audio_path):
@@ -288,7 +291,7 @@ def handle_student_login():
             with col1:
                 if login():
                     if username and password:
-                        is_authenticated, user_id = user_repo.authenticate_user(username, password)
+                        is_authenticated, user_id, org_id = user_repo.authenticate_user(username, password)
                         if is_authenticated:
                             login_user(username, user_id, password)
                         else:
@@ -303,16 +306,17 @@ def handle_student_login():
                     st.rerun()
         else:
             st.sidebar.subheader("Register")
-            reg_email, reg_name, reg_password, reg_username = show_user_registration_screen()
+            reg_email, reg_name, reg_password, reg_username, join_code = show_user_registration_screen()
 
             # Create two columns for the buttons
             col1, col2, col3 = st.sidebar.columns([3, 5, 4])
             # Ok button
             with col1:
                 if ok():
-                    if reg_name and reg_username and reg_email and reg_password:
+                    if reg_name and reg_username and reg_email and reg_password and join_code:
+                        _, org_id = org_repo.get_org_id_by_join_code(join_code)
                         is_registered, message = user_repo.register_user(reg_name, reg_username, reg_email,
-                                                                         reg_password, UserType.STUDENT.value)
+                                                                         reg_password, org_id, UserType.STUDENT.value)
                         if is_registered:
                             st.sidebar.success(message)
                             st.session_state["show_register_section"] = False
@@ -341,7 +345,8 @@ def show_user_registration_screen():
     reg_email = st.sidebar.text_input("Email")
     reg_username = st.sidebar.text_input(key="registration_username", label="User")
     reg_password = st.sidebar.text_input(key="registration_password", type="password", label="Password")
-    return reg_email, reg_name, reg_password, reg_username
+    join_code = st.sidebar.text_input("Join Code")
+    return reg_email, reg_name, reg_password, reg_username, join_code
 
 
 def init_session():
@@ -781,14 +786,6 @@ def get_tracks():
             })
 
     return track_details
-
-
-def logout_button():
-    if st.button("Logout", type="primary"):
-        st.session_state["user_logged_in"] = False
-        st.rerun()
-    st.markdown("<style>div.row-widget.stButton > div{margin-top: -10px; margin-bottom: -10px}</style>",
-                unsafe_allow_html=True)
 
 
 def record():

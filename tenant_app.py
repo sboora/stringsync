@@ -10,9 +10,9 @@ from OrganizationRepository import OrganizationRepository
 env.set_env()
 
 # Initialize repositories
-user_repo = UserRepository()
 tenant_repo = TenantRepository()
 org_repo = OrganizationRepository()
+user_repo = UserRepository()
 
 
 # Tenant registration form
@@ -58,9 +58,7 @@ def main():
                 st.error(org_message)
                 return
 
-            alphabet = string.ascii_letters + string.digits + string.punctuation
-            # for a 12-character password
-            password = ''.join(secrets.choice(alphabet) for i in range(12))
+            password = 'Pass1234!'
 
             # Create an admin user for the tenant and assign to root organization
             user_success, user_message = user_repo.register_user(

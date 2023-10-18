@@ -222,15 +222,25 @@ class UserRepository:
 
     def get_admin_users_by_org_id(self, org_id):
         cursor = self.connection.cursor()
-        get_admin_users_query = """SELECT id, username FROM users WHERE org_id = %s AND user_type = 'admin';"""
-        cursor.execute(get_admin_users_query, (org_id,))
+        get_users_query = """SELECT id, username, email FROM users WHERE org_id = %s AND user_type = 'admin';"""
+        cursor.execute(get_users_query, (org_id,))
         result = cursor.fetchall()
-        admin_users = [{'id': row[0], 'username': row[1]} for row in result]
-        return admin_users
+        users = [{'id': row[0], 'username': row[1], 'email': row[2]} for row in result]
+        return users
+
+    def get_users_by_org_id_and_type(self, org_id, user_type):
+        cursor = self.connection.cursor()
+        get_users_query = """SELECT id, name, username, email FROM users WHERE org_id = %s AND user_type = %s;"""
+        cursor.execute(get_users_query, (org_id, user_type))
+        result = cursor.fetchall()
+        # Create a list of dictionaries to hold the user data
+        users = [{'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3]} for row in result]
+        return users
 
     def close(self):
         if self.connection:
             self.connection.close()
+            self.connection = None
 
     def __del__(self):
         self.close()

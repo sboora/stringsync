@@ -3,7 +3,6 @@ from RecordingRepository import RecordingRepository
 from StorageRepository import StorageRepository
 from TrackRepository import TrackRepository
 import streamlit as st
-import os
 import pandas as pd
 
 from UserRepository import UserRepository
@@ -155,6 +154,7 @@ def ordinal(n):
         suffix = 'th'
     return str(n) + suffix
 
+
 def setup_streamlit_app():
     """
     Set up the Streamlit app with headers and markdown text for the Teacher Dashboard.
@@ -269,7 +269,7 @@ def assign_users_to_group():
         # Dropdown to assign a new group, with the current group pre-selected
         assign_to_group = st.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()),
                                        index=list(group_options.keys()).index(
-                                           current_group_name)+1 if current_group else 0)
+                                           current_group_name) + 1 if current_group else 0)
 
         if assign_to_group != '--Select a group--' and assign_to_group != current_group_name:
             user_repository.assign_student_to_group(selected_user_id, group_options[assign_to_group])
