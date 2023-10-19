@@ -3,6 +3,9 @@ import streamlit as st
 
 
 def set_env():
+    os.environ['ROOT_USER'] = st.secrets["ROOT_USER"]
+    os.environ['ROOT_PASSWORD'] = st.secrets["ROOT_PASSWORD"]
+    os.environ['ADMIN_PASSWORD'] = st.secrets["ADMIN_PASSWORD"]
     os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
     os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
     os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]

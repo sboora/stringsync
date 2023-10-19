@@ -210,40 +210,7 @@ def filter_consecutive_notes(notes, min_consecutive=3):
 
 
 def setup_streamlit_app():
-    """
-    Set up the Streamlit app with headers and markdown text.
-    """
-    st.set_page_config(
-        layout='wide'
-    )
-    hide_streamlit_style = """
-        <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}   
-        </style>
-
-        """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-    # Create columns for header and logout button
-    col1, col2 = st.columns([9.2, 0.8])  # Adjust the ratio as needed
-
-    with col1:
-        st.markdown("<h1 style='margin-bottom:0px;'>StringSync</h1>", unsafe_allow_html=True)
-
-    with col2:
-        if user_logged_in():
-            col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
-            with col2_2:
-                user_options = st.selectbox("", ["", "Settings", "Logout"], index=0,
-                                            format_func=lambda x: "👤" if x == "" else x)
-                if user_options == "Logout":
-                    st.session_state["user_logged_in"] = False
-                    st.rerun()
-                elif user_options == "Settings":
-                    # Navigate to settings page or open settings dialog
-                    pass
+    set_app_layout()
 
     # Add a gradient rainbow divider with no gap
     st.markdown("""
@@ -253,24 +220,59 @@ def setup_streamlit_app():
     if not user_logged_in():
         st.markdown(
             """
-            String Sync is an innovative platform designed to help music teachers and students enhance 
-            their learning experience. By leveraging advanced audio analysis, this app allows you to 
-            compare your musical performance with a reference recording, providing you with a 
-            quantifiable score based on the similarity.
+            Welcome to the **Student Portal** of String Sync, your personal space for musical growth and exploration. 
+            This platform is designed to offer you a comprehensive and interactive music learning experience.
 
-            ### How Does it Work? 
-            1. **Listen to the track**: Each track comes with a reference audio file. Listen to it carefully to understand what you need to achieve. 
-            2. **Upload Your Recording**: Record your own performance and upload it here. 
-            3. **Get Your Score**: Our advanced algorithm will compare your performance with the reference audio and give you a score based on how closely they match. 
+            ### How Does it Work?
+            1. **Listen to Tracks**: Explore a wide range of tracks to find the ones that resonate with you.
+            2. **Record Performances**: Once you've practiced, record your performances for these tracks.
+            3. **Work on Assignments**: Complete assignments given by your teacher and submit them for review.
 
-            ### Why Use String Sync?
-            - **Objective Feedback**: Get unbiased, data-driven feedback on your performance.
-            - **Progress Tracking**: Keep track of your scores to monitor your improvement over time.
-            - **Flexible**: Suitable for any instrument and skill level.
+            ### Why Use String Sync for Learning?
+            - **Personalized Learning**: Tailor your learning experience by choosing tracks that suit your taste and skill level.
+            - **Instant Feedback**: Receive immediate, data-driven feedback on your performances.
+            - **Track Your Progress**: Keep an eye on your improvement over time with easy-to-understand metrics.
+            - **Interactive Assignments**: Engage with assignments that challenge you and help you grow as a musician.
 
-            "Ready to get started? Select your track from the sidebar and either directly record or upload your 
-            performance!" """
+            Ready to dive in? Use the sidebar to explore all the exciting features available on your Student Portal!
+            """
         )
+
+
+def set_app_layout():
+    st.set_page_config(
+        layout='wide'
+    )
+    hide_streamlit_style = """
+                <style>
+                #MainMenu {visibility: hidden;}
+                header {visibility: hidden;}
+                footer {visibility: hidden;}   
+                </style>
+
+                """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+    # Create columns for header and logout button
+    col1, col2 = st.columns([8.5, 1.5])  # Adjust the ratio as needed
+
+    with col1:
+        st.markdown("<h1 style='margin-bottom:0px;'>StringSync</h1>", unsafe_allow_html=True)
+
+    with col2:
+        if user_logged_in():
+            col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
+            with col2_2:
+                user_options = st.selectbox("", ["", "Settings", "Logout"], index=0,
+                                            format_func=lambda
+                                                x: f"👤\u2003{get_username()}" if x == "" else x)
+
+                if user_options == "Logout":
+                    st.session_state["user_logged_in"] = False
+                    st.rerun()
+                elif user_options == "Settings":
+                    # Navigate to settings page or open settings dialog
+                    pass
 
 
 def handle_student_login():
@@ -282,7 +284,7 @@ def handle_student_login():
     is_authenticated = False
     if user_not_logged_in():
         if not register_user():
-            st.sidebar.header("Student Login")
+            st.sidebar.header("Login")
             is_authenticated = False
             password, username = show_login_screen()
             # Create two columns for the buttons
@@ -392,6 +394,10 @@ def cancel():
 
 def get_user_id():
     return st.session_state['user_id']
+
+
+def get_username():
+    return st.session_state['username']
 
 
 def show_login_screen():

@@ -12,6 +12,7 @@ class UserRepository:
         self.connection = self.connect()
         self.create_user_groups_table()
         self.create_users_table()
+        self.create_root_user()
 
     @staticmethod
     def connect():
@@ -48,9 +49,9 @@ class UserRepository:
                                     is_enabled BOOLEAN DEFAULT TRUE,
                                     user_type ENUM('admin', 'teacher', 'student') NOT NULL,
                                     group_id INT,
-                                    org_id INT,  # New column for organization ID
+                                    org_id INT,  
                                     FOREIGN KEY (group_id) REFERENCES `user_groups`(id),
-                                    FOREIGN KEY (org_id) REFERENCES `organizations`(id)  # Foreign key relationship
+                                    FOREIGN KEY (org_id) REFERENCES `organizations`(id)  
                                 ); """
         cursor.execute(create_table_query)
         self.connection.commit()
@@ -60,10 +61,41 @@ class UserRepository:
         create_table_query = """CREATE TABLE IF NOT EXISTS `user_groups` (
                                     id INT AUTO_INCREMENT PRIMARY KEY,
                                     name VARCHAR(255) UNIQUE,
-                                    description TEXT
+                                    description TEXT,
+                                    org_id INT,  
+                                    FOREIGN KEY (org_id) REFERENCES `organizations`(id)  
                                 ); """
         cursor.execute(create_table_query)
         self.connection.commit()
+
+    def create_root_user(self):
+        # Validate environment variables
+        if 'ROOT_USER' not in os.environ or 'ROOT_PASSWORD' not in os.environ:
+            print("Environment variables for root user are not set.")
+            return
+
+        root_user = os.environ['ROOT_USER']
+        root_password = os.environ['ROOT_PASSWORD']
+
+        # Check if the root user already exists
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = %s", (root_user,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            return
+
+        # Hash the root user's password
+        hashed_password = bcrypt.hashpw(root_password.encode('utf-8'), bcrypt.gensalt())
+
+        # SQL query to insert the root user
+        insert_root_user_query = """INSERT INTO users (name, username, email, password, is_enabled, user_type, group_id, org_id) 
+                                    VALUES ('root', %s, 'kaaimd@gmail.com', %s, TRUE, 'admin', NULL, NULL);"""
+
+        # Execute the query
+        cursor.execute(insert_root_user_query, (root_user, hashed_password.decode('utf-8'),))
+        self.connection.commit()
+        print(f"Root user {root_user} has been created.")
 
     def add_user_to_group(self, username, group_name):
         cursor = self.connection.cursor()
@@ -94,7 +126,7 @@ class UserRepository:
         else:
             return None
 
-    def create_user_group(self, group_name):
+    def create_user_group(self, group_name, org_id):
         cursor = self.connection.cursor()
 
         # Check if the group already exists
@@ -106,9 +138,9 @@ class UserRepository:
             return False, f"Group '{group_name}' already exists."
 
         # If the group doesn't exist, proceed to create it
-        create_query = """INSERT INTO user_groups (name) VALUES (%s);"""
+        create_query = """INSERT INTO user_groups (name, org_id) VALUES (%s, %s);"""
         try:
-            cursor.execute(create_query, (group_name,))
+            cursor.execute(create_query, (group_name, org_id))
             self.connection.commit()
             return True, f"Group '{group_name}' successfully created."
         except Exception as e:
@@ -263,5 +295,3 @@ class UserRepository:
 
     def __del__(self):
         self.close()
-
-
