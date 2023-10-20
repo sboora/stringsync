@@ -1,4 +1,4 @@
-from TenantPortal import TenantPortal
+from portals.TenantPortal import TenantPortal
 
 
 def main():
