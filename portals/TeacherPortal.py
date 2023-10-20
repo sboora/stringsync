@@ -202,7 +202,7 @@ class TeacherPortal(BasePortal, ABC):
                 # Show an editable text box without a label
                 new_remarks = col4.text_input("", recording.get('remarks', 'N/A'))
 
-                if col4.button("Save", type="primary"):
+                if col4.button("Save", key="save_remarks", type="primary"):
                     self.recording_repo.update_remarks(recording['id'], new_remarks)
                     st.session_state["editable_states"][recording['id']] = False  # Turn off editable state
                     st.rerun()

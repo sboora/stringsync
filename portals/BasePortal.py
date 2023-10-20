@@ -29,7 +29,6 @@ class BasePortal(ABC):
             else:
                 self.login_user()
         else:
-            st.success(f"Welcome {self.get_username()}!")
             self.build_tabs()
 
         self.show_copyright()
@@ -118,6 +117,7 @@ class BasePortal(ABC):
                             self.user_repo.authenticate_user(username, password)
                         if is_authenticated:
                             self.set_session_state(user_id, org_id, username)
+                            st.rerun()
                         else:
                             st.error("Invalid username or password.")
                     else:
