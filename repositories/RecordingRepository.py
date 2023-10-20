@@ -34,22 +34,22 @@ class RecordingRepository:
     def create_recordings_table(self):
         cursor = self.connection.cursor()
         create_table_query = """CREATE TABLE IF NOT EXISTS recordings (
-                                    id INT AUTO_INCREMENT PRIMARY KEY,
-                                    user_id INT,
-                                    track_id INT,
-                                    blob_name VARCHAR(255),
-                                    blob_url TEXT,
-                                    timestamp DATETIME,
-                                    duration INT,
-                                    score INT,
-                                    analysis TEXT,
-                                    remarks TEXT,
-                                    file_hash VARCHAR(32)  # New column
-                                ); """
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            track_id INT,
+            blob_name VARCHAR(255),
+            blob_url TEXT,
+            timestamp DATETIME,
+            duration INT,
+            score INT,
+            analysis TEXT,
+            remarks TEXT,
+            file_hash VARCHAR(32)  
+        ); """
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis=None, remarks=None):
+    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="", remarks=""):
         cursor = self.connection.cursor()
         add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
                                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""  # Include file_hash
