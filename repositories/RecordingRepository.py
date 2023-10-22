@@ -177,3 +177,44 @@ class RecordingRepository:
 
     def __del__(self):
         self.close()
+
+    def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
+        cursor = self.connection.cursor()
+        query = "SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks" \
+                " FROM recordings WHERE remarks IS NULL OR remarks = ''"
+        filters = []
+
+        if group_id is not None:
+            filters.append(f"group_id = {group_id}")
+
+        if user_id is not None:
+            filters.append(f"user_id = {user_id}")
+
+        if track_id is not None:
+            filters.append(f"track_id = {track_id}")
+
+        if filters:
+            query += " AND " + " AND ".join(filters)
+
+        query += " ORDER BY timestamp DESC"
+
+        cursor.execute(query)
+        result = cursor.fetchall()
+        self.connection.commit()
+        recordings = []
+        for row in result:
+            recording = {
+                'id': row[0],
+                'blob_name': row[1],
+                'blob_url': row[2],
+                'timestamp': row[3],
+                'duration': row[4],
+                'track_id': row[5],
+                'score': row[6],
+                'analysis': row[7],
+                'remarks': row[8]
+            }
+            recordings.append(recording)
+
+        return recordings
+
