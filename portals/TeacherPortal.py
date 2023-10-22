@@ -21,7 +21,8 @@ class TeacherPortal(BasePortal, ABC):
         return {
             "👥 Create Group": self.create_group,
             "🔀 Assign Students to Groups": self.assign_students_to_group,
-            "🎵 List Recordings": self.list_recordings
+            "🎵 Recordings": self.list_recordings,
+            "📥 Submissions": self.list_submissions  # Add this line
         }
 
     def show_introduction(self):
@@ -75,15 +76,16 @@ class TeacherPortal(BasePortal, ABC):
             else:
                 st.warning("Group name cannot be empty.")
 
-    def list_students_and_tracks(self):
+    def list_students_and_tracks(self, source):
         st.header("Students")
 
         # Show groups in a dropdown
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
-        selected_group_name = st.selectbox("Select a group:", ['--Select a group--'] + list(group_options.keys()))
+        selected_group_name = st.selectbox(key=f"{source}-group", label="Select a group:", options=['--Select a group--'] + list(group_options.keys()))
 
         # Filter users by the selected group
+        selected_group_id = None
         if selected_group_name != '--Select a group--':
             selected_group_id = group_options[selected_group_name]
             users = self.user_repo.get_users_by_group(selected_group_id)
@@ -92,7 +94,7 @@ class TeacherPortal(BasePortal, ABC):
 
         user_options = {user['username']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
-        selected_username = st.selectbox("Select a student to view their recordings:", options)
+        selected_username = st.selectbox(key=f"{source}-user", label="Select a student to view their recordings:", options=options)
 
         selected_user_id = None
         if selected_username != '--Select a student--':
@@ -111,14 +113,14 @@ class TeacherPortal(BasePortal, ABC):
                 # Create a mapping for the dropdown
                 track_options = {track_names[id]: id for id in track_ids}
 
-                selected_track_name = st.selectbox("Select a track:",
-                                                   ['--Select a track--'] + list(track_options.keys()))
+                selected_track_name = st.selectbox(key=f"{source}-track", label="Select a track:",
+                                                   options=['--Select a track--'] + list(track_options.keys()))
                 if selected_track_name != '--Select a track--':
                     selected_track_id = track_options[selected_track_name]
                     track = self.track_repo.get_track_by_name(selected_track_name)
                     track_path = track[2]
 
-        return selected_username, selected_user_id, selected_track_id, track_path
+        return selected_group_id, selected_username, selected_user_id, selected_track_id, track_path
 
     @staticmethod
     def display_track_files(track_file):
@@ -136,14 +138,14 @@ class TeacherPortal(BasePortal, ABC):
         st.audio(track_file, format='core/m4a')
 
     def list_recordings(self):
-        username, user_id, track_id, track_name = self.list_students_and_tracks()
-        self.display_track_files(track_name)
+        group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
         if user_id is None:
             return
 
         if user_id is None or track_id is None:
             return
 
+        self.display_track_files(track_name)
         recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(user_id, track_id)
         if not recordings:
             st.write("No recordings found.")
@@ -152,6 +154,58 @@ class TeacherPortal(BasePortal, ABC):
         # Create a DataFrame to hold the recording data
         df = pd.DataFrame(recordings)
 
+        # Create a table header
+        header_html = self.generate_table_header()
+        st.markdown(header_html, unsafe_allow_html=True)
+
+        # Loop through each recording and create a table row
+        for index, recording in df.iterrows():
+            col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
+
+            if recording['blob_url']:
+                filename = self.storage_repo.download_blob(recording['blob_name'])
+                col1.audio(filename, format='core/m4a')
+            else:
+                col1.write("No core data available.")
+
+            # Use Markdown to make the text black and larger
+            col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
+                          unsafe_allow_html=True)
+            col3.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+                unsafe_allow_html=True)
+
+            # Show the remarks as markdown
+            col4.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                unsafe_allow_html=True)
+
+            formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
+                int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                          unsafe_allow_html=True)
+
+    def list_submissions(self):
+        # Filter criteria
+        group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
+
+        # Fetch and sort recordings
+        recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
+        if not recordings:
+            st.write("No submissions found.")
+            return
+
+        df = pd.DataFrame(recordings)
+
+        header_html = self.generate_table_header()
+        st.markdown(header_html, unsafe_allow_html=True)
+
+        # Display each recording
+        for index, recording in df.iterrows():
+            self.display_submission_row(recording)
+
+    @staticmethod
+    def generate_table_header():
         # Create a table header
         header_html = """
             <div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>
@@ -172,55 +226,35 @@ class TeacherPortal(BasePortal, ABC):
                 </div>
             </div>
             """
-        st.markdown(header_html, unsafe_allow_html=True)
+        return header_html
 
-        # Initialize session_state if it doesn't exist
-        if 'editable_states' not in st.session_state:
-            st.session_state["editable_states"] = {}
+    def display_submission_row(self, recording):
+        col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
 
-        # Loop through each recording and create a table row
-        for index, recording in df.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
+        col1.write("")
+        if recording['blob_url']:
+            filename = self.storage_repo.download_blob(recording['blob_name'])
+            col1.audio(filename, format='core/m4a')
+        else:
+            col1.write("No core data available.")
 
-            if recording['blob_url']:
-                filename = self.storage_repo.download_blob(recording['blob_name'])
-                col1.audio(filename, format='core/m4a')
-            else:
-                col1.write("No core data available.")
+        # Use Markdown to make the text black and larger
+        col2.write("")
+        col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
+                      unsafe_allow_html=True)
+        col3.write("")
+        col3.markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        remarks = col4.text_input("", key=f"remarks_{recording['id']}")
+        if remarks:
+            self.recording_repo.update_remarks(recording["id"], remarks)
 
-            # Use Markdown to make the text black and larger
-            col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
-                          unsafe_allow_html=True)
-            col3.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
-                unsafe_allow_html=True)
-
-            # Check if the remarks are editable
-            is_editable = st.session_state["editable_states"].get(recording['id'], False)
-
-            if is_editable:
-                # Show an editable text box without a label
-                new_remarks = col4.text_input("", recording.get('remarks', 'N/A'))
-
-                if col4.button("Save", key="save_remarks", type="primary"):
-                    self.recording_repo.update_remarks(recording['id'], new_remarks)
-                    st.session_state["editable_states"][recording['id']] = False  # Turn off editable state
-                    st.rerun()
-            else:
-                # Show the remarks as markdown
-                col4.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
-                    unsafe_allow_html=True)
-
-                # Show an edit icon next to the remarks
-                if col4.button("✏️", key=f"edit_{recording['id']}"):
-                    st.session_state["editable_states"][recording['id']] = True  # Turn on editable state
-                    st.rerun()
-
-            formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-                int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
-                          unsafe_allow_html=True)
+        col5.write("")
+        formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
+            int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+        col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                      unsafe_allow_html=True)
 
     @staticmethod
     def ordinal(n):
