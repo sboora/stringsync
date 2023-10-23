@@ -247,8 +247,8 @@ class RecordingRepository:
 
     def get_time_series_data(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = """SELECT DATE(timestamp) as date, SUM(total_duration) as total_duration, SUM(total_tracks) as total_tracks
-                   FROM recording_time_series WHERE user_id = %s GROUP BY DATE(timestamp) ORDER BY date ASC;"""
+        query = """SELECT DATE(timestamp) as date, SUM(duration) as total_duration, COUNT(*) as total_tracks
+                   FROM recordings WHERE user_id = %s GROUP BY DATE(timestamp) ORDER BY date ASC;"""
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
 
