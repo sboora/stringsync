@@ -6,6 +6,8 @@ import hashlib
 import librosa
 import streamlit as st
 import os
+import matplotlib.pyplot as plt
+import numpy as np
 
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
@@ -28,6 +30,7 @@ class StudentPortal(BasePortal, ABC):
             "🎵 Tracks": self.display_tracks,
             "🎤 Record": self.record,
             "📝 Assignments": self.assignments,
+            "📊 Progress Dashboard": self.display_progress_dashboard  # New tab
         }
 
     def show_introduction(self):
@@ -153,6 +156,55 @@ class StudentPortal(BasePortal, ABC):
     def assignments(self):
         pass
 
+    def display_progress_dashboard(self):
+        user_id = self.get_user_id()
+        time_series_data = self.recording_repo.get_time_series_data(user_id)
+
+        if not time_series_data:
+            st.write("No data available.")
+            return
+
+        date = [point['date'].timetuple().tm_yday for point in time_series_data]
+        total_durations = [max(0, int(point['total_duration'])) / 60 for point in time_series_data if
+                           point['total_duration'] is not None]
+        total_tracks = [int(point['total_tracks']) for point in time_series_data]
+        print(total_tracks)
+        assert all(np.isfinite(total_durations)), "total_durations contains non-finite values"
+        assert all(np.isfinite(total_tracks)), "total_tracks contains non-finite values"
+
+        df = pd.DataFrame({
+            'Day of Year': date,
+            'Total Duration': total_durations,
+            'Total Tracks': total_tracks
+        })
+
+        # Create the first line chart for Total Duration
+        fig1, ax1 = plt.subplots(figsize=(4, 2))
+        ax1.set_xlabel('Day of Year', fontsize=5)
+        ax1.set_ylabel('Total Duration (minutes)', fontsize=5)
+        ax1.plot(df['Day of Year'], df['Total Duration'], marker='', linestyle='-', linewidth=0.5, color='blue')
+        ax1.set_yticks(np.arange(0, max(25, max(total_durations) + 1), 5))
+        ax1.tick_params(axis='both', labelsize=5)
+        ax1.set_xlim(1, 365)
+        ax1.set_ylim(0, max(25, max(total_durations) + 1))
+        ax1.grid(True, linestyle='--', alpha=0.7)
+
+        # Create the second line chart for Total Tracks
+        fig2, ax2 = plt.subplots(figsize=(4, 2))
+        ax2.set_xlabel('Day of Year', fontsize=5)
+        ax2.set_ylabel('Total Tracks', fontsize=5)
+        ax2.plot(df['Day of Year'], df['Total Tracks'], marker='', linestyle='-', linewidth=0.5, color='green')
+        ax2.set_yticks(np.arange(0, max(25, max(total_tracks) + 1), 5))
+        ax2.tick_params(axis='both', labelsize=5)
+        ax2.set_xlim(1, 365)
+        ax2.set_ylim(0, max(25, max(total_tracks) + 1))
+        ax2.grid(True, linestyle='--', alpha=0.7)
+
+        # Display the charts side by side
+        col1, col2 = st.columns(2)
+        col1.pyplot(fig1)
+        col2.pyplot(fig2)
+
     def get_tracks(self):
         # Fetch all tracks and track statistics for this user
         tracks = self.track_repo.get_all_tracks()
@@ -250,8 +302,8 @@ class StudentPortal(BasePortal, ABC):
             return student_path, -1, False
 
         duration = self.calculate_audio_duration(student_path, recording_data)
-        url, recording_id = self.store_recording_in_database(user_id, track_id, student_path, timestamp, duration,
-                                                             file_hash)
+        url, recording_id = self.add_recording(user_id, track_id, student_path, timestamp, duration,
+                                               file_hash)
 
         st.audio(student_path, format='core/m4a')
         return student_path, recording_id, True
@@ -267,7 +319,7 @@ class StudentPortal(BasePortal, ABC):
         y, sr = librosa.load(student_path)
         return librosa.get_duration(y=y, sr=sr)
 
-    def store_recording_in_database(self, user_id, track_id, student_path, timestamp, duration, file_hash):
+    def add_recording(self, user_id, track_id, student_path, timestamp, duration, file_hash):
         url = self.storage_repo.upload_file(student_path, student_path)
         recording_id = self.recording_repo.add_recording(
             user_id, track_id, student_path, url, timestamp, duration, file_hash)
