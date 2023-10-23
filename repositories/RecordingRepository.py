@@ -9,7 +9,6 @@ class RecordingRepository:
     def __init__(self):
         self.connection = self.connect()
         self.create_recordings_table()
-        self.create_recording_time_series_table()
 
     @staticmethod
     def connect():
@@ -51,27 +50,13 @@ class RecordingRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def create_recording_time_series_table(self):
-        cursor = self.connection.cursor()
-        create_table_query = """CREATE TABLE IF NOT EXISTS recording_time_series (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT,
-            total_duration INT DEFAULT 0,
-            total_tracks INT DEFAULT 0,
-            timestamp DATETIME
-        ); """
-        cursor.execute(create_table_query)
-        self.connection.commit()
-
     def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="", remarks=""):
         cursor = self.connection.cursor()
         add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
                                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
         self.connection.commit()
-        # Create time series data
-        self.update_time_series(user_id, duration)
-        return cursor.lastrowid  # Return the id of the newly inserted row
+        return cursor.lastrowid
 
     def is_duplicate_recording(self, user_id, track_id, file_hash):
         cursor = self.connection.cursor()
@@ -239,17 +224,6 @@ class RecordingRepository:
             recordings.append(recording)
 
         return recordings
-
-    def update_time_series(self, user_id, duration):
-        cursor = self.connection.cursor()
-
-        # Calculate the new cumulative totals
-
-        # Insert the new record with the new cumulative totals
-        insert_query = """INSERT INTO recording_time_series (user_id, total_duration, total_tracks, timestamp)
-                          VALUES (%s, %s, %s, NOW());"""
-        cursor.execute(insert_query, (user_id, duration, 1))
-        self.connection.commit()
 
     def get_time_series_data(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
