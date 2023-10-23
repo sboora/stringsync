@@ -215,10 +215,10 @@ class TeacherPortal(BasePortal, ABC):
                 <div style='display:inline-block;width:8%;text-align:left;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Score</p>
                 </div>
-                <div style='display:inline-block;width:24%;text-align:left;'>
+                <div style='display:inline-block;width:20%;text-align:left;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Analysis</p>
                 </div>
-                <div style='display:inline-block;width:24%;text-align:left;'>
+                <div style='display:inline-block;width:20%;text-align:left;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Remarks</p>
                 </div>
                 <div style='display:inline-block;width:10%;text-align:left;'>
@@ -238,14 +238,15 @@ class TeacherPortal(BasePortal, ABC):
         else:
             col1.write("No core data available.")
 
-        # Use Markdown to make the text black and larger
-        col2.write("")
-        col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
-                      unsafe_allow_html=True)
-        col3.write("")
+        score = col2.text_input("", key=f"score_{recording['id']}", value=recording['score'])
+        if score:
+            self.recording_repo.update_score(recording["id"], score)
+
+        col3.write("", style={"fontSize": "5px"})
         col3.markdown(
             f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
+
         remarks = col4.text_input("", key=f"remarks_{recording['id']}")
         if remarks:
             self.recording_repo.update_remarks(recording["id"], remarks)

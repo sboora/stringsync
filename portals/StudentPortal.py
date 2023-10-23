@@ -375,7 +375,7 @@ class StudentPortal(BasePortal, ABC):
         error_dict = self.group_notes_by_first_letter(error_notes)
         missing_dict = self.group_notes_by_first_letter(missing_notes)
 
-        message = "Note analysis:\n"
+        message = ""
         if error_dict == missing_dict:
             message += "Your recording had all the notes that the track had.\n"
         else:
