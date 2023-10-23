@@ -173,6 +173,12 @@ class RecordingRepository:
         cursor.execute(update_query, (score, analysis, recording_id))
         self.connection.commit()
 
+    def update_score(self, recording_id, score):
+        cursor = self.connection.cursor()
+        update_query = """UPDATE recordings SET score = %s WHERE id = %s;"""
+        cursor.execute(update_query, (score, recording_id))
+        self.connection.commit()
+
     def get_total_duration(self, user_id, track_id):
         cursor = self.connection.cursor()
         get_total_duration_query = """SELECT SUM(duration) FROM recordings
@@ -282,6 +288,8 @@ class RecordingRepository:
             })
 
         return all_days_data
+
+
 
 
 
