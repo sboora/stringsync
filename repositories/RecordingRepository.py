@@ -1,13 +1,15 @@
 import os
 import tempfile
 from google.cloud.sql.connector import Connector
-import json
+import pymysql.cursors
+from datetime import datetime, timedelta
 
 
 class RecordingRepository:
     def __init__(self):
         self.connection = self.connect()
         self.create_recordings_table()
+        self.create_recording_time_series_table()
 
     @staticmethod
     def connect():
@@ -49,12 +51,26 @@ class RecordingRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
+    def create_recording_time_series_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """CREATE TABLE IF NOT EXISTS recording_time_series (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            total_duration INT DEFAULT 0,
+            total_tracks INT DEFAULT 0,
+            timestamp DATETIME
+        ); """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+
     def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="", remarks=""):
         cursor = self.connection.cursor()
         add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
-                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""  # Include file_hash
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
         self.connection.commit()
+        # Create time series data
+        self.update_time_series(user_id, duration)
         return cursor.lastrowid  # Return the id of the newly inserted row
 
     def is_duplicate_recording(self, user_id, track_id, file_hash):
@@ -217,4 +233,61 @@ class RecordingRepository:
             recordings.append(recording)
 
         return recordings
+
+    def update_time_series(self, user_id, duration):
+        cursor = self.connection.cursor()
+
+        # Calculate the new cumulative totals
+
+        # Insert the new record with the new cumulative totals
+        insert_query = """INSERT INTO recording_time_series (user_id, total_duration, total_tracks, timestamp)
+                          VALUES (%s, %s, %s, NOW());"""
+        cursor.execute(insert_query, (user_id, duration, 1))
+        self.connection.commit()
+
+    def get_time_series_data(self, user_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """SELECT DATE(timestamp) as date, SUM(total_duration) as total_duration, SUM(total_tracks) as total_tracks
+                   FROM recording_time_series WHERE user_id = %s GROUP BY DATE(timestamp) ORDER BY date ASC;"""
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+
+        # Initialize an empty list to hold the time series data for all days of the year
+        all_days_data = []
+
+        # Initialize variables to keep track of the last known total_duration and total_tracks
+        last_total_duration = 0
+        last_total_tracks = 0
+
+        # Initialize the start date as the first day of the current year
+        start_date = datetime(datetime.now().year, 1, 1).date()
+
+        # Iterate through all days of the year
+        for day in range(1, 366):  # 365 days in a year, 366 to include the last day
+            current_date = start_date + timedelta(days=day - 1)
+
+            # Check if there is data for the current day in the query result
+            day_data = next((item for item in result if item['date'] == current_date), None)
+
+            if day_data:
+                # Update the last known total_duration and total_tracks
+                last_total_duration = day_data['total_duration']
+                last_total_tracks = day_data['total_tracks']
+
+            # Append the data for the current day to the list
+            all_days_data.append({
+                'date': current_date,
+                'total_duration': last_total_duration,
+                'total_tracks': last_total_tracks
+            })
+
+        return all_days_data
+
+
+
+
+
+
+
+
 
