@@ -17,6 +17,12 @@ class TeacherPortal(BasePortal, ABC):
         self.storage_repo = StorageRepository("stringsync")
         self.track_repo = TrackRepository()
 
+    def get_title(self):
+        return "StringSync Student Portal"
+
+    def get_icon(self):
+        return "🎶"
+
     def get_tab_dict(self):
         return {
             "👥 Create Group": self.create_group,

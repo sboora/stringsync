@@ -10,6 +10,12 @@ class AdminPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
 
+    def get_title(self):
+        return "StringSync Admin Portal"
+
+    def get_icon(self):
+        return "🛠"
+
     def get_tab_dict(self):
         return {
             "🏫 Register a School": self.register_school,

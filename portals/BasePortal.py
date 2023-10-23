@@ -35,7 +35,9 @@ class BasePortal(ABC):
 
     def set_app_layout(self):
         st.set_page_config(
-            layout='wide'
+            page_title=self.get_title(),
+            page_icon=self.get_icon(),
+            layout="wide"
         )
         custom_css = """
                 <style>
@@ -54,6 +56,14 @@ class BasePortal(ABC):
         with col2:
             if self.user_logged_in():
                 self.show_user_menu()
+
+    @abstractmethod
+    def get_title(self):
+        pass
+
+    @abstractmethod
+    def get_icon(self):
+        pass
 
     @staticmethod
     def show_app_header():
@@ -134,7 +144,7 @@ class BasePortal(ABC):
                 self.show_user_registration_screen()
 
             # Create two columns for the buttons
-            col1, col2, col3 = st.columns([3, 5, 4])
+            col1, col2, col3 = st.columns([2, 2, 25])
             # Ok button
             with col1:
                 if self.ok():

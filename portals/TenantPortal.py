@@ -9,6 +9,12 @@ class TenantPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
 
+    def get_title(self):
+        return "StringSync Tenant Portal"
+
+    def get_icon(self):
+        return "🏠"
+
     def show_introduction(self):
         st.write("""
             ### Welcome to the **Tenant Management Portal**!!

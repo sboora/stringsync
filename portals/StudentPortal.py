@@ -25,6 +25,12 @@ class StudentPortal(BasePortal, ABC):
         self.storage_repo = StorageRepository("stringsync")
         self.audio_processor = AudioProcessor()
 
+    def get_title(self):
+        return "StringSync Student Portal"
+
+    def get_icon(self):
+        return "🎶"
+
     def get_tab_dict(self):
         return {
             "🎤 Record": self.record,
