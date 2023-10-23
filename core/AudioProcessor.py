@@ -89,7 +89,7 @@ class AudioProcessor:
             magnitude = np.abs(fft_result)
             peak_frequency = frequencies[np.argmax(magnitude)]
             if peak_frequency > 0:
-                note = cls.freq_to_note(peak_frequency)
+                note= cls.freq_to_note(peak_frequency)
                 notes.append(note)
         return notes
 
