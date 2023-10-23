@@ -118,53 +118,49 @@ class BasePortal(ABC):
             is_authenticated = False
             password, username = self.show_login_screen()
             # Create two columns for the buttons
-            col1, col2, col3 = st.columns([5, 5, 25])
+            col1, col2, col3 = st.columns([2, 4, 32])
             # Login button in the first column
-            with col1:
-                if self.login():
-                    if username and password:
-                        is_authenticated, user_id, org_id = \
-                            self.user_repo.authenticate_user(username, password)
-                        if is_authenticated:
-                            self.set_session_state(user_id, org_id, username)
-                            st.rerun()
-                        else:
-                            st.error("Invalid username or password.")
+            if col1.button("Login", type="primary"):
+                if username and password:
+                    is_authenticated, user_id, org_id = \
+                        self.user_repo.authenticate_user(username, password)
+                    if is_authenticated:
+                        self.set_session_state(user_id, org_id, username)
+                        st.rerun()
                     else:
-                        st.error("Both username and password are required")
+                        st.error("Invalid username or password.")
+                else:
+                    st.error("Both username and password are required")
 
             # Register button in the second column
-            with col2:
-                if self.register():
-                    st.session_state["show_register_section"] = True
-                    st.rerun()
+            if col2.button("Register", type="primary"):
+                st.session_state["show_register_section"] = True
+                st.rerun()
         else:
             st.subheader("Register")
             reg_email, reg_name, reg_password, reg_username, join_code = \
                 self.show_user_registration_screen()
 
             # Create two columns for the buttons
-            col1, col2, col3 = st.columns([5, 5, 25])
+            col1, col2, col3 = st.columns([3, 4, 40])
             # Ok button
-            with col1:
-                if self.ok():
-                    if reg_name and reg_username and reg_email and reg_password and join_code:
-                        _, org_id = self.org_repo.get_org_id_by_join_code(join_code)
-                        is_registered, message = self.user_repo.register_user(
-                            reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
-                        if is_registered:
-                            st.success(message)
-                            st.session_state["show_register_section"] = False
-                            time.sleep(2)
-                            st.rerun()
-                        else:
-                            st.error(message)
+            if col1.button("Submit", type="primary"):
+                if reg_name and reg_username and reg_email and reg_password and join_code:
+                    _, org_id = self.org_repo.get_org_id_by_join_code(join_code)
+                    is_registered, message = self.user_repo.register_user(
+                        reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
+                    if is_registered:
+                        st.success(message)
+                        st.session_state["show_register_section"] = False
+                        time.sleep(2)
+                        st.rerun()
                     else:
-                        st.error("All fields are required for registration")
-            with col2:
-                if self.cancel():
-                    st.session_state["show_register_section"] = False
-                    st.rerun()
+                        st.error(message)
+                else:
+                    st.error("All fields are required for registration")
+            if col2.button("Cancel", type="primary"):
+                st.session_state["show_register_section"] = False
+                st.rerun()
 
         return is_authenticated
 
