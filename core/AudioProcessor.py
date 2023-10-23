@@ -82,10 +82,15 @@ class AudioProcessor:
         onset_frames = librosa.onset.onset_detect(onset_envelope=o_env, normalize=True, sr=sr)
         onset_samples = librosa.frames_to_samples(onset_frames)
         slices = [y[start:end] for start, end in zip(onset_samples[:-1], onset_samples[1:])]
-        notes = [
-            cls.freq_to_note(np.fft.fftfreq(len(np.fft.fft(audio_slice)))[np.argmax(np.abs(np.fft.fft(audio_slice)))])
-            for audio_slice in slices if
-            np.fft.fftfreq(len(np.fft.fft(audio_slice)))[np.argmax(np.abs(np.fft.fft(audio_slice)))] > 0]
+        notes = []
+        for audio_slice in slices:
+            fft_result = np.fft.fft(audio_slice)
+            frequencies = np.fft.fftfreq(len(fft_result))
+            magnitude = np.abs(fft_result)
+            peak_frequency = frequencies[np.argmax(magnitude)]
+            if peak_frequency > 0:
+                note = cls.freq_to_note(peak_frequency)
+                notes.append(note)
         return notes
 
     @staticmethod
