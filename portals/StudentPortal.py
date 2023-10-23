@@ -27,9 +27,7 @@ class StudentPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         return {
-            "🎵 Tracks": self.display_tracks,
             "🎤 Record": self.record,
-            "📝 Assignments": self.assignments,
             "📊 Progress Dashboard": self.display_progress_dashboard  # New tab
         }
 
@@ -51,20 +49,6 @@ class StudentPortal(BasePortal, ABC):
 
             Ready to dive in? Use the sidebar to explore all the exciting features available on your Student Portal!
         """)
-
-    def display_tracks(self):
-        tracks = self.get_tracks()
-
-        self.build_header(column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
-        for track_detail in tracks:
-            row_data = {
-                "Track Name": [track_detail['track'][1]],
-                "Number of Recordings": [track_detail['num_recordings']],
-                "Average Score": [track_detail['avg_score']],
-                "Min Score": [track_detail['min_score']],
-                "Max Score": [track_detail['max_score']]
-            }
-            self.build_row(row_data)
 
     def record(self):
         track = self.filter_tracks()
@@ -149,6 +133,28 @@ class StudentPortal(BasePortal, ABC):
         pass
 
     def display_progress_dashboard(self):
+        st.write("")
+        self.display_tracks()
+        st.write("")
+        self.show_line_graph()
+
+    def display_tracks(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Track Details</h2>", unsafe_allow_html=True)
+        tracks = self.get_tracks()
+
+        self.build_header(column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
+        for track_detail in tracks:
+            row_data = {
+                "Track Name": track_detail['track'][1],
+                "Number of Recordings": track_detail['num_recordings'],
+                "Average Score": track_detail['avg_score'],
+                "Min Score": track_detail['min_score'],
+                "Max Score": track_detail['max_score']
+            }
+            self.build_row(row_data)
+
+    def show_line_graph(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Duration/Track Charts</h2>", unsafe_allow_html=True)
         user_id = self.get_user_id()
         time_series_data = self.recording_repo.get_time_series_data(user_id)
 
