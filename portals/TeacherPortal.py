@@ -18,7 +18,7 @@ class TeacherPortal(BasePortal, ABC):
         self.track_repo = TrackRepository()
 
     def get_title(self):
-        return "StringSync Student Portal"
+        return "StringSync Teacher Portal"
 
     def get_icon(self):
         return "🎶"

@@ -118,7 +118,7 @@ class BasePortal(ABC):
             is_authenticated = False
             password, username = self.show_login_screen()
             # Create two columns for the buttons
-            col1, col2, col3 = st.columns([2, 2, 25])
+            col1, col2, col3 = st.columns([5, 5, 25])
             # Login button in the first column
             with col1:
                 if self.login():
@@ -144,7 +144,7 @@ class BasePortal(ABC):
                 self.show_user_registration_screen()
 
             # Create two columns for the buttons
-            col1, col2, col3 = st.columns([2, 2, 25])
+            col1, col2, col3 = st.columns([5, 5, 25])
             # Ok button
             with col1:
                 if self.ok():
