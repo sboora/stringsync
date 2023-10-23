@@ -54,25 +54,17 @@ class StudentPortal(BasePortal, ABC):
 
     def display_tracks(self):
         tracks = self.get_tracks()
-        # Create an empty DataFrame with the desired columns
-        df = pd.DataFrame(columns=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
 
-        # Populate the DataFrame
+        self.build_header(column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
         for track_detail in tracks:
-            # Create a DataFrame for this row
-            row_df = pd.DataFrame({
+            row_data = {
                 "Track Name": [track_detail['track'][1]],
                 "Number of Recordings": [track_detail['num_recordings']],
                 "Average Score": [track_detail['avg_score']],
                 "Min Score": [track_detail['min_score']],
                 "Max Score": [track_detail['max_score']]
-            })
-
-            # Append this track's details to the DataFrame
-            df = pd.concat([df, row_df], ignore_index=True)
-
-        # Display the table using Streamlit
-        st.table(df)
+            }
+            self.build_row(row_data)
 
     def record(self):
         track = self.filter_tracks()
@@ -168,7 +160,6 @@ class StudentPortal(BasePortal, ABC):
         total_durations = [max(0, int(point['total_duration'])) / 60 for point in time_series_data if
                            point['total_duration'] is not None]
         total_tracks = [int(point['total_tracks']) for point in time_series_data]
-        print(total_tracks)
         assert all(np.isfinite(total_durations)), "total_durations contains non-finite values"
         assert all(np.isfinite(total_tracks)), "total_tracks contains non-finite values"
 
