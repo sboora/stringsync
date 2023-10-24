@@ -1,10 +1,16 @@
 import re
+from time import sleep
+
 import bcrypt
+import pymysql
 from google.cloud.sql.connector import Connector
 import os
 import tempfile
 
 from enums.UserType import UserType
+
+MAX_RETRIES = 3  # Set the maximum number of retries
+RETRY_DELAY = 1  # Time delay between retries in seconds
 
 
 class UserRepository:
@@ -30,13 +36,22 @@ class UserRepository:
         db_pass = os.environ["SQL_PASSWORD"]
         db_name = os.environ["SQL_DATABASE"]
 
-        return Connector().connect(
-            instance_connection_name,
-            "pymysql",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-        )
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                connection = Connector().connect(
+                    instance_connection_name,
+                    "pymysql",
+                    user=db_user,
+                    password=db_pass,
+                    db=db_name,
+                )
+                return connection
+            except pymysql.MySQLError as e:
+                print(f"Failed to connect to database: {e}")
+                retries += 1
+                print(f"Retrying ({retries}/{MAX_RETRIES})...")
+                sleep(RETRY_DELAY)
 
     def create_users_table(self):
         cursor = self.connection.cursor()
@@ -262,11 +277,16 @@ class UserRepository:
 
     def get_users_by_org_id_and_type(self, org_id, user_type):
         cursor = self.connection.cursor()
-        get_users_query = """SELECT id, name, username, email FROM users WHERE org_id = %s AND user_type = %s;"""
+        get_users_query = """SELECT u.id, u.name, u.username, u.email, g.name AS group_name 
+                             FROM users u
+                             LEFT JOIN user_groups g ON u.group_id = g.id
+                             WHERE u.org_id = %s AND u.user_type = %s;"""
         cursor.execute(get_users_query, (org_id, user_type))
         result = cursor.fetchall()
+
         # Create a list of dictionaries to hold the user data
-        users = [{'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3]} for row in result]
+        users = [{'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3], 'group_name': row[4]} for row in
+                 result]
         return users
 
     def assign_user_to_org(self, user_id, org_id):
