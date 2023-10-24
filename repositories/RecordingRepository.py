@@ -1,8 +1,13 @@
 import os
 import tempfile
+from time import sleep
+
 from google.cloud.sql.connector import Connector
 import pymysql.cursors
 from datetime import datetime, timedelta
+
+MAX_RETRIES = 3  # Set the maximum number of retries
+RETRY_DELAY = 1  # Time delay between retries in seconds
 
 
 class RecordingRepository:
@@ -24,13 +29,22 @@ class RecordingRepository:
         db_pass = os.environ["SQL_PASSWORD"]
         db_name = os.environ["SQL_DATABASE"]
 
-        return Connector().connect(
-            instance_connection_name,
-            "pymysql",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-        )
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                connection = Connector().connect(
+                    instance_connection_name,
+                    "pymysql",
+                    user=db_user,
+                    password=db_pass,
+                    db=db_name,
+                )
+                return connection
+            except pymysql.MySQLError as e:
+                print(f"Failed to connect to database: {e}")
+                retries += 1
+                print(f"Retrying ({retries}/{MAX_RETRIES})...")
+                sleep(RETRY_DELAY)
 
     def create_recordings_table(self):
         cursor = self.connection.cursor()
@@ -50,11 +64,13 @@ class RecordingRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="", remarks=""):
+    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="",
+                      remarks=""):
         cursor = self.connection.cursor()
         add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
                                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
-        cursor.execute(add_recording_query, (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
+        cursor.execute(add_recording_query,
+                       (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
         self.connection.commit()
         return cursor.lastrowid
 
@@ -164,11 +180,25 @@ class RecordingRepository:
         cursor.execute(update_query, (score, recording_id))
         self.connection.commit()
 
-    def get_total_duration(self, user_id, track_id):
+    def get_total_duration_by_track(self, user_id, track_id):
         cursor = self.connection.cursor()
         get_total_duration_query = """SELECT SUM(duration) FROM recordings
                                       WHERE user_id = %s AND track_id = %s;"""
         cursor.execute(get_total_duration_query, (user_id, track_id))
+        return cursor.fetchone()[0]
+
+    def get_total_duration(self, user_id, min_score=0):
+        cursor = self.connection.cursor()
+        get_total_duration_query = """SELECT SUM(duration) FROM recordings
+                                      WHERE user_id = %s AND score >= %s;"""
+        cursor.execute(get_total_duration_query, (user_id, min_score))
+        return cursor.fetchone()[0]
+
+    def get_total_recordings(self, user_id, min_score=0):
+        cursor = self.connection.cursor()
+        get_total_recordings_query = """SELECT COUNT(*) FROM recordings
+                                        WHERE user_id = %s AND score >= %s;"""
+        cursor.execute(get_total_recordings_query, (user_id, min_score))
         return cursor.fetchone()[0]
 
     def update_remarks(self, recording_id, remarks):
@@ -262,14 +292,3 @@ class RecordingRepository:
             })
 
         return all_days_data
-
-
-
-
-
-
-
-
-
-
-

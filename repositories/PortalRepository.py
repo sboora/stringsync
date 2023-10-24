@@ -1,6 +1,12 @@
 import tempfile
+from time import sleep
+
 from google.cloud.sql.connector import Connector
 import os
+import pymysql
+
+MAX_RETRIES = 3  # Set the maximum number of retries
+RETRY_DELAY = 1  # Time delay between retries in seconds
 
 
 class PortalRepository:
@@ -20,13 +26,22 @@ class PortalRepository:
         db_pass = os.environ["SQL_PASSWORD"]
         db_name = os.environ["SQL_DATABASE"]
 
-        return Connector().connect(
-            instance_connection_name,
-            "pymysql",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-        )
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                connection = Connector().connect(
+                    instance_connection_name,
+                    "pymysql",
+                    user=db_user,
+                    password=db_pass,
+                    db=db_name,
+                )
+                return connection
+            except pymysql.MySQLError as e:
+                print(f"Failed to connect to database: {e}")
+                retries += 1
+                print(f"Retrying ({retries}/{MAX_RETRIES})...")
+                sleep(RETRY_DELAY)
 
     def list_tutor_assignments(self, tenant_id):
         cursor = self.connection.cursor()

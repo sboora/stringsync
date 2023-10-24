@@ -1,5 +1,3 @@
-import re
-import bcrypt
 from google.cloud.sql.connector import Connector
 import os
 import tempfile
