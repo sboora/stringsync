@@ -6,6 +6,7 @@ import streamlit as st
 
 from enums.UserType import UserType
 from repositories.PortalRepository import PortalRepository
+from repositories.SettingsRepository import SettingsRepository
 from repositories.TenantRepository import TenantRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
@@ -18,6 +19,7 @@ class BasePortal(ABC):
         self.org_repo = OrganizationRepository()
         self.user_repo = UserRepository()
         self.portal_repo = PortalRepository()
+        self.settings_repo = SettingsRepository()
 
     def start(self, register=False):
         self.init_session()

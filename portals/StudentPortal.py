@@ -9,12 +9,14 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from enums.Badges import Badges
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from repositories.RecordingRepository import RecordingRepository
 from repositories.StorageRepository import StorageRepository
 from repositories.TrackRepository import TrackRepository
 from core.AudioProcessor import AudioProcessor
+from repositories.UserAchievementRepository import UserAchievementRepository
 
 
 class StudentPortal(BasePortal, ABC):
@@ -23,6 +25,7 @@ class StudentPortal(BasePortal, ABC):
         self.track_repo = TrackRepository()
         self.recording_repo = RecordingRepository()
         self.storage_repo = StorageRepository("stringsync")
+        self.user_achievement_repo = UserAchievementRepository()
         self.audio_processor = AudioProcessor()
 
     def get_title(self):
@@ -34,27 +37,39 @@ class StudentPortal(BasePortal, ABC):
     def get_tab_dict(self):
         return {
             "🎤 Record": self.record,
-            "📊 Progress Dashboard": self.display_progress_dashboard  # New tab
+            "📊 Progress Dashboard": self.display_progress_dashboard,
+            "🏆 Achievements": self.display_achievements
         }
 
     def show_introduction(self):
         st.write("""
-            Welcome to the **Student Portal** of String Sync, your personal space for musical growth and exploration. 
-            This platform is designed to offer you a comprehensive and interactive music learning experience.
+            ### Welcome to String Sync! 🎵
 
-            ### How Does it Work?
-            1. **Listen to Tracks**: Explore a wide range of tracks to find the ones that resonate with you.
-            2. **Record Performances**: Once you've practiced, record your performances for these tracks.
-            3. **Work on Assignments**: Complete assignments given by your teacher and submit them for review.
+            This is your personal hub for musical growth, exploration, and achievement. Whether you're a beginner or an aspiring artist, we've got something for you.
+            ### What Can You Do Here? 🎸
 
-            ### Why Use String Sync for Learning?
-            - **Personalized Learning**: Tailor your learning experience by choosing tracks that suit your taste and skill level.
-            - **Instant Feedback**: Receive immediate, data-driven feedback on your performances.
-            - **Track Your Progress**: Keep an eye on your improvement over time with easy-to-understand metrics.
-            - **Interactive Assignments**: Engage with assignments that challenge you and help you grow as a musician.
-
-            Ready to dive in? Use the sidebar to explore all the exciting features available on your Student Portal!
+            1. **Listen to Tracks**: Browse through a curated list of tracks that suit your musical taste and skill level.
+            2. **Record Performances**: Record your own renditions of these tracks and get instant feedback.
+            3. **Work on Assignments**: Complete assignments set by your teacher to hone your skills further.
+            4. **Progress Dashboard**: Track your practice time, number of tracks completed, and other key metrics.
+            5. **Achievements**: Earn badges for reaching milestones and accomplishing challenges.
         """)
+
+        # Check if the user is logged in
+        if not self.user_logged_in():
+            st.write("""
+                ### Why Choose String Sync? 🌟
+
+                - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
+                - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
+                - **Progress Tracking**: Visualize your growth over time with easy-to-understand charts and metrics.
+                - **Interactive Assignments**: Engage in assignments that are not only educational but also fun.
+                - **Achievements and Badges**: Get rewarded for your hard work and dedication with exciting badges.
+            """)
+
+        st.write(
+            "Ready to dive into your musical journey? Scroll down to explore all the exciting features available to "
+            "you!")
 
     def record(self):
         track = self.filter_tracks()
@@ -148,7 +163,8 @@ class StudentPortal(BasePortal, ABC):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Track Details</h2>", unsafe_allow_html=True)
         tracks = self.get_tracks()
 
-        self.build_header(column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
+        self.build_header(
+            column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
         for track_detail in tracks:
             row_data = {
                 "Track Name": track_detail['track'][1],
@@ -160,7 +176,8 @@ class StudentPortal(BasePortal, ABC):
             self.build_row(row_data)
 
     def show_line_graph(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Duration/Track Charts</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Duration/Track Charts</h2>",
+                    unsafe_allow_html=True)
         user_id = self.get_user_id()
         time_series_data = self.recording_repo.get_time_series_data(user_id)
 
@@ -423,6 +440,51 @@ class StudentPortal(BasePortal, ABC):
             return "Great work. Keep it up!"
         else:
             return "Excellent! You've mastered this track!"
+
+    def display_achievements(self):
+        st.write("### Your Achievements 🏆")
+        self.award_badge()
+        badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
+
+        # Create a Streamlit column layout to display badges in a visually appealing manner
+        cols = st.columns(5)  # Adjust the number of columns as needed
+
+        for i, badge in enumerate(badges):
+            with cols[i % 5]:  # Loop through columns
+                # Display the badge icon from the badge folder
+                st.image(f"badges/{badge}.png", caption=f"{badge}", width=200)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    def award_badge(self):
+        # Fetch the total number of tracks and total duration for the user
+        min_score = self.settings_repo.get_minimum_score_for_badges()
+        total_tracks = self.recording_repo.get_total_recordings(self.get_user_id(), min_score)
+        total_duration = self.recording_repo.get_total_duration(self.get_user_id(), min_score)
+
+        # Award badges based on the total number of tracks
+        if total_tracks >= 1:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.FIRST_NOTE)
+        if total_tracks >= 20:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.RISING_STAR)
+        if total_tracks >= 40:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.FAST_LEARNER)
+        if total_tracks >= 75:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.SONG_BIRD)
+        if total_tracks >= 100:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.MAESTRO)
+
+        # Award badges based on the total duration
+        if total_duration >= 60:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.PRACTICE_MAKES_PERFECT)
+        if total_duration >= 120:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.PERFECT_PITCH)
+        if total_duration >= 300:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.MUSIC_WIZARD)
+        if total_duration >= 600:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.ROCKSTAR)
+        if total_duration >= 1000:
+            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.VIRTUOSO)
 
     @staticmethod
     def ordinal(n):
