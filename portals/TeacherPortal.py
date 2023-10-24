@@ -26,9 +26,10 @@ class TeacherPortal(BasePortal, ABC):
     def get_tab_dict(self):
         return {
             "👥 Create Group": self.create_group,
+            "👩‍🎓 Students": self.display_students,
             "🔀 Assign Students to Groups": self.assign_students_to_group,
             "🎵 Recordings": self.list_recordings,
-            "📥 Submissions": self.list_submissions  # Add this line
+            "📥 Submissions": self.list_submissions
         }
 
     def show_introduction(self):
@@ -52,27 +53,31 @@ class TeacherPortal(BasePortal, ABC):
         users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
         user_options = {user['username']: user['id'] for user in users}
 
-        selected_username = st.selectbox("Select a student:", ['--Select a student--'] + list(user_options.keys()))
-        if selected_username != '--Select a student--':
-            selected_user_id = user_options[selected_username]
+        selected_usernames = st.multiselect("Select students:", ['--Select a student--'] + list(user_options.keys()))
 
-            # Get the current group of the user
-            current_group = self.user_repo.get_group_by_user_id(selected_user_id)
-            current_group_name = current_group['group_name'] if current_group else '--Select a group--'
+        # Check if the list is not empty and doesn't contain the placeholder
+        if selected_usernames and '--Select a student--' not in selected_usernames:
 
-            # Dropdown to assign a new group, with the current group pre-selected
-            assign_to_group = st.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()),
-                                           index=list(group_options.keys()).index(
-                                               current_group_name) + 1 if current_group else 0)
+            # Dropdown to assign a new group
+            assign_to_group = st.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()))
 
-            if assign_to_group != '--Select a group--' and assign_to_group != current_group_name:
-                self.user_repo.assign_user_to_group(selected_user_id, group_options[assign_to_group])
-                st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
+            if assign_to_group != '--Select a group--':
+                for selected_username in selected_usernames:
+                    selected_user_id = user_options[selected_username]
+
+                    # Get the current group of the user
+                    current_group = self.user_repo.get_group_by_user_id(selected_user_id)
+                    current_group_name = current_group['group_name'] if current_group else '--Select a group--'
+
+                    if assign_to_group != current_group_name:
+                        self.user_repo.assign_user_to_group(selected_user_id, group_options[assign_to_group])
+                        st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     def create_group(self):
         # Feature to create a new group
         group_name = st.text_input("Create a new group:")
         if st.button("Create Group", type='primary'):
+            print("Creating group", group_name)
             if group_name:
                 success, message = self.user_repo.create_user_group(group_name, self.get_org_id())
                 if success:
@@ -81,6 +86,23 @@ class TeacherPortal(BasePortal, ABC):
                     st.error(message)
             else:
                 st.warning("Group name cannot be empty.")
+
+    def display_students(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Student Details</h2>", unsafe_allow_html=True)
+
+        # Assuming you have a method to get students assigned to you
+        students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
+
+        self.build_header(column_names=["Name", "Username", "Email", "Group"])
+
+        for student_detail in students:
+            row_data = {
+                "Name": student_detail['name'],
+                "Username": student_detail['username'],
+                "Email": student_detail['email'],
+                "Group": student_detail['group_name'],
+            }
+            self.build_row(row_data)
 
     def list_students_and_tracks(self, source):
         st.header("Students")
