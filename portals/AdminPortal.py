@@ -11,7 +11,7 @@ class AdminPortal(BasePortal, ABC):
         super().__init__()
 
     def get_title(self):
-        return "StringSync Admin Portal"
+        return "MelodyMaster Admin Portal"
 
     def get_icon(self):
         return "🛠"
@@ -51,6 +51,15 @@ class AdminPortal(BasePortal, ABC):
             success, org_id, join_code, message = self.org_repo.register_organization(
                 self.get_tenant_id(), form_data['Name'], form_data['Description'], False)
             if success:
+                # Create the folder structure in GCS after successful registration
+                tenant_id = self.get_tenant_id()
+
+                # Create the required folders
+                self.storage_repo.create_folder(f'{tenant_id}/{org_id}/tracks')
+                self.storage_repo.create_folder(f'{tenant_id}/{org_id}/recordings')
+                self.storage_repo.create_folder(f'{tenant_id}/logo')
+                self.storage_repo.create_folder(f'{tenant_id}/badges')
+
                 st.success(message)
             else:
                 st.error(message)

@@ -10,7 +10,7 @@ class TenantPortal(BasePortal, ABC):
         super().__init__()
 
     def get_title(self):
-        return "StringSync Tenant Portal"
+        return "MelodyMaster Tenant Portal"
 
     def get_icon(self):
         return "🏠"

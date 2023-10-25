@@ -6,8 +6,11 @@ import streamlit as st
 
 from enums.UserType import UserType
 from repositories.PortalRepository import PortalRepository
+from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
+from repositories.StorageRepository import StorageRepository
 from repositories.TenantRepository import TenantRepository
+from repositories.TrackRepository import TrackRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
 
@@ -20,6 +23,9 @@ class BasePortal(ABC):
         self.user_repo = UserRepository()
         self.portal_repo = PortalRepository()
         self.settings_repo = SettingsRepository()
+        self.recording_repo = RecordingRepository()
+        self.track_repo = TrackRepository()
+        self.storage_repo = StorageRepository('melodymaster')
 
     def start(self, register=False):
         self.init_session()
@@ -69,7 +75,9 @@ class BasePortal(ABC):
 
     @staticmethod
     def show_app_header():
-        st.markdown("<h1 style='margin-bottom:0px;'>StringSync</h1>", unsafe_allow_html=True)
+        left_column, center_column, right_column = st.columns([6, 10, 2.5])
+        with center_column:
+            st.image("logo/MelodyMaster.png", use_column_width=True)
 
     def show_user_menu(self):
         col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
@@ -362,6 +370,23 @@ class BasePortal(ABC):
     @staticmethod
     def register_user():
         return st.session_state["show_register_section"]
+
+    def get_org_dir_bucket(self):
+        return f'{self.get_tenant_id()}/{self.get_org_id()}'
+
+    def get_tracks_bucket(self):
+        return f'{self.get_org_dir_bucket()}/tracks'
+
+    def get_recordings_bucket(self):
+        return f'{self.get_org_dir_bucket()}/recordings'
+
+    @staticmethod
+    def get_badges_bucket():
+        return 'badges'
+
+    @staticmethod
+    def get_logo_bucket():
+        return 'logo'
 
     @staticmethod
     def set_env():

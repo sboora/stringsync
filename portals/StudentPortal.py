@@ -8,6 +8,8 @@ import streamlit as st
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import tempfile
+import gcsfs
 
 from enums.Badges import Badges
 from notations.NotationBuilder import NotationBuilder
@@ -22,14 +24,11 @@ from repositories.UserAchievementRepository import UserAchievementRepository
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
-        self.track_repo = TrackRepository()
-        self.recording_repo = RecordingRepository()
-        self.storage_repo = StorageRepository("stringsync")
         self.user_achievement_repo = UserAchievementRepository()
         self.audio_processor = AudioProcessor()
 
     def get_title(self):
-        return "StringSync Student Portal"
+        return "MelodyMaster Student Portal"
 
     def get_icon(self):
         return "🎶"
@@ -42,10 +41,15 @@ class StudentPortal(BasePortal, ABC):
         }
 
     def show_introduction(self):
-        st.write("""
-            ### Welcome to String Sync! 🎵
+        # Check if the user is logged in
+        if not self.user_logged_in():
+            st.write("""
+                ### Welcome to MelodyMaster! 🎵
 
-            This is your personal hub for musical growth, exploration, and achievement. Whether you're a beginner or an aspiring artist, we've got something for you.
+                This is your personal hub for musical growth, exploration, and achievement. Whether you're a beginner or an aspiring artist, we've got something for you.
+            """)
+
+        st.write("""
             ### What Can You Do Here? 🎸
 
             1. **Listen to Tracks**: Browse through a curated list of tracks that suit your musical taste and skill level.
@@ -55,10 +59,9 @@ class StudentPortal(BasePortal, ABC):
             5. **Achievements**: Earn badges for reaching milestones and accomplishing challenges.
         """)
 
-        # Check if the user is logged in
         if not self.user_logged_in():
             st.write("""
-                ### Why Choose String Sync? 🌟
+                ### Why Choose MelodyMaster? 🌟
 
                 - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
                 - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
@@ -69,28 +72,56 @@ class StudentPortal(BasePortal, ABC):
 
         st.write(
             "Ready to dive into your musical journey? Scroll down to explore all the exciting features available to "
-            "you!")
+            "you! "
+        )
 
     def record(self):
-        track = self.filter_tracks()
+        track_name, track = self.filter_tracks()
         if not track:
+            if track_name != "Select a Track":
+                st.info("No tracks found.")
             return
+
         self.create_track_headers()
-        offset_distance = self.audio_processor.compare_audio(track[2], track[3])
+
+        # Download and save the audio files to temporary locations
+        track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
+        track_ref_audio_path = self.download_to_temp_file_by_url(track['track_ref_path'])
+
+        # Use librosa to compare the audio files
+        offset_distance = self.audio_processor.compare_audio(track_audio_path, track_ref_audio_path)
+
         col1, col2, col3 = st.columns([5, 5, 5])
         with col1:
-            self.display_track_files(track[2])
-            notation_builder = NotationBuilder(track, track[4])
+            self.display_track_files(track_audio_path)
+            notation_builder = NotationBuilder(track, track['notation_path'])
             unique_notes = notation_builder.display_notation()
         with col2:
-            student_recording, recording_id, is_success = self.handle_file_upload(self.get_user_id(), track[0])
+            student_recording, recording_id, is_success = \
+                self.handle_file_upload(self.get_user_id(), track['id'])
         with col3:
             if is_success:
-                score, analysis = self.display_student_performance(track[2], student_recording, unique_notes,
-                                                                   offset_distance)
+                score, analysis = self.display_student_performance(
+                    track_audio_path, student_recording, unique_notes, offset_distance)
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
 
-        self.performances(track[0])
+        self.performances(track['id'])
+        if student_recording:
+            os.remove(student_recording)
+
+    def download_to_temp_file_by_url(self, blob_url):
+        """Download a blob to a temporary file and return the file's path."""
+        blob_data = self.storage_repo.download_blob_by_url(blob_url)
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+            temp_file.write(blob_data)
+            return temp_file.name
+
+    def download_to_temp_file_by_name(self, blob_name):
+        """Download a blob to a temporary file and return the file's path."""
+        blob_data = self.storage_repo.download_blob(blob_name)
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+            temp_file.write(blob_data)
+            return temp_file.name
 
     @staticmethod
     def display_performances_header():
@@ -167,7 +198,7 @@ class StudentPortal(BasePortal, ABC):
             column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
         for track_detail in tracks:
             row_data = {
-                "Track Name": track_detail['track'][1],
+                "Track Name": track_detail['track']['name'],
                 "Number of Recordings": track_detail['num_recordings'],
                 "Average Score": track_detail['avg_score'],
                 "Min Score": track_detail['min_score'],
@@ -237,10 +268,10 @@ class StudentPortal(BasePortal, ABC):
         track_details = [
             {
                 'track': track,
-                'num_recordings': stats_dict.get(track[0], {}).get('num_recordings', 0),
-                'avg_score': stats_dict.get(track[0], {}).get('avg_score', 0),
-                'min_score': stats_dict.get(track[0], {}).get('min_score', 0),
-                'max_score': stats_dict.get(track[0], {}).get('max_score', 0)
+                'num_recordings': stats_dict.get(track['id'], {}).get('num_recordings', 0),
+                'avg_score': stats_dict.get(track['id'], {}).get('avg_score', 0),
+                'min_score': stats_dict.get(track['id'], {}).get('min_score', 0),
+                'max_score': stats_dict.get(track['id'], {}).get('max_score', 0)
             }
             for track in tracks
         ]
@@ -250,30 +281,28 @@ class StudentPortal(BasePortal, ABC):
     def filter_tracks(self):
         filter_options = self.fetch_filter_options()
 
-        # Create four columns
-        col1, col2, col3, col4 = st.columns(4)
+        # Create three columns
+        col1, col2, col3 = st.columns(3)
 
         # Place a dropdown in each column
-        track_type = col1.selectbox("Filter by Track Type", ["All"] + filter_options["Track Type"])
-        level = col2.selectbox("Filter by Level", ["All"] + filter_options["Level"])
-        ragam = col3.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
-        tags = col4.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
+        level = col1.selectbox("Filter by Level", ["All"] + filter_options["Level"])
+        ragam = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
+        tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
 
         tracks = self.track_repo.search_tracks(
             ragam=None if ragam == "All" else ragam,
             level=None if level == "All" else level,
-            tags=None if tags == ["All"] else tags,
-            track_type=None if track_type == "All" else track_type)
+            tags=None if tags == ["All"] else tags
+        )
 
         if not tracks:
             return None
 
         selected_track_name = self.get_selected_track_name(tracks)
-        return self.get_selected_track_details(tracks, selected_track_name)
+        return selected_track_name, self.get_selected_track_details(tracks, selected_track_name)
 
     def fetch_filter_options(self):
         return {
-            "Track Type": self.track_repo.get_all_track_types(),
             "Level": self.track_repo.get_all_levels(),
             "Ragam": self.track_repo.get_all_ragams(),
             "Tags": self.track_repo.get_all_tags()
@@ -281,12 +310,12 @@ class StudentPortal(BasePortal, ABC):
 
     @staticmethod
     def get_selected_track_name(tracks):
-        track_names = [track[1] for track in tracks]
+        track_names = [track['name'] for track in tracks]
         return st.selectbox("Select a Track", ["Select a Track"] + track_names, index=0)
 
     @staticmethod
     def get_selected_track_details(tracks, selected_track_name):
-        return next((track for track in tracks if track[1] == selected_track_name), None)
+        return next((track for track in tracks if track['name'] == selected_track_name), None)
 
     @staticmethod
     def create_track_headers():
@@ -313,36 +342,46 @@ class StudentPortal(BasePortal, ABC):
             return "", -1, False
 
         timestamp = datetime.datetime.now()
-        student_path = f"{user_id}-{track_id}-{timestamp}.m4a"
+        recording_name = f"{track_id}-{timestamp}.m4a"
         recording_data = uploaded_student_file.getbuffer()
         file_hash = self.calculate_file_hash(recording_data)
-
+        # Check for duplicates
         if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
             st.error("You have already uploaded this recording.")
-            return student_path, -1, False
-
-        duration = self.calculate_audio_duration(student_path, recording_data)
-        url, recording_id = self.add_recording(user_id, track_id, student_path, timestamp, duration,
+            return recording_name, -1, False
+        # Save the recording
+        self.save_recording(recording_data, recording_name)
+        # Calculate duration
+        duration = self.calculate_audio_duration(recording_name)
+        # Upload the recording to storage repo and recording repo
+        url, recording_id = self.add_recording(user_id,
+                                               track_id,
+                                               recording_name,
+                                               timestamp,
+                                               duration,
                                                file_hash)
-
-        st.audio(student_path, format='core/m4a')
-        return student_path, recording_id, True
+        st.audio(recording_name, format='core/m4a')
+        return recording_name, recording_id, True
 
     @staticmethod
     def calculate_file_hash(recording_data):
         return hashlib.md5(recording_data).hexdigest()
 
     @staticmethod
-    def calculate_audio_duration(student_path, recording_data):
-        with open(student_path, "wb") as f:
-            f.write(recording_data)
+    def calculate_audio_duration(student_path):
         y, sr = librosa.load(student_path)
         return librosa.get_duration(y=y, sr=sr)
 
-    def add_recording(self, user_id, track_id, student_path, timestamp, duration, file_hash):
-        url = self.storage_repo.upload_file(student_path, student_path)
+    @staticmethod
+    def save_recording(recording_data, student_path):
+        with open(student_path, "wb") as f:
+            f.write(recording_data)
+
+    def add_recording(self, user_id, track_id, recording_name, timestamp, duration, file_hash):
+        recording_path = f'{self.get_recordings_bucket()}/{recording_name}'
+        url = self.storage_repo.upload_file(recording_name, recording_path)
         recording_id = self.recording_repo.add_recording(
-            user_id, track_id, student_path, url, timestamp, duration, file_hash)
+            user_id, track_id, recording_path, url, timestamp, duration, file_hash)
         return url, recording_id
 
     def display_student_performance(self, track_file, student_path, track_notes, offset_distance):
@@ -355,8 +394,6 @@ class StudentPortal(BasePortal, ABC):
         error_notes, missing_notes = self.audio_processor.error_and_missing_notes(track_notes, student_notes)
         score = self.audio_processor.distance_to_score(distance)
         analysis = self.display_score_and_analysis(score, error_notes, missing_notes)
-
-        os.remove(student_path)
         return score, analysis
 
     def get_audio_distance(self, track_file, student_path, offset_distance):
@@ -452,7 +489,9 @@ class StudentPortal(BasePortal, ABC):
         for i, badge in enumerate(badges):
             with cols[i % 5]:  # Loop through columns
                 # Display the badge icon from the badge folder
-                st.image(f"badges/{badge}.png", caption=f"{badge}", width=200)
+                badge_url = f"{self.get_badges_bucket()}/{badge}.png"
+                filename = self.download_to_temp_file_by_name(badge_url)
+                st.image(filename, caption=f"{badge}", width=200)
 
         st.markdown("</div>", unsafe_allow_html=True)
 

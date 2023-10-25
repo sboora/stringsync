@@ -1,9 +1,8 @@
+import os
 from abc import ABC
 
 from portals.BasePortal import BasePortal
 from repositories.RecordingRepository import RecordingRepository
-from repositories.StorageRepository import StorageRepository
-from repositories.TrackRepository import TrackRepository
 import streamlit as st
 import pandas as pd
 
@@ -13,12 +12,9 @@ from enums.UserType import UserType
 class TeacherPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
-        self.recording_repo = RecordingRepository()
-        self.storage_repo = StorageRepository("stringsync")
-        self.track_repo = TrackRepository()
 
     def get_title(self):
-        return "StringSync Teacher Portal"
+        return "MelodyMaster Teacher Portal"
 
     def get_icon(self):
         return "🎶"
@@ -28,22 +24,27 @@ class TeacherPortal(BasePortal, ABC):
             "👥 Create Group": self.create_group,
             "👩‍🎓 Students": self.display_students,
             "🔀 Assign Students to Groups": self.assign_students_to_group,
+            "🎵 Create Track": self.create_track,
+            "🎵 Remove Track": self.remove_track,
             "🎵 Recordings": self.list_recordings,
             "📥 Submissions": self.list_submissions
         }
 
     def show_introduction(self):
         st.write("""
-            ### Welcome to the **Teacher Dashboard**!!
+            ### Welcome to the **Teacher Portal**!
 
-            **Your Comprehensive Dashboard for Music Education Management**
+            **Empowering Music Educators with Comprehensive Tools**
 
-            This portal is designed to provide a centralized platform for seamless administration of your music classes. Here are the core functionalities you can leverage:
-            - 👥 **Create Group**: Create groups to manage your students more efficiently.
-            - 🔀 **Assign Students to Groups**: Assign students to specific groups for better management.
-            - 🎵 **List Recordings**: View and manage recordings submitted by your students.
+            Dive into a platform tailored for the needs of progressive music educators. With the StringSync Teacher Portal, manage your classroom with precision and efficiency. Here's what you can do directly from the dashboard:
+            - 👥 **Group Management**: Craft student groups for efficient class structures with the "Create Group" feature.
+            - 👩‍🎓 **Student Overview**: Browse through your students' profiles and details under the "Students" tab.
+            - 🔀 **Student Assignments**: Directly assign students to specific groups using the "Assign Students to Groups" functionality.
+            - 🎵 **Track Creation**: Introduce new tracks for practice or teaching via the "Create Track" feature.
+            - 🎵 **Recording Review**: Listen, evaluate, and manage student recordings under the "Recordings" tab.
+            - 📥 **Submission Insights**: Monitor and manage student submissions through the "Submissions" section.
 
-            Navigate through the tabs to perform these operations and more. Your effective management is just a few clicks away.
+            Tap into the tabs, explore the features, and elevate your teaching methods. Together, let's redefine music education!
         """)
 
     def assign_students_to_group(self):
@@ -104,9 +105,100 @@ class TeacherPortal(BasePortal, ABC):
             }
             self.build_row(row_data)
 
-    def list_students_and_tracks(self, source):
-        st.header("Students")
+    def create_track(self):
+        with st.form(key='create_track_form'):
+            track_name = st.text_input("Track Name")
+            track_file = st.file_uploader("Choose an audio file")
+            ref_track_file = st.file_uploader("Choose a reference audio file")
+            description = st.text_input("Description")
+            ragam = st.text_input("Ragam")
+            tags = st.text_input("Tags (comma-separated)")
+            level = st.selectbox("Select Level", [1, 2, 3, 4, 5])
 
+            if st.form_submit_button("Submit", type="primary"):
+                if self.validate_inputs(track_name, track_file, ref_track_file):
+                    track_url = self.upload_to_storage(track_file)
+                    ref_track_url = self.upload_to_storage(ref_track_file)
+                    tags_list = [tag.strip() for tag in tags.split(",")]
+
+                    self.track_repo.add_track(
+                        name=track_name,
+                        track_path=track_url,
+                        track_ref_path=ref_track_url,
+                        level=level,
+                        ragam=ragam,
+                        tags=tags_list,
+                        description=description,
+                        offset=0
+                    )
+                    st.success("Track added successfully!")
+
+    def validate_inputs(self, track_name, track_file, ref_track_file):
+        if not track_name:
+            st.warning("Please provide a name for the track.")
+            return False
+        if not track_file:
+            st.warning("Please upload an audio file.")
+            return False
+        if not ref_track_file:
+            st.warning("Please upload a reference audio file.")
+            return False
+        if self.track_repo.get_track_by_name(track_name):
+            st.error(f"A track with the name '{track_name}' already exists.")
+            return False
+        return True
+
+    def upload_to_storage(self, file):
+        file_path = f'{self.get_tracks_bucket()}/{file.name}'
+        return self.storage_repo.upload_file(file.name, file_path)
+
+    def remove_track(self):
+        # Fetch all tracks
+        all_tracks = self.track_repo.get_all_tracks()
+        track_options = {track['name']: track['id'] for track in all_tracks}
+
+        # Dropdown to select a track to remove
+        selected_track_name = st.selectbox("Select a track to remove:",
+                                           ["--Select a track--"] + list(track_options.keys()))
+
+        # Button to initiate the removal process
+        if st.button("Remove", type="primary"):
+            if selected_track_name and selected_track_name != "--Select a track--":
+                selected_track_id = track_options[selected_track_name]
+
+                # Check if recordings for the track exist
+                recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(
+                    self.get_user_id(), selected_track_id)
+                if recordings:
+                    st.error(
+                        f"Cannot remove track '{selected_track_name}' as there are recordings associated with it.")
+                    return
+
+                # Get the track details
+                track_details = self.track_repo.get_track_by_id(selected_track_id)
+                files_to_remove = [track_details['track_path'], track_details.get('track_ref_path'),
+                                   track_details.get('notation_path')]
+
+                # Remove the track and associated files from storage
+                for file_path in files_to_remove:
+                    if file_path and not self.storage_repo.delete_file(file_path):
+                        st.warning(f"Failed to remove file '{file_path}' from storage.")
+                        return
+
+                # Remove the track from database
+                if self.track_repo.remove_track_by_id(selected_track_id):
+                    st.success(f"Track '{selected_track_name}' removed successfully!")
+                else:
+                    st.error("Error removing track from database.")
+            else:
+                st.warning("Please select a valid track to remove.")
+
+    @staticmethod
+    def save_audio(audio, path):
+        with open(path, "wb") as f:
+            f.write(audio)
+
+    def list_students_and_tracks(self, source):
         # Show groups in a dropdown
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
@@ -131,8 +223,7 @@ class TeacherPortal(BasePortal, ABC):
         selected_track_id = None
         track_path = None
         if selected_user_id is not None:
-            recording_repository = RecordingRepository()
-            track_ids = recording_repository.get_unique_tracks_by_user(selected_user_id)
+            track_ids = self.recording_repo.get_unique_tracks_by_user(selected_user_id)
 
             if track_ids:
                 # Fetch track names by their IDs
@@ -146,7 +237,7 @@ class TeacherPortal(BasePortal, ABC):
                 if selected_track_name != '--Select a track--':
                     selected_track_id = track_options[selected_track_name]
                     track = self.track_repo.get_track_by_name(selected_track_name)
-                    track_path = track[2]
+                    track_path = track['track_path']
 
         return selected_group_id, selected_username, selected_user_id, selected_track_id, track_path
 
