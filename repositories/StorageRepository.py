@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse, unquote
 
 from google.cloud import storage
 import tempfile
@@ -13,15 +14,41 @@ class StorageRepository:
 
         self.bucket_name = bucket_name
         self.storage_client = storage.Client()
+        os.remove(credentials_path)
 
     def get_bucket(self):
         return self.storage_client.get_bucket(self.bucket_name)
+
+    def create_folder(self, folder_path):
+        """Create a folder in GCS by creating a zero-byte object."""
+        blob_name = folder_path if folder_path.endswith('/') else folder_path + '/'
+        bucket = self.get_bucket()
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string('')
 
     def upload_file(self, file_path, blob_name):
         bucket = self.get_bucket()
         blob = bucket.blob(blob_name)
         blob.upload_from_filename(file_path)
         return blob.public_url
+
+    def delete_file(self, blob_url):
+        blob_name = self.get_blob_name(blob_url)
+        try:
+            bucket = self.get_bucket()
+            blob = bucket.blob(blob_name)
+            blob.delete()
+            return True
+        except Exception as e:
+            print(f"Error while deleting blob with URL {blob_url}: {e}")
+            return False
+
+    def get_blob_name(self, blob_url):
+        # Parse the URL to extract the blob name
+        parsed_url = urlparse(blob_url)
+        blob_name = unquote(parsed_url.path[1:])
+        blob_name = blob_name.replace(f'{self.bucket_name}/', '', 1)
+        return blob_name
 
     def get_public_url(self, blob_name):
         bucket = self.get_bucket()
@@ -32,4 +59,12 @@ class StorageRepository:
         bucket = self.get_bucket()
         blob = bucket.blob(blob_name)
         return blob.download_as_bytes()
+
+    def download_blob_by_url(self, blob_url):
+        blob_name = self.get_blob_name(blob_url)
+        bucket = self.get_bucket()
+        blob = bucket.blob(blob_name)
+        return blob.download_as_bytes()
+
+
 

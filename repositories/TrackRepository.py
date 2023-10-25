@@ -4,6 +4,7 @@ from time import sleep
 
 import pymysql
 from google.cloud.sql.connector import Connector
+import pymysql.cursors
 
 MAX_RETRIES = 3  # Set the maximum number of retries
 RETRY_DELAY = 1  # Time delay between retries in seconds
@@ -13,7 +14,6 @@ class TrackRepository:
     def __init__(self):
         self.connection = self.connect()
         self.create_tables()
-        self.create_seed_data()
 
     @staticmethod
     def connect():
@@ -48,15 +48,16 @@ class TrackRepository:
         cursor = self.connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255),
-                track_path TEXT,
-                track_ref_path TEXT,
-                notation_path TEXT,
-                level INT,
-                ragam VARCHAR(255),
-                type VARCHAR(255),
-                offset INT
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255),
+            track_path TEXT,
+            track_ref_path TEXT,
+            notation_path TEXT,
+            level INT,
+            ragam VARCHAR(255),
+            track_group VARCHAR(255),
+            description TEXT,
+            offset INT
             );
         """)
         cursor.execute("""
@@ -77,23 +78,31 @@ class TrackRepository:
         self.connection.commit()
 
     def get_all_tracks(self):
-        cursor = self.connection.cursor()
-        cursor.execute("SELECT id, name, type FROM tracks")
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM tracks")
         return cursor.fetchall()
 
+    def get_track_by_id(self, track_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            select_query = "SELECT * FROM tracks WHERE id = %s;"
+            cursor.execute(select_query, (track_id,))
+            track = cursor.fetchone()
+            return track
+        except Exception as e:
+            print(f"Error while fetching track with ID {track_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+
     def get_track_by_name(self, name):
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT * FROM tracks WHERE name = %s", (name,))
         return cursor.fetchone()
 
     def get_all_tags(self):
         cursor = self.connection.cursor()
         cursor.execute("SELECT DISTINCT tag_name FROM tags")
-        return [row[0] for row in cursor.fetchall()]
-
-    def get_all_track_types(self):
-        cursor = self.connection.cursor()
-        cursor.execute("SELECT DISTINCT type FROM tracks")
         return [row[0] for row in cursor.fetchall()]
 
     def get_all_ragams(self):
@@ -116,8 +125,7 @@ class TrackRepository:
         """, (track_id,))
         return [row[0] for row in cursor.fetchall()]
 
-    def add_track(self, name, track_path, track_ref_path, notation_path, level,
-                  ragam, tags, track_type, offset):
+    def add_track(self, name, track_path, track_ref_path, level, ragam, tags, description, offset):
         cursor = self.connection.cursor()
         cursor.execute("SELECT id FROM tracks WHERE name = %s", (name,))
         existing_track = cursor.fetchone()
@@ -125,19 +133,19 @@ class TrackRepository:
         if existing_track:
             cursor.execute("""
                 UPDATE tracks
-                SET track_path = %s, track_ref_path = %s, notation_path = %s, level = %s, ragam = %s, type = %s, offset = %s
+                SET track_path = %s, track_ref_path = %s, level = %s, ragam = %s, description = %s, offset = %s
                 WHERE name = %s
-            """, (track_path, track_ref_path, notation_path, level, ragam, track_type, offset, name))
+            """, (track_path, track_ref_path, level, ragam, description, offset, name))
             track_id = existing_track[0]
         else:
             cursor.execute("""
-                INSERT INTO tracks (name, track_path, track_ref_path, notation_path, level, ragam, type, offset)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (name, track_path, track_ref_path, notation_path, level, ragam, track_type, offset))
+                INSERT INTO tracks (name, track_path, track_ref_path, level, ragam, description, offset)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (name, track_path, track_ref_path, level, ragam, description, offset))
             track_id = cursor.lastrowid
 
+        # Handle tags
         cursor.execute("DELETE FROM track_tags WHERE track_id = %s", (track_id,))
-
         for tag in tags:
             cursor.execute("INSERT IGNORE INTO tags (tag_name) VALUES (%s)", (tag,))
             cursor.execute("SELECT id FROM tags WHERE tag_name = %s", (tag,))
@@ -146,6 +154,25 @@ class TrackRepository:
 
         self.connection.commit()
 
+    def remove_track_by_id(self, track_id):
+        cursor = self.connection.cursor()
+        try:
+            # First, remove any entries from the track_tags table
+            delete_from_track_tags_query = "DELETE FROM track_tags WHERE track_id = %s;"
+            cursor.execute(delete_from_track_tags_query, (track_id,))
+
+            # Then, remove the track from the tracks table
+            delete_from_tracks_query = "DELETE FROM tracks WHERE id = %s;"
+            cursor.execute(delete_from_tracks_query, (track_id,))
+
+            self.connection.commit()
+            cursor.close()
+            return True
+        except Exception as e:
+            print(f"Error while deleting track with ID {track_id}: {e}")
+            cursor.close()
+            return False
+
     def get_track_names_by_ids(self, track_ids):
         cursor = self.connection.cursor()
         query = "SELECT id, name FROM tracks WHERE id IN ({})".format(','.join(['%s'] * len(track_ids)))
@@ -153,9 +180,9 @@ class TrackRepository:
         result = cursor.fetchall()
         return {row[0]: row[1] for row in result}
 
-    def search_tracks(self, ragam=None, level=None, tags=None, track_type=None):
-        cursor = self.connection.cursor()
-        query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam, type FROM tracks"
+    def search_tracks(self, ragam=None, level=None, tags=None):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam FROM tracks"  # Removed 'type'
         params = []
 
         if tags:
@@ -179,10 +206,6 @@ class TrackRepository:
             where_clauses.append(f"tags.tag_name IN ({tags_placeholder})")
             params.extend(tags)
 
-        if track_type is not None:
-            where_clauses.append("type = %s")
-            params.append(track_type)
-
         if where_clauses:
             query += " WHERE " + " AND ".join(where_clauses)
 
@@ -201,13 +224,3 @@ class TrackRepository:
     def __del__(self):
         self.close()
 
-    def create_seed_data(self):
-        self.add_track("Lesson 1", "tracks/lesson1.m4a", "tracks/lesson1_ref.m4a",
-                       "notations/lesson1.txt", 1, "Shankarabharanam",
-                       ["Sarali Varisai"], "Lesson", 510)
-        self.add_track("Lesson 2", "tracks/lesson2.m4a", "tracks/lesson2_ref.m4a",
-                       "notations/lesson2.txt", 1, "Shankarabharanam",
-                       ["Sarali Varisai"], "Lesson", 700)
-        self.add_track("Shree Guruguha", "tracks/Shree Guruguha.m4a", "tracks/Shree Guruguha_ref.m4a",
-                       "notations/Shree Guruguha.txt", 2, "Suddha Saveri",
-                       ["Krithi"], "Song", 6250)

@@ -64,8 +64,8 @@ class RecordingRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="",
-                      remarks=""):
+    def add_recording(self, user_id, track_id, blob_name, blob_url,
+                      timestamp, duration, file_hash, analysis="", remarks=""):
         cursor = self.connection.cursor()
         add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
                                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
@@ -192,7 +192,8 @@ class RecordingRepository:
         get_total_duration_query = """SELECT SUM(duration) FROM recordings
                                       WHERE user_id = %s AND score >= %s;"""
         cursor.execute(get_total_duration_query, (user_id, min_score))
-        return cursor.fetchone()[0]
+        result = cursor.fetchone()[0]
+        return result if result is not None else 0
 
     def get_total_recordings(self, user_id, min_score=0):
         cursor = self.connection.cursor()
@@ -206,14 +207,6 @@ class RecordingRepository:
         update_query = """UPDATE recordings SET remarks = %s WHERE id = %s;"""
         cursor.execute(update_query, (remarks, recording_id))
         self.connection.commit()
-
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()
 
     def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
         cursor = self.connection.cursor()
@@ -292,3 +285,11 @@ class RecordingRepository:
             })
 
         return all_days_data
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+
+    def __del__(self):
+        self.close()

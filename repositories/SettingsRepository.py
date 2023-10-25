@@ -79,3 +79,11 @@ class SettingsRepository:
             print(f"Upsert successful: {message}")
         else:
             print(f"Upsert failed: {message}")
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+
+    def __del__(self):
+        self.close()
