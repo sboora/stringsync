@@ -109,20 +109,6 @@ class StudentPortal(BasePortal, ABC):
         if student_recording:
             os.remove(student_recording)
 
-    def download_to_temp_file_by_url(self, blob_url):
-        """Download a blob to a temporary file and return the file's path."""
-        blob_data = self.storage_repo.download_blob_by_url(blob_url)
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
-            temp_file.write(blob_data)
-            return temp_file.name
-
-    def download_to_temp_file_by_name(self, blob_name):
-        """Download a blob to a temporary file and return the file's path."""
-        blob_data = self.storage_repo.download_blob(blob_name)
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
-            temp_file.write(blob_data)
-            return temp_file.name
-
     @staticmethod
     def display_performances_header():
         st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Performances</h3>", unsafe_allow_html=True)
@@ -145,7 +131,7 @@ class StudentPortal(BasePortal, ABC):
         for index, recording in df.iterrows():
             col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
             if recording['blob_url']:
-                filename = self.storage_repo.download_blob(recording['blob_name'])
+                filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
                 col1.write("")
                 col1.audio(filename, format='core/m4a')
             else:
@@ -172,7 +158,7 @@ class StudentPortal(BasePortal, ABC):
 
     def get_audio_data(self, recording):
         if recording['blob_url']:
-            filename = self.storage_repo.download_blob(recording['blob_name'])
+            filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
             return f"<audio controls><source src='{filename}' type='audio/m4a'></audio>"
         return "No core data available."
 

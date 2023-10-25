@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 from abc import ABC, abstractmethod
 
@@ -73,11 +74,11 @@ class BasePortal(ABC):
     def get_icon(self):
         pass
 
-    @staticmethod
-    def show_app_header():
+    def show_app_header(self):
         left_column, center_column, right_column = st.columns([6, 10, 2.5])
         with center_column:
-            st.image("logo/MelodyMaster.png", use_column_width=True)
+            image = self.storage_repo.download_blob_by_name("logo/MelodyMaster.png")
+            st.image(image, use_column_width=True)
 
     def show_user_menu(self):
         col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
@@ -346,6 +347,20 @@ class BasePortal(ABC):
 
         row_html += "</div>"
         st.markdown(row_html, unsafe_allow_html=True)
+
+    def download_to_temp_file_by_url(self, blob_url):
+        """Download a blob to a temporary file and return the file's path."""
+        blob_data = self.storage_repo.download_blob_by_url(blob_url)
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+            temp_file.write(blob_data)
+            return temp_file.name
+
+    def download_to_temp_file_by_name(self, blob_name):
+        """Download a blob to a temporary file and return the file's path."""
+        blob_data = self.storage_repo.download_blob_by_name(blob_name)
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+            temp_file.write(blob_data)
+            return temp_file.name
 
     @staticmethod
     def user_logged_in():

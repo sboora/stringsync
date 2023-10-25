@@ -282,7 +282,7 @@ class TeacherPortal(BasePortal, ABC):
             col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
 
             if recording['blob_url']:
-                filename = self.storage_repo.download_blob(recording['blob_name'])
+                filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
                 col1.audio(filename, format='core/m4a')
             else:
                 col1.write("No core data available.")
@@ -352,7 +352,7 @@ class TeacherPortal(BasePortal, ABC):
 
         col1.write("")
         if recording['blob_url']:
-            filename = self.storage_repo.download_blob(recording['blob_name'])
+            filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
             col1.audio(filename, format='core/m4a')
         else:
             col1.write("No core data available.")
