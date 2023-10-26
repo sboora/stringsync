@@ -8,18 +8,12 @@ import streamlit as st
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-import tempfile
-import gcsfs
 
 from enums.Badges import Badges
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
-from repositories.RecordingRepository import RecordingRepository
-from repositories.StorageRepository import StorageRepository
-from repositories.TrackRepository import TrackRepository
 from core.AudioProcessor import AudioProcessor
 from repositories.UserAchievementRepository import UserAchievementRepository
-
 
 
 class StudentPortal(BasePortal, ABC):

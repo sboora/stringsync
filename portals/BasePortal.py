@@ -89,8 +89,8 @@ class BasePortal(ABC):
                         <style>
                             .cursive-font {
                                 font-family: 'Comic Sans MS', cursive, sans-serif;
-                                font-size: 36px;
-                                color: #9C4310; 
+                                font-size: 30px;
+                                color: #853507; 
                                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow effect */
                             }
                         </style>
@@ -100,7 +100,7 @@ class BasePortal(ABC):
                     """, unsafe_allow_html=True)
 
         st.markdown("""
-            <div style="text-align: center; font-size: 20px; ">
+            <div style="text-align: center; font-size: 16px; ">
                 Embark on your personal odyssey of musical evolution and discovery here. 
                 From novices to budding maestros, GuruShishya resonates with opportunities for all.
             </div>
