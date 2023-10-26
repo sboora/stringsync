@@ -9,8 +9,7 @@ cloud-sql-python-connector
 PyMySQL
 bcrypt
 google-cloud-storage
-matplotlib
-
+plotly
 
 
 
