@@ -315,7 +315,7 @@ class StudentPortal(BasePortal, ABC):
 
     def handle_file_upload(self, user_id, track_id):
         with st.form("recording_uploader_form", clear_on_submit=True):
-            uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
+            uploaded_student_file = st.file_uploader("", type=["m4a", "mp3"])
             uploaded = st.form_submit_button("Upload", type="primary")
             if uploaded:
                 if uploaded_student_file is None:
@@ -472,7 +472,7 @@ class StudentPortal(BasePortal, ABC):
                 # Display the badge icon from the badge folder
                 badge_url = f"{self.get_badges_bucket()}/{badge}.png"
                 filename = self.download_to_temp_file_by_name(badge_url)
-                st.image(filename, caption=f"{badge}", width=200)
+                st.image(filename, width=200)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
