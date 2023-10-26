@@ -314,31 +314,35 @@ class StudentPortal(BasePortal, ABC):
         st.audio(track_file, format='core/m4a')
 
     def handle_file_upload(self, user_id, track_id):
-        uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
-        if uploaded_student_file is None:
-            return None, -1, False
+        with st.form("recording_uploader_form", clear_on_submit=True):
+            uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
+            uploaded = st.form_submit_button("Upload", type="primary")
+            if uploaded:
+                if uploaded_student_file is None:
+                    return None, -1, False
 
-        timestamp = datetime.datetime.now()
-        recording_name = f"{track_id}-{timestamp}.m4a"
-        recording_data = uploaded_student_file.getbuffer()
-        file_hash = self.calculate_file_hash(recording_data)
-        # Check for duplicates
-        if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
-            st.error("You have already uploaded this recording.")
-            return recording_name, -1, False
-        # Save the recording
-        self.save_recording(recording_data, recording_name)
-        # Calculate duration
-        duration = self.calculate_audio_duration(recording_name)
-        # Upload the recording to storage repo and recording repo
-        url, recording_id = self.add_recording(user_id,
-                                               track_id,
-                                               recording_name,
-                                               timestamp,
-                                               duration,
-                                               file_hash)
-        st.audio(recording_name, format='core/m4a')
-        return recording_name, recording_id, True
+                timestamp = datetime.datetime.now()
+                recording_name = f"{track_id}-{timestamp}.m4a"
+                recording_data = uploaded_student_file.getbuffer()
+                file_hash = self.calculate_file_hash(recording_data)
+                # Check for duplicates
+                if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
+                    st.error("You have already uploaded this recording.")
+                    return recording_name, -1, False
+                # Save the recording
+                self.save_recording(recording_data, recording_name)
+                # Calculate duration
+                duration = self.calculate_audio_duration(recording_name)
+                # Upload the recording to storage repo and recording repo
+                url, recording_id = self.add_recording(user_id,
+                                                       track_id,
+                                                       recording_name,
+                                                       timestamp,
+                                                       duration,
+                                                       file_hash)
+                st.audio(recording_name, format='core/m4a')
+                return recording_name, recording_id, True
+        return None, -1, False
 
     @staticmethod
     def calculate_file_hash(recording_data):
