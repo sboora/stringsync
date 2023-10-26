@@ -6,8 +6,7 @@ import hashlib
 import librosa
 import streamlit as st
 import os
-import matplotlib.pyplot as plt
-import numpy as np
+import plotly.graph_objects as go
 
 from enums.Badges import Badges
 from notations.NotationBuilder import NotationBuilder
@@ -188,50 +187,32 @@ class StudentPortal(BasePortal, ABC):
                     unsafe_allow_html=True)
         user_id = self.get_user_id()
         time_series_data = self.recording_repo.get_time_series_data(user_id)
-
+        print(len(time_series_data))
         if not time_series_data:
             st.write("No data available.")
             return
 
-        date = [point['date'].timetuple().tm_yday for point in time_series_data]
+        formatted_dates = [point['date'].strftime('%m/%d') for point in time_series_data]
         total_durations = [max(0, int(point['total_duration'])) / 60 for point in time_series_data if
                            point['total_duration'] is not None]
         total_tracks = [int(point['total_tracks']) for point in time_series_data]
-        assert all(np.isfinite(total_durations)), "total_durations contains non-finite values"
-        assert all(np.isfinite(total_tracks)), "total_tracks contains non-finite values"
-
-        df = pd.DataFrame({
-            'Day of Year': date,
-            'Total Duration': total_durations,
-            'Total Tracks': total_tracks
-        })
 
         # Create the first line chart for Total Duration
-        fig1, ax1 = plt.subplots(figsize=(4, 2))
-        ax1.set_xlabel('Day of Year', fontsize=5)
-        ax1.set_ylabel('Total Duration (minutes)', fontsize=5)
-        ax1.plot(df['Day of Year'], df['Total Duration'], marker='', linestyle='-', linewidth=0.5, color='blue')
-        ax1.set_yticks(np.arange(0, max(25, max(total_durations) + 1), 5))
-        ax1.tick_params(axis='both', labelsize=5)
-        ax1.set_xlim(1, 365)
-        ax1.set_ylim(0, max(25, max(total_durations) + 1))
-        ax1.grid(True, linestyle='--', alpha=0.7)
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=formatted_dates, y=total_durations, mode='lines', name='Total Duration',
+                                  line=dict(color='blue')))
+        fig1.update_layout(title='Total Duration by Date', xaxis_title='Date', yaxis_title='Total Duration (minutes)')
 
         # Create the second line chart for Total Tracks
-        fig2, ax2 = plt.subplots(figsize=(4, 2))
-        ax2.set_xlabel('Day of Year', fontsize=5)
-        ax2.set_ylabel('Total Tracks', fontsize=5)
-        ax2.plot(df['Day of Year'], df['Total Tracks'], marker='', linestyle='-', linewidth=0.5, color='green')
-        ax2.set_yticks(np.arange(0, max(25, max(total_tracks) + 1), 5))
-        ax2.tick_params(axis='both', labelsize=5)
-        ax2.set_xlim(1, 365)
-        ax2.set_ylim(0, max(25, max(total_tracks) + 1))
-        ax2.grid(True, linestyle='--', alpha=0.7)
+        fig2 = go.Figure()
+        fig2.add_trace(
+            go.Scatter(x=formatted_dates, y=total_tracks, mode='lines', name='Total Tracks', line=dict(color='green')))
+        fig2.update_layout(title='Total Tracks by Date', xaxis_title='Date', yaxis_title='Total Tracks')
 
         # Display the charts side by side
         col1, col2 = st.columns(2)
-        col1.pyplot(fig1)
-        col2.pyplot(fig2)
+        col1.plotly_chart(fig1)
+        col2.plotly_chart(fig2)
 
     def get_tracks(self):
         # Fetch all tracks and track statistics for this user
@@ -460,7 +441,6 @@ class StudentPortal(BasePortal, ABC):
             return "Excellent! You've mastered this track!"
 
     def display_achievements(self):
-        st.write("### Your Achievements 🏆")
         self.award_badge()
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
