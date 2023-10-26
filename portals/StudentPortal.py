@@ -21,6 +21,7 @@ from core.AudioProcessor import AudioProcessor
 from repositories.UserAchievementRepository import UserAchievementRepository
 
 
+
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
@@ -28,7 +29,7 @@ class StudentPortal(BasePortal, ABC):
         self.audio_processor = AudioProcessor()
 
     def get_title(self):
-        return "MelodyMaster Student Portal"
+        return f"{self.get_app_name()} Student Portal"
 
     def get_icon(self):
         return "🎶"
@@ -43,11 +44,7 @@ class StudentPortal(BasePortal, ABC):
     def show_introduction(self):
         # Check if the user is logged in
         if not self.user_logged_in():
-            st.write("""
-                ### Welcome to MelodyMaster! 🎵
-
-                This is your personal hub for musical growth, exploration, and achievement. Whether you're a beginner or an aspiring artist, we've got something for you.
-            """)
+            self.pre_introduction()
 
         st.write("""
             ### What Can You Do Here? 🎸
@@ -61,7 +58,7 @@ class StudentPortal(BasePortal, ABC):
 
         if not self.user_logged_in():
             st.write("""
-                ### Why Choose MelodyMaster? 🌟
+                ### Why Choose GuruShishya? 🌟
 
                 - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
                 - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.

@@ -10,14 +10,15 @@ class TenantPortal(BasePortal, ABC):
         super().__init__()
 
     def get_title(self):
-        return "MelodyMaster Tenant Portal"
+        return f"{self.get_app_name()} Tenant Portal"
 
     def get_icon(self):
         return "🏠"
 
     def show_introduction(self):
+        self.pre_introduction()
         st.write("""
-            ### Welcome to the **Tenant Management Portal**!!
+            ### **Tenant Management Portal**!!
 
             **Your Centralized Platform for Multi-Organization Educational Oversight**
 

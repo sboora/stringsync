@@ -18,7 +18,18 @@ from repositories.OrganizationRepository import OrganizationRepository
 
 class BasePortal(ABC):
     def __init__(self):
+        self.tenant_repo = None
+        self.org_repo = None
+        self.user_repo = None
+        self.portal_repo = None
+        self.settings_repo = None
+        self.recording_repo = None
+        self.track_repo = None
+        self.storage_repo = None
         self.set_env()
+        self.init_repositories()
+
+    def init_repositories(self):
         self.tenant_repo = TenantRepository()
         self.org_repo = OrganizationRepository()
         self.user_repo = UserRepository()
@@ -66,19 +77,37 @@ class BasePortal(ABC):
             if self.user_logged_in():
                 self.show_user_menu()
 
-    @abstractmethod
-    def get_title(self):
-        pass
-
-    @abstractmethod
-    def get_icon(self):
-        pass
-
     def show_app_header(self):
-        left_column, center_column, right_column = st.columns([6, 10, 2.5])
+        left_column, center_column, right_column = st.columns([5.5, 8, 2.5])
         with center_column:
-            image = self.storage_repo.download_blob_by_name("logo/MelodyMaster.png")
+            image = self.storage_repo.download_blob_by_name(f"logo/{self.get_app_name()}.png")
             st.image(image, use_column_width=True)
+
+    @staticmethod
+    def pre_introduction():
+        st.markdown("""
+                        <style>
+                            .cursive-font {
+                                font-family: 'Comic Sans MS', cursive, sans-serif;
+                                font-size: 36px;
+                                color: #9C4310; 
+                                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow effect */
+                            }
+                        </style>
+                        <div class="cursive-font" style="text-align: center">
+                            Welcome to <span class="bold-text">GuruShishya</span>!  
+                        </div>
+                    """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div style="text-align: center; font-size: 20px; ">
+                Embark on your personal odyssey of musical evolution and discovery here. 
+                From novices to budding maestros, GuruShishya resonates with opportunities for all.
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.write("")
+        st.write("")
 
     def show_user_menu(self):
         col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
@@ -92,10 +121,6 @@ class BasePortal(ABC):
             elif user_options == "Settings":
                 # Navigate to settings page or open settings dialog
                 pass
-
-    @abstractmethod
-    def show_introduction(self):
-        pass
 
     def login_user(self):
         st.write("### Login")
@@ -264,10 +289,6 @@ class BasePortal(ABC):
             with tab:
                 tab_function()
 
-    @abstractmethod
-    def get_tab_dict(self):
-        pass
-
     @staticmethod
     def build_form(form_key, field_names, button_label='Submit', clear_on_submit=True):
         # Custom CSS to remove form border and adjust padding and margin
@@ -405,14 +426,30 @@ class BasePortal(ABC):
 
     @staticmethod
     def set_env():
-        os.environ['ROOT_USER'] = st.secrets["ROOT_USER"]
-        os.environ['ROOT_PASSWORD'] = st.secrets["ROOT_PASSWORD"]
-        os.environ['ADMIN_PASSWORD'] = st.secrets["ADMIN_PASSWORD"]
+        env_vars = ['ROOT_USER', 'ROOT_PASSWORD', 'ADMIN_PASSWORD',
+                    'SQL_SERVER', 'SQL_DATABASE', 'SQL_USERNAME', 'SQL_PASSWORD',
+                    'MYSQL_CONNECTION_STRING', 'EMAIL_ID', 'EMAIL_PASSWORD']
+        for var in env_vars:
+            os.environ[var] = st.secrets[var]
         os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
-        os.environ["SQL_SERVER"] = st.secrets["SQL_SERVER"]
-        os.environ["SQL_DATABASE"] = st.secrets["SQL_DATABASE"]
-        os.environ["SQL_USERNAME"] = st.secrets["SQL_USERNAME"]
-        os.environ["SQL_PASSWORD"] = st.secrets["SQL_PASSWORD"]
-        os.environ["MYSQL_CONNECTION_STRING"] = st.secrets["MYSQL_CONNECTION_STRING"]
-        os.environ["EMAIL_ID"] = st.secrets["EMAIL_ID"]
-        os.environ["EMAIL_PASSWORD"] = st.secrets["EMAIL_PASSWORD"]
+
+    @staticmethod
+    def get_app_name():
+        return "Guru Shishya"
+
+    @abstractmethod
+    def get_title(self):
+        pass
+
+    @abstractmethod
+    def get_icon(self):
+        pass
+
+    @abstractmethod
+    def show_introduction(self):
+        pass
+
+    @abstractmethod
+    def get_tab_dict(self):
+        pass
+

@@ -11,7 +11,7 @@ class AdminPortal(BasePortal, ABC):
         super().__init__()
 
     def get_title(self):
-        return "MelodyMaster Admin Portal"
+        return f"{self.get_app_name()} Admin Portal"
 
     def get_icon(self):
         return "🛠"
@@ -27,8 +27,9 @@ class AdminPortal(BasePortal, ABC):
         }
 
     def show_introduction(self):
+        self.pre_introduction()
         st.write("""
-            ### Welcome to the **Administrative Portal**!!
+            ### **Administrative Portal**
 
             **Your Comprehensive Dashboard for Educational Management**
             

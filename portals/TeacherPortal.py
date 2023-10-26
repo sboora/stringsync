@@ -14,7 +14,7 @@ class TeacherPortal(BasePortal, ABC):
         super().__init__()
 
     def get_title(self):
-        return "MelodyMaster Teacher Portal"
+        return f"{self.get_app_name()} Teacher Portal"
 
     def get_icon(self):
         return "🎶"
@@ -31,8 +31,9 @@ class TeacherPortal(BasePortal, ABC):
         }
 
     def show_introduction(self):
+        self.pre_introduction()
         st.write("""
-            ### Welcome to the **Teacher Portal**!
+            ### **Teacher Portal**
 
             **Empowering Music Educators with Comprehensive Tools**
 
@@ -359,6 +360,7 @@ class TeacherPortal(BasePortal, ABC):
 
         score = col2.text_input("", key=f"score_{recording['id']}", value=recording['score'])
         if score:
+            print(recording["id"], score)
             self.recording_repo.update_score(recording["id"], score)
 
         col3.write("", style={"fontSize": "5px"})
