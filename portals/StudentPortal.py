@@ -97,7 +97,7 @@ class StudentPortal(BasePortal, ABC):
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
 
         self.performances(track['id'])
-        if student_recording:
+        if is_success:
             os.remove(student_recording)
 
     @staticmethod
@@ -316,7 +316,7 @@ class StudentPortal(BasePortal, ABC):
     def handle_file_upload(self, user_id, track_id):
         uploaded_student_file = st.file_uploader("", type=["m4a", "wav", "mp3"])
         if uploaded_student_file is None:
-            return "", -1, False
+            return None, -1, False
 
         timestamp = datetime.datetime.now()
         recording_name = f"{track_id}-{timestamp}.m4a"
