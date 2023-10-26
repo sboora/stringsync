@@ -55,7 +55,7 @@ class StorageRepository:
         blob = bucket.blob(blob_name)
         return blob.public_url
 
-    def download_blob(self, blob_name):
+    def download_blob_by_name(self, blob_name):
         bucket = self.get_bucket()
         blob = bucket.blob(blob_name)
         return blob.download_as_bytes()

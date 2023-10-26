@@ -1,6 +1,7 @@
 import random
 import string
 import tempfile
+from dataclasses import dataclass
 from time import sleep
 
 from google.cloud.sql.connector import Connector
