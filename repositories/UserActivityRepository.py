@@ -52,13 +52,15 @@ class UserActivityRepository:
         self.connection.commit()
 
     def log_activity(self, user_id, activity_type, additional_params=None):
+        if additional_params is None:
+            additional_params = {}
         cursor = self.connection.cursor()
         insert_activity_query = """
             INSERT INTO user_activities (user_id, activity_type, additional_params)
             VALUES (%s, %s, %s);
         """
         # Convert the additional_params dictionary to a JSON string
-        additional_params_json = json.dumps(additional_params) if additional_params else None
+        additional_params_json = json.dumps(additional_params) if additional_params else "{}"
         cursor.execute(insert_activity_query, (user_id, activity_type.value, additional_params_json))
         self.connection.commit()
 
@@ -79,5 +81,5 @@ class UserActivityRepository:
         for activity in result:
             # Deserialize the additional_params JSON string to a dictionary
             activity['additional_params'] = json.loads(activity['additional_params']) if activity[
-                'additional_params'] else None
+                'additional_params'] else {}
         return result
