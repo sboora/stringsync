@@ -200,27 +200,28 @@ class UserRepository:
         cursor = self.connection.cursor()
         if not self.is_valid_username(username):
             return False, "Invalid username. It should be at least 5 characters and only contain alphanumeric " \
-                          "characters. "
+                          "characters. ", None
 
         if not self.is_valid_password(password):
             return False, "Invalid password. It should be at least 8 characters, contain at least one digit, " \
-                          "one lowercase, one uppercase, and one special character. "
+                          "one lowercase, one uppercase, and one special character. ", None
 
         if not self.is_valid_email(email):
-            return False, "Invalid email. Please enter a valid email address."
+            return False, "Invalid email. Please enter a valid email address.", None
 
         # Check if the username or email already exists
         cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
         existing_user = cursor.fetchone()
         if existing_user:
-            return False, "Username or email already exists."
+            return False, "Username or email already exists.", None
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         add_user_query = """INSERT INTO users (name, username, email, password, org_id, user_type)
                                         VALUES (%s, %s, %s, %s, %s, %s);"""
         cursor.execute(add_user_query, (name, username, email, hashed_password, org_id, user_type))
         self.connection.commit()
-        return True, f"User {username} with email {email} registered successfully as {user_type}."
+        user_id = cursor.lastrowid  # Get the user_id of the newly registered user
+        return True, f"User {username} with email {email} registered successfully as {user_type}.", user_id
 
     def enable_disable_user(self, username, enable=True):
         cursor = self.connection.cursor()

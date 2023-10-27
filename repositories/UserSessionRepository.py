@@ -97,6 +97,7 @@ class UserSessionRepository:
                    is_open
             FROM user_sessions
             WHERE user_id = %s
+            AND close_session_time IS NOT NULL
             ORDER BY open_session_time DESC;
         """
         cursor.execute(query, (user_id,))
