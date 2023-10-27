@@ -8,11 +8,11 @@ from repositories.AppInstanceRepository import AppInstanceRepository
 def main():
     set_env()
     app_instance_repo = AppInstanceRepository()
-    print("Load balancer active")
+    st.write("Load balancer active")
     app_instance = app_instance_repo.get_earliest_instance()
     app_instance_url = app_instance['url']
     app_instance_repo.update_last_used(app_instance['id'])
-    print(app_instance_url)
+    st.write(app_instance_url)
     #st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
 
 
