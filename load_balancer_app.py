@@ -7,8 +7,9 @@ from repositories.AppInstanceRepository import AppInstanceRepository
 
 
 def main():
+    st.write("Redirecting to cnn.com")
     webbrowser.open_new_tab("http://www.cnn.com")
-
+    st.write("Redirected to cnn.com")
 
 def sub():
     if 'redirect_done' not in st.session_state:
