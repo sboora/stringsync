@@ -13,7 +13,7 @@ def main():
     app_instance_url = app_instance['url']
     app_instance_repo.update_last_used(app_instance['id'])
     print(app_instance_url)
-    st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
+    #st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
 
 
 def set_env():
