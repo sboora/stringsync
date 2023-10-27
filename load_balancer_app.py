@@ -3,11 +3,14 @@ import os
 import streamlit as st
 import webbrowser
 
-
 from repositories.AppInstanceRepository import AppInstanceRepository
 
 
 def main():
+    webbrowser.open_new_tab("www.google.com")
+
+
+def sub():
     if 'redirect_done' not in st.session_state:
         st.session_state['redirect_done'] = False  # Initialize redirect flag
 
