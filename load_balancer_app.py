@@ -22,8 +22,7 @@ def main():
         ></iframe>
     """
     st.markdown(iframe_code, unsafe_allow_html=True)
-
-
+    return
 
 def set_env():
     env_vars = ['ROOT_USER', 'ROOT_PASSWORD', 'ADMIN_PASSWORD',
