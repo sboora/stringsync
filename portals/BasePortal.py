@@ -99,10 +99,9 @@ class BasePortal(ABC):
                         </div>
                     """, unsafe_allow_html=True)
 
-        st.markdown("""<div style="text-align: center; font-size: 16px; "> Embark on your artistic voyage of musical 
-        growth here. From budding enthusiasts to emerging maestros, GuruShishya fosters a nurturing space of endless 
-        possibilities, enriched by the timeless teacher-student bond, where every note played tells a story of 
-        personal progress and artistic camaraderie. </div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="text-align: center; font-size: 16px; "> Embark on a musical journey from novice to 
+        maestro at GuruShishya, where the age-old guru-shishya tradition fosters endless artistic 
+        exploration.</div>""", unsafe_allow_html=True)
 
         st.write("")
         st.write("")
