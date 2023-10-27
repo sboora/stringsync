@@ -21,6 +21,8 @@ def main():
         app_instance_url = "www.google.com"
         st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
         st.session_state['redirect_done'] = True  # Set redirect flag to true
+        st.rerun()
+
 
 def set_env():
     env_vars = ['ROOT_USER', 'ROOT_PASSWORD', 'ADMIN_PASSWORD',
