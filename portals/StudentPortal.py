@@ -8,6 +8,7 @@ import streamlit as st
 import os
 import plotly.graph_objects as go
 
+from enums.ActivityType import ActivityType
 from enums.Badges import Badges
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
@@ -89,17 +90,25 @@ class StudentPortal(BasePortal, ABC):
             notation_builder = NotationBuilder(track, track['notation_path'])
             unique_notes = notation_builder.display_notation()
         with col2:
-            student_recording, recording_id, is_success = \
+            recording_name, recording_id, is_success = \
                 self.handle_file_upload(self.get_user_id(), track['id'])
+            if is_success:
+                additional_params = {
+                    "Track": track_name,
+                    "Recording": recording_name,
+                }
+                self.user_activity_repo.log_activity(self.get_user_id(),
+                                                     ActivityType.UPLOAD_RECORDING,
+                                                     additional_params)
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(
-                    track_audio_path, student_recording, unique_notes, offset_distance)
+                    track_audio_path, recording_name, unique_notes, offset_distance)
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
 
         self.performances(track['id'])
         if is_success:
-            os.remove(student_recording)
+            os.remove(recording_name)
 
     @staticmethod
     def display_performances_header():
@@ -173,10 +182,10 @@ class StudentPortal(BasePortal, ABC):
         tracks = self.get_tracks()
 
         self.build_header(
-            column_names=["Track Name", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
+            column_names=["Track", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
         for track_detail in tracks:
             row_data = {
-                "Track Name": track_detail['track']['name'],
+                "Track": track_detail['track']['name'],
                 "Number of Recordings": track_detail['num_recordings'],
                 "Average Score": track_detail['avg_score'],
                 "Min Score": track_detail['min_score'],
@@ -259,7 +268,23 @@ class StudentPortal(BasePortal, ABC):
             return None
 
         selected_track_name = self.get_selected_track_name(tracks)
+
+        # Update the last selected track in session state
+        if st.session_state['last_selected_track'] != selected_track_name and \
+                selected_track_name != "Select a Track":
+            # Log the track selection change
+            self.log_track_selection_change(selected_track_name)
+
+        st.session_state['last_selected_track'] = selected_track_name
+
         return selected_track_name, self.get_selected_track_details(tracks, selected_track_name)
+
+    def log_track_selection_change(self, selected_track_name):
+        user_id = self.get_user_id()  # Assuming you have a method to get the current user ID
+        additional_params = {
+            "Track": selected_track_name,
+        }
+        self.user_activity_repo.log_activity(user_id, ActivityType.PLAY_TRACK, additional_params)
 
     def fetch_filter_options(self):
         return {
@@ -299,28 +324,41 @@ class StudentPortal(BasePortal, ABC):
     def handle_file_upload(self, user_id, track_id):
         with st.form("recording_uploader_form", clear_on_submit=True):
             uploaded_student_file = st.file_uploader("", type=["m4a", "mp3"])
+            original_date = st.date_input("Original File Date", value=None)  # Default value is None
             uploaded = st.form_submit_button("Upload", type="primary")
+
             if uploaded:
                 if uploaded_student_file is None:
+                    st.error("File is required.")
                     return None, -1, False
 
-                timestamp = datetime.datetime.now()
-                recording_name = f"{track_id}-{timestamp}.m4a"
+                # If the original date is provided, use it to create a datetime object,
+                # otherwise use the current date and time.
+                if original_date:
+                    original_timestamp = datetime.datetime.combine(original_date, datetime.datetime.min.time())
+                else:
+                    original_timestamp = datetime.datetime.now()
+
+                recording_name = f"{track_id}-{original_timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
                 recording_data = uploaded_student_file.getbuffer()
                 file_hash = self.calculate_file_hash(recording_data)
+
                 # Check for duplicates
                 if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
                     st.error("You have already uploaded this recording.")
                     return recording_name, -1, False
+
                 # Save the recording
                 self.save_recording(recording_data, recording_name)
+
                 # Calculate duration
                 duration = self.calculate_audio_duration(recording_name)
+
                 # Upload the recording to storage repo and recording repo
                 url, recording_id = self.add_recording(user_id,
                                                        track_id,
                                                        recording_name,
-                                                       timestamp,
+                                                       original_timestamp,
                                                        duration,
                                                        file_hash)
                 st.audio(recording_name, format='core/m4a')

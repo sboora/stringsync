@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import time
@@ -5,6 +6,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import streamlit as st
 
+from enums.ActivityType import ActivityType
 from enums.UserType import UserType
 from repositories.PortalRepository import PortalRepository
 from repositories.RecordingRepository import RecordingRepository
@@ -12,6 +14,7 @@ from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
 from repositories.TenantRepository import TenantRepository
 from repositories.TrackRepository import TrackRepository
+from repositories.UserActivityRepository import UserActivityRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
 from repositories.UserSessionRepository import UserSessionRepository
@@ -23,6 +26,7 @@ class BasePortal(ABC):
         self.org_repo = None
         self.user_repo = None
         self.user_session_repo = None
+        self.user_activity_repo = None
         self.portal_repo = None
         self.settings_repo = None
         self.recording_repo = None
@@ -36,6 +40,7 @@ class BasePortal(ABC):
         self.org_repo = OrganizationRepository()
         self.user_repo = UserRepository()
         self.user_session_repo = UserSessionRepository()
+        self.user_activity_repo = UserActivityRepository()
         self.portal_repo = PortalRepository()
         self.settings_repo = SettingsRepository()
         self.recording_repo = RecordingRepository()
@@ -141,6 +146,7 @@ class BasePortal(ABC):
             if success:
                 self.set_session_state(user_id, org_id, username)
                 st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
+                self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
                 print("session_id:", st.session_state['session_id'])
                 st.rerun()
             else:
@@ -165,6 +171,7 @@ class BasePortal(ABC):
                     if is_authenticated:
                         self.set_session_state(user_id, org_id, username)
                         st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
+                        self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
@@ -186,11 +193,12 @@ class BasePortal(ABC):
             if col1.button("Submit", type="primary"):
                 if reg_name and reg_username and reg_email and reg_password and join_code:
                     _, org_id = self.org_repo.get_org_id_by_join_code(join_code)
-                    is_registered, message = self.user_repo.register_user(
+                    is_registered, message, user_id = self.user_repo.register_user(
                         reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
                     if is_registered:
                         st.success(message)
                         st.session_state["show_register_section"] = False
+                        self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
                         time.sleep(2)
                         st.rerun()
                     else:
@@ -248,6 +256,8 @@ class BasePortal(ABC):
             st.session_state['username'] = None
         if 'show_register_section' not in st.session_state:
             st.session_state['show_register_section'] = None
+        if 'last_selected_track' not in st.session_state:
+            st.session_state['last_selected_track'] = None
 
     def set_session_state(self, user_id, org_id, username):
         st.session_state['user_logged_in'] = True
@@ -270,6 +280,7 @@ class BasePortal(ABC):
         session_id = st.session_state.get('session_id')
         if session_id:
             self.user_session_repo.close_session(session_id)
+            self.user_activity_repo.log_activity(self.get_user_id(), ActivityType.LOG_OUT)
         self.clear_session_state()
         st.rerun()
 
@@ -288,6 +299,7 @@ class BasePortal(ABC):
     def build_tabs(self):
         tab_dict = self.get_tab_dict()
         tab_dict['Sessions'] = self.show_sessions_tab
+        tab_dict['Activities'] = self.show_user_activities_tab
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
@@ -295,6 +307,36 @@ class BasePortal(ABC):
         for tab, tab_function in zip(tabs, tab_functions):
             with tab:
                 tab_function()
+
+    def show_user_activities_tab(self):
+        user_id = self.get_user_id()  # Get the current user ID
+
+        # Fetch user activities data for the current user
+        user_activities_data = self.user_activity_repo.get_user_activities(user_id)
+
+        if not user_activities_data:
+            st.write("No user activity data available.")
+            return
+
+        # Build the header for the user activities listing
+        self.build_header(['Activity Type', 'Timestamp', 'Additional Information'])
+
+        # Build rows for the user activities listing
+        for activity in user_activities_data:
+            print(activity)
+            activity_type = activity['activity_type']
+            timestamp = activity['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            additional_params_dict = activity.get('additional_params', '{}')
+            if len(additional_params_dict) > 0:
+                additional_params_str = ', '.join(f'{key}: {value}' for key, value in additional_params_dict.items())
+            else:
+                additional_params_str = 'No additional information available'
+
+            self.build_row({
+                'Activity Type': activity_type,
+                'Timestamp': timestamp,
+                'Additional Parameters': additional_params_str
+            })
 
     def show_sessions_tab(self):
         user_id = self.get_user_id()  # Get the current user ID
@@ -329,13 +371,18 @@ class BasePortal(ABC):
             st.write("No session details available.")
             return
 
-        df_sessions = pd.DataFrame(session_details)
+        # Build the header for the session listing
+        self.build_header(['Open Session Time', 'Close Session Time', 'Duration (minutes)'])
 
-        # Drop the columns 'session_id' and 'user_id' from the DataFrame
-        df_sessions = df_sessions.drop(columns=['session_id', 'user_id'])
-
-        # Display the DataFrame without the row index
-        st.write(df_sessions.to_html(index=False), unsafe_allow_html=True)
+        # Build rows for the session listing
+        for session in session_details:
+            open_time = session['open_session_time'].strftime('%Y-%m-%d %H:%M:%S')
+            close_time = session['close_session_time'].strftime('%Y-%m-%d %H:%M:%S') if session[
+                'close_session_time'] else 'N/A'
+            # Convert the session duration from seconds to minutes
+            duration_minutes = session['session_duration'] / 60
+            self.build_row({'Open Session Time': open_time, 'Close Session Time': close_time,
+                            'Duration (minutes)': f'{duration_minutes:.2f}'})
 
     @staticmethod
     def build_form(form_key, field_names, button_label='Submit', clear_on_submit=True):
