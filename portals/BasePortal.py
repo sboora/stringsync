@@ -2,7 +2,7 @@ import os
 import tempfile
 import time
 from abc import ABC, abstractmethod
-
+import pandas as pd
 import streamlit as st
 
 from enums.UserType import UserType
@@ -14,6 +14,7 @@ from repositories.TenantRepository import TenantRepository
 from repositories.TrackRepository import TrackRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
+from repositories.UserSessionRepository import UserSessionRepository
 
 
 class BasePortal(ABC):
@@ -21,6 +22,7 @@ class BasePortal(ABC):
         self.tenant_repo = None
         self.org_repo = None
         self.user_repo = None
+        self.user_session_repo = None
         self.portal_repo = None
         self.settings_repo = None
         self.recording_repo = None
@@ -33,6 +35,7 @@ class BasePortal(ABC):
         self.tenant_repo = TenantRepository()
         self.org_repo = OrganizationRepository()
         self.user_repo = UserRepository()
+        self.user_session_repo = UserSessionRepository()
         self.portal_repo = PortalRepository()
         self.settings_repo = SettingsRepository()
         self.recording_repo = RecordingRepository()
@@ -137,6 +140,8 @@ class BasePortal(ABC):
             success, user_id, org_id = self.user_repo.authenticate_user(username, password)
             if success:
                 self.set_session_state(user_id, org_id, username)
+                st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
+                print("session_id:", st.session_state['session_id'])
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
@@ -159,6 +164,7 @@ class BasePortal(ABC):
                         self.user_repo.authenticate_user(username, password)
                     if is_authenticated:
                         self.set_session_state(user_id, org_id, username)
+                        st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
@@ -261,6 +267,9 @@ class BasePortal(ABC):
         st.session_state['username'] = None
 
     def logout_user(self):
+        session_id = st.session_state.get('session_id')
+        if session_id:
+            self.user_session_repo.close_session(session_id)
         self.clear_session_state()
         st.rerun()
 
@@ -278,6 +287,7 @@ class BasePortal(ABC):
 
     def build_tabs(self):
         tab_dict = self.get_tab_dict()
+        tab_dict['Sessions'] = self.show_sessions_tab
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
@@ -285,6 +295,47 @@ class BasePortal(ABC):
         for tab, tab_function in zip(tabs, tab_functions):
             with tab:
                 tab_function()
+
+    def show_sessions_tab(self):
+        user_id = self.get_user_id()  # Get the current user ID
+
+        # Fetch time series data for the current user
+        time_series_data = self.user_session_repo.get_time_series_data(user_id)
+
+        if not time_series_data:
+            st.write("No session data available.")
+            return
+
+        # Prepare data for visualization
+        dates = [entry['date'] for entry in time_series_data]
+        total_sessions = [entry['total_sessions'] for entry in time_series_data]
+        total_duration = [entry['total_duration'] for entry in time_series_data]
+
+        # Create a DataFrame for visualization
+        import pandas as pd
+        df = pd.DataFrame({
+            'Date': pd.to_datetime(dates),
+            'Total Sessions': total_sessions,
+            'Total Duration': total_duration
+        })
+
+        # Draw a line chart
+        st.line_chart(df.set_index('Date'))
+
+        # Fetch session details for the current user
+        session_details = self.user_session_repo.get_user_sessions(user_id)  # Corrected method name
+
+        if not session_details:
+            st.write("No session details available.")
+            return
+
+        df_sessions = pd.DataFrame(session_details)
+
+        # Drop the columns 'session_id' and 'user_id' from the DataFrame
+        df_sessions = df_sessions.drop(columns=['session_id', 'user_id'])
+
+        # Display the DataFrame without the row index
+        st.write(df_sessions.to_html(index=False), unsafe_allow_html=True)
 
     @staticmethod
     def build_form(form_key, field_names, button_label='Submit', clear_on_submit=True):

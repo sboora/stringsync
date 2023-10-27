@@ -13,12 +13,14 @@ from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
 from repositories.UserAchievementRepository import UserAchievementRepository
+from repositories.UserSessionRepository import UserSessionRepository
 
 
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.user_achievement_repo = UserAchievementRepository()
+        self.user_session_repo = UserSessionRepository()  # Add this line
         self.audio_processor = AudioProcessor()
 
     def get_title(self):
