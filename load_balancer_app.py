@@ -7,7 +7,7 @@ from repositories.AppInstanceRepository import AppInstanceRepository
 
 
 def main():
-    webbrowser.open_new_tab("www.google.com")
+    webbrowser.open_new_tab("www.cnn.com")
 
 
 def sub():
