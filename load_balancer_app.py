@@ -1,6 +1,8 @@
 import os
 
 import streamlit as st
+import webbrowser
+
 
 from repositories.AppInstanceRepository import AppInstanceRepository
 
@@ -19,9 +21,8 @@ def main():
         st.session_state['app_instance_url'] = app_instance_url  # Store in session state
         st.write(app_instance_url)
         app_instance_url = "www.google.com"
-        st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
+        webbrowser.open_new_tab(app_instance_url)
         st.session_state['redirect_done'] = True  # Set redirect flag to true
-        st.rerun()
 
 
 def set_env():
