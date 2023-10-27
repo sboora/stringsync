@@ -16,14 +16,7 @@ def main():
         st.session_state['app_instance_url'] = app_instance_url  # Store in session state
         st.write(app_instance_url)
         app_instance_url = "www.google.com"
-        iframe_code = f"""
-                <iframe
-                    src="{app_instance_url}?embed=true"
-                    height="450"
-                    style="width:100%;border:none;"
-                ></iframe>
-            """
-        st.markdown(iframe_code, unsafe_allow_html=True)
+        st.write(f'<meta http-equiv="refresh" content="0; URL={app_instance_url}" />', unsafe_allow_html=True)
 
 
 def set_env():
