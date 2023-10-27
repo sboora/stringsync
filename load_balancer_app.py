@@ -13,10 +13,15 @@ def main():
     app_instance_url = app_instance['url']
     app_instance_repo.update_last_used(app_instance['id'])
     st.write(app_instance_url)
-    nav_script = """
-            <meta http-equiv="refresh" content="0; url='%s'">
-        """ % app_instance_url
-    st.write(nav_script, unsafe_allow_html=True)
+    iframe_code = f"""
+        <iframe
+            src="{app_instance_url}?embed=true"
+            height="450"
+            style="width:100%;border:none;"
+        ></iframe>
+    """
+    st.markdown(iframe_code, unsafe_allow_html=True)
+
 
 
 def set_env():
