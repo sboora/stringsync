@@ -13,6 +13,7 @@ def main():
     app_instance_url = app_instance['url']
     app_instance_repo.update_last_used(app_instance['id'])
     st.write(app_instance_url)
+    app_instance_url = "www.google.com"
     iframe_code = f"""
         <iframe
             src="{app_instance_url}?embed=true"
