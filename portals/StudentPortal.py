@@ -6,7 +6,6 @@ import hashlib
 import librosa
 import streamlit as st
 import os
-import plotly.graph_objects as go
 
 from enums.ActivityType import ActivityType
 from enums.Badges import Badges
@@ -38,10 +37,6 @@ class StudentPortal(BasePortal, ABC):
         }
 
     def show_introduction(self):
-        # Check if the user is logged in
-        if not self.user_logged_in():
-            self.pre_introduction()
-
         st.write("""
             ### What Can You Do Here? 🎸
 
@@ -178,7 +173,6 @@ class StudentPortal(BasePortal, ABC):
         self.show_line_graph()
 
     def display_tracks(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Track Details</h2>", unsafe_allow_html=True)
         tracks = self.get_tracks()
 
         self.build_header(
@@ -194,11 +188,8 @@ class StudentPortal(BasePortal, ABC):
             self.build_row(row_data)
 
     def show_line_graph(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Duration/Track Charts</h2>",
-                    unsafe_allow_html=True)
         user_id = self.get_user_id()
         time_series_data = self.recording_repo.get_time_series_data(user_id)
-        print(len(time_series_data))
         if not time_series_data:
             st.write("No data available.")
             return
@@ -208,22 +199,22 @@ class StudentPortal(BasePortal, ABC):
                            point['total_duration'] is not None]
         total_tracks = [int(point['total_tracks']) for point in time_series_data]
 
-        # Create the first line chart for Total Duration
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=formatted_dates, y=total_durations, mode='lines', name='Total Duration',
-                                  line=dict(color='blue')))
-        fig1.update_layout(title='Total Duration by Date', xaxis_title='Date', yaxis_title='Total Duration (minutes)')
+        # Create a DataFrame for Total Duration
+        df_duration = pd.DataFrame({
+            'Date': formatted_dates,
+            'Total Duration (minutes)': total_durations
+        })
 
-        # Create the second line chart for Total Tracks
-        fig2 = go.Figure()
-        fig2.add_trace(
-            go.Scatter(x=formatted_dates, y=total_tracks, mode='lines', name='Total Tracks', line=dict(color='green')))
-        fig2.update_layout(title='Total Tracks by Date', xaxis_title='Date', yaxis_title='Total Tracks')
+        # Create a DataFrame for Total Tracks
+        df_tracks = pd.DataFrame({
+            'Date': formatted_dates,
+            'Total Tracks': total_tracks
+        })
 
         # Display the charts side by side
         col1, col2 = st.columns(2)
-        col1.plotly_chart(fig1)
-        col2.plotly_chart(fig2)
+        col1.line_chart(df_duration.set_index('Date'))
+        col2.line_chart(df_tracks.set_index('Date'))
 
     def get_tracks(self):
         # Fetch all tracks and track statistics for this user

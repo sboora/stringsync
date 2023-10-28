@@ -109,8 +109,8 @@ class TeacherPortal(BasePortal, ABC):
     def create_track(self):
         with st.form(key='create_track_form'):
             track_name = st.text_input("Track Name")
-            track_file = st.file_uploader("Choose an audio file")
-            ref_track_file = st.file_uploader("Choose a reference audio file")
+            track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
+            ref_track_file = st.file_uploader("Choose a reference audio file", type=["m4a", "mp3"])
             description = st.text_input("Description")
             ragam = st.text_input("Ragam")
             tags = st.text_input("Tags (comma-separated)")

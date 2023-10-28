@@ -50,6 +50,7 @@ class BasePortal(ABC):
     def start(self, register=False):
         self.init_session()
         self.set_app_layout()
+        self.pre_introduction()
         self.show_introduction()
         if not self.user_logged_in():
             if register:
@@ -86,7 +87,18 @@ class BasePortal(ABC):
                 self.show_user_menu()
 
     def show_app_header(self):
-        left_column, center_column, right_column = st.columns([5.5, 8, 2.5])
+        st.markdown("""
+                <style>
+                       .block-container {
+                            padding-top: 0rem;
+                            padding-bottom: 0rem;
+                            padding-left: 5rem;
+                            padding-right: 5rem;
+                        }
+                </style>
+                """, unsafe_allow_html=True)
+
+        left_column, center_column, right_column = st.columns([5.5, 10, 2.5])
         with center_column:
             image = self.storage_repo.download_blob_by_name(f"logo/{self.get_app_name()}.png")
             st.image(image, use_column_width=True)
@@ -94,18 +106,18 @@ class BasePortal(ABC):
     @staticmethod
     def pre_introduction():
         st.markdown("""
-                        <style>
-                            .cursive-font {
-                                font-family: 'Comic Sans MS', cursive, sans-serif;
-                                font-size: 30px;
-                                color: #853507; 
-                                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow effect */
-                            }
-                        </style>
-                        <div class="cursive-font" style="text-align: center">
-                            Welcome to <span class="bold-text">GuruShishya</span>
-                        </div>
-                    """, unsafe_allow_html=True)
+            <style>
+                .cursive-font {
+                    font-family: 'Comic Sans MS', cursive, sans-serif;
+                    font-size: 30px;
+                    color: #853507; 
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow effect */
+                }
+            </style>
+            <div class="cursive-font" style="text-align: center">
+                Welcome to <span class="bold-text">GuruShishya</span>
+            </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("""<div style="text-align: center; font-size: 17px; "> Embark on a musical journey from novice to 
         maestro at GuruShishya, where the age-old guru-shishya tradition fosters endless artistic 
@@ -279,8 +291,15 @@ class BasePortal(ABC):
     def logout_user(self):
         session_id = st.session_state.get('session_id')
         if session_id:
-            self.user_session_repo.close_session(session_id)
-            self.user_activity_repo.log_activity(self.get_user_id(), ActivityType.LOG_OUT)
+            session_duration_seconds = self.user_session_repo.close_session(session_id)
+            if session_duration_seconds > 0:
+                session_duration_minutes = session_duration_seconds // 60  # Convert seconds to minutes
+                additional_params = {
+                    "Session Duration": f"{session_duration_minutes}m",
+                }
+            else:
+                additional_params = {}
+            self.user_activity_repo.log_activity(self.get_user_id(), ActivityType.LOG_OUT, additional_params)
         self.clear_session_state()
         st.rerun()
 
@@ -547,3 +566,5 @@ class BasePortal(ABC):
     @abstractmethod
     def get_tab_dict(self):
         pass
+
+
