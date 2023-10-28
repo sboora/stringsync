@@ -79,6 +79,21 @@ class UserSessionRepository:
         cursor.execute(update_session_query, (session_id,))
         self.connection.commit()
 
+        # Fetch the session_duration
+        fetch_duration_query = """
+            SELECT session_duration
+            FROM user_sessions
+            WHERE session_id = %s;
+        """
+        cursor.execute(fetch_duration_query, (session_id,))
+        result = cursor.fetchone()
+        session_duration = 0
+        if result:
+            session_duration = result[0]
+
+        cursor.close()  # close the cursor after use
+        return session_duration
+
     def is_session_open(self, session_id):
         cursor = self.connection.cursor()
         check_session_query = """SELECT is_open FROM user_sessions WHERE session_id = %s;"""
@@ -153,8 +168,6 @@ class UserSessionRepository:
 
             # Move to the next day
             current_date += timedelta(days=1)
-
-        print("Number of days", len(all_days_data))
         return all_days_data
 
     def close(self):

@@ -1,6 +1,8 @@
 import json
 import os
 import tempfile
+
+import pytz
 from google.cloud.sql.connector import Connector
 
 import pymysql
@@ -64,7 +66,7 @@ class UserActivityRepository:
         cursor.execute(insert_activity_query, (user_id, activity_type.value, additional_params_json))
         self.connection.commit()
 
-    def get_user_activities(self, user_id):
+    def get_user_activities(self, user_id, timezone='America/Los_Angeles'):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
             SELECT activity_id,
@@ -82,4 +84,9 @@ class UserActivityRepository:
             # Deserialize the additional_params JSON string to a dictionary
             activity['additional_params'] = json.loads(activity['additional_params']) if activity[
                 'additional_params'] else {}
+            utc_timestamp = pytz.utc.localize(activity['timestamp'])
+            local_tz = pytz.timezone(timezone)
+            local_timestamp = utc_timestamp.astimezone(local_tz)
+            print(type(local_timestamp))
+            activity['timestamp'] = local_timestamp
         return result

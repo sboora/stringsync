@@ -250,24 +250,32 @@ class RecordingRepository:
 
     def get_time_series_data(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = """SELECT DATE(timestamp) as date, SUM(duration) as total_duration, COUNT(*) as total_tracks
-                   FROM recordings WHERE user_id = %s GROUP BY DATE(timestamp) ORDER BY date ASC;"""
+        query = """
+            SELECT DATE(timestamp) as date, 
+                   COALESCE(SUM(duration), 0) as total_duration,
+                   COUNT(*) as total_tracks
+            FROM recordings 
+            WHERE user_id = %s 
+            GROUP BY DATE(timestamp) 
+            ORDER BY date ASC;
+            """
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
 
-        # Initialize an empty list to hold the time series data for all days of the year
+        # If no results are found, return an empty list
+        if not result:
+            return []
+
+        # Determine the earliest recording date and the last day of the current month
+        start_date = result[0]['date']
+        end_date = datetime(datetime.now().year, datetime.now().month + 1, 1).date() - timedelta(days=1)
+
+        # Initialize an empty list to hold the time series data
         all_days_data = []
 
-        # Initialize variables to keep track of the last known total_duration and total_tracks
-        last_total_duration = 0
-        last_total_tracks = 0
-
-        # Initialize the start date as the first day of the current year
-        start_date = datetime(datetime.now().year, 1, 1).date()
-
-        # Iterate through all days of the year
-        for day in range(1, 366):  # 365 days in a year, 366 to include the last day
-            current_date = start_date + timedelta(days=day - 1)
+        # Iterate through the days from the earliest recording to the end of the current month
+        current_date = start_date
+        while current_date <= end_date:
 
             # Check if there is data for the current day in the query result
             day_data = next((item for item in result if item['date'] == current_date), None)
@@ -276,6 +284,10 @@ class RecordingRepository:
                 # Update the last known total_duration and total_tracks
                 last_total_duration = day_data['total_duration']
                 last_total_tracks = day_data['total_tracks']
+            else:
+                # Reset both total_duration and total_tracks to 0 for days without data
+                last_total_duration = 0
+                last_total_tracks = 0
 
             # Append the data for the current day to the list
             all_days_data.append({
@@ -284,6 +296,8 @@ class RecordingRepository:
                 'total_tracks': last_total_tracks
             })
 
+            # Move to the next day
+            current_date += timedelta(days=1)
         return all_days_data
 
     def close(self):
