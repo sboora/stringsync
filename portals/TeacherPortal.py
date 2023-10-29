@@ -1,9 +1,7 @@
-import os
 from abc import ABC
 
 from enums.Features import Features
 from portals.BasePortal import BasePortal
-from repositories.RecordingRepository import RecordingRepository
 import streamlit as st
 import pandas as pd
 
@@ -40,7 +38,6 @@ class TeacherPortal(BasePortal, ABC):
         return tab_dict
 
     def show_introduction(self):
-        self.pre_introduction()
         st.write("""
             ### **Teacher Portal**
 

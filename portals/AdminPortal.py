@@ -33,8 +33,9 @@ class AdminPortal(BasePortal, ABC):
         if self.is_feature_enabled(Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY):
             tab_dict['Activities'] = self.show_user_activities_tab
 
+        return tab_dict
+
     def show_introduction(self):
-        self.pre_introduction()
         st.write("""
             ### **Administrative Portal**
 

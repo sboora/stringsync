@@ -1,5 +1,4 @@
 import datetime
-import time
 from abc import ABC
 
 import pandas as pd
@@ -8,7 +7,6 @@ import librosa
 import requests
 import streamlit as st
 import os
-import streamlit.components.v1 as com
 import json
 from streamlit_lottie import st_lottie
 from enums.ActivityType import ActivityType
@@ -24,8 +22,6 @@ from repositories.UserSessionRepository import UserSessionRepository
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
-        self.user_achievement_repo = UserAchievementRepository()
-        self.user_session_repo = UserSessionRepository()  # Add this line
         self.audio_processor = AudioProcessor()
 
     def get_title(self):
@@ -469,19 +465,16 @@ class StudentPortal(BasePortal, ABC):
 
     def get_audio_distance(self, track_file, student_path, offset_distance):
         distance = self.audio_processor.compare_audio(track_file, student_path)
-        print("Distance: ", distance)
         return distance - offset_distance
 
     def get_filtered_track_notes(self, track_file, track_notes):
         if len(track_notes) == 0:
             track_notes = self.audio_processor.get_notes(track_file)
             track_notes = self.audio_processor.filter_consecutive_notes(track_notes)
-        print("Track notes:", track_notes)
         return track_notes
 
     def get_filtered_student_notes(self, student_path):
         student_notes = self.audio_processor.get_notes(student_path)
-        print("Student notes:", student_notes)
         return self.audio_processor.filter_consecutive_notes(student_notes)
 
     def display_score_and_analysis(self, score, error_notes, missing_notes):

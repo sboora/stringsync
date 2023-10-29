@@ -12,7 +12,6 @@ from repositories.FeatureToggleRepository import FeatureToggleRepository
 class TenantPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
-        self.feature_repo = FeatureToggleRepository()
 
     def get_title(self):
         return f"{self.get_app_name()} Tenant Portal"

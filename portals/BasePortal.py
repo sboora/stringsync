@@ -7,6 +7,7 @@ import streamlit as st
 
 from enums.ActivityType import ActivityType
 from enums.UserType import UserType
+from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
 from repositories.PortalRepository import PortalRepository
 from repositories.RecordingRepository import RecordingRepository
@@ -14,6 +15,7 @@ from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
 from repositories.TenantRepository import TenantRepository
 from repositories.TrackRepository import TrackRepository
+from repositories.UserAchievementRepository import UserAchievementRepository
 from repositories.UserActivityRepository import UserActivityRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
@@ -27,6 +29,7 @@ class BasePortal(ABC):
         self.user_repo = None
         self.user_session_repo = None
         self.user_activity_repo = None
+        self.user_achievement_repo = None
         self.portal_repo = None
         self.settings_repo = None
         self.recording_repo = None
@@ -37,16 +40,18 @@ class BasePortal(ABC):
         self.init_repositories()
 
     def init_repositories(self):
-        self.tenant_repo = TenantRepository()
-        self.org_repo = OrganizationRepository()
-        self.user_repo = UserRepository()
-        self.user_session_repo = UserSessionRepository()
-        self.user_activity_repo = UserActivityRepository()
-        self.portal_repo = PortalRepository()
-        self.settings_repo = SettingsRepository()
-        self.recording_repo = RecordingRepository()
-        self.track_repo = TrackRepository()
-        self.feature_repo = FeatureToggleRepository()
+        database_manager = DatabaseManager()
+        self.tenant_repo = TenantRepository(database_manager.connection)
+        self.org_repo = OrganizationRepository(database_manager.connection)
+        self.user_repo = UserRepository(database_manager.connection)
+        self.user_session_repo = UserSessionRepository(database_manager.connection)
+        self.user_activity_repo = UserActivityRepository(database_manager.connection)
+        self.portal_repo = PortalRepository(database_manager.connection)
+        self.settings_repo = SettingsRepository(database_manager.connection)
+        self.recording_repo = RecordingRepository(database_manager.connection)
+        self.track_repo = TrackRepository(database_manager.connection)
+        self.feature_repo = FeatureToggleRepository(database_manager.connection)
+        self.user_achievement_repo = UserAchievementRepository(database_manager.connection)
         self.storage_repo = StorageRepository('melodymaster')
 
     def start(self, register=False):
@@ -161,7 +166,6 @@ class BasePortal(ABC):
                 self.set_session_state(user_id, org_id, username)
                 st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
                 self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
-                print("session_id:", st.session_state['session_id'])
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
@@ -175,9 +179,7 @@ class BasePortal(ABC):
             st.header("Login")
             is_authenticated = False
             password, username = self.show_login_screen()
-            # Create two columns for the buttons
             col1, col2, col3 = st.columns([2, 4, 32])
-            # Login button in the first column
             if col1.button("Login", type="primary"):
                 if username and password:
                     is_authenticated, user_id, org_id = \
@@ -192,19 +194,20 @@ class BasePortal(ABC):
                 else:
                     st.error("Both username and password are required")
 
-            # Register button in the second column
             if col2.button("Register", type="primary"):
                 st.session_state["show_register_section"] = True
                 st.rerun()
         else:
             st.subheader("Register")
-            reg_email, reg_name, reg_password, reg_username, join_code = \
+            reg_email, reg_name, reg_username, reg_password, confirm_password, join_code = \
                 self.show_user_registration_screen()
 
-            # Create two columns for the buttons
             col1, col2, col3 = st.columns([3, 4, 40])
-            # Ok button
-            if col1.button("Submit", type="primary"):
+
+            if reg_password != confirm_password:
+                st.error("Passwords do not match")
+
+            elif col1.button("Submit", type="primary"):
                 if reg_name and reg_username and reg_email and reg_password and join_code:
                     _, org_id = self.org_repo.get_org_id_by_join_code(join_code)
                     is_registered, message, user_id = self.user_repo.register_user(
@@ -219,6 +222,7 @@ class BasePortal(ABC):
                         st.error(message)
                 else:
                     st.error("All fields are required for registration")
+
             if col2.button("Cancel", type="primary"):
                 st.session_state["show_register_section"] = False
                 st.rerun()
@@ -237,8 +241,10 @@ class BasePortal(ABC):
         reg_email = st.text_input("Email")
         reg_username = st.text_input(key="registration_username", label="User")
         reg_password = st.text_input(key="registration_password", type="password", label="Password")
+        confirm_password = st.text_input("Confirm Password", type="password")  # Add this line
         join_code = st.text_input("Join Code")
-        return reg_email, reg_name, reg_password, reg_username, join_code
+
+        return reg_email, reg_name, reg_username, reg_password, confirm_password, join_code
 
     @staticmethod
     def ok():
@@ -282,8 +288,6 @@ class BasePortal(ABC):
                 feature_name = feature.get('feature_name', 'Unknown')
                 is_enabled = feature.get('is_enabled', False)
                 st.session_state['feature_toggles'][feature_name] = is_enabled
-
-        print(st.session_state['feature_toggles'])
 
     def set_session_state(self, user_id, org_id, username):
         st.session_state['user_logged_in'] = True
@@ -354,7 +358,6 @@ class BasePortal(ABC):
 
         # Build rows for the user activities listing
         for activity in user_activities_data:
-            print(activity)
             activity_type = activity['activity_type']
             timestamp = activity['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
             additional_params_dict = activity.get('additional_params', '{}')
