@@ -51,6 +51,7 @@ class UserSessionRepository:
                                     user_id INT,
                                     open_session_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                     close_session_time TIMESTAMP,
+                                    last_activity_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     session_duration INT,
                                     is_open BOOLEAN DEFAULT TRUE,
                                     FOREIGN KEY (user_id) REFERENCES `users`(id)
@@ -93,6 +94,17 @@ class UserSessionRepository:
 
         cursor.close()  # close the cursor after use
         return session_duration
+
+    def update_last_activity_time(self, session_id):
+        cursor = self.connection.cursor()
+        update_activity_time_query = """
+            UPDATE user_sessions
+            SET last_activity_time = CURRENT_TIMESTAMP,
+                session_duration = TIMESTAMPDIFF(SECOND, open_session_time, CURRENT_TIMESTAMP)
+            WHERE session_id = %s;
+        """
+        cursor.execute(update_activity_time_query, (session_id,))
+        self.connection.commit()
 
     def is_session_open(self, session_id):
         cursor = self.connection.cursor()
