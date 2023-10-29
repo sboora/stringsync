@@ -1,57 +1,15 @@
 import re
-from time import sleep
-
 import bcrypt
-import pymysql
-from google.cloud.sql.connector import Connector
 import os
-import tempfile
-
 from enums.UserType import UserType
-
-MAX_RETRIES = 3  # Set the maximum number of retries
-RETRY_DELAY = 1  # Time delay between retries in seconds
 
 
 class UserRepository:
-    def __init__(self):
-        self.connection = self.connect()
+    def __init__(self, connection):
+        self.connection = connection
         self.create_user_groups_table()
         self.create_users_table()
         self.create_root_user()
-
-    @staticmethod
-    def connect():
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            temp_file.write(os.environ["GOOGLE_APP_CRED"])
-            temp_file_path = temp_file.name
-
-        # Use the temporary file path as the value for GOOGLE_APPLICATION_CREDENTIALS
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
-
-        instance_connection_name = os.environ[
-            "MYSQL_CONNECTION_STRING"
-        ]
-        db_user = os.environ["SQL_USERNAME"]
-        db_pass = os.environ["SQL_PASSWORD"]
-        db_name = os.environ["SQL_DATABASE"]
-
-        retries = 0
-        while retries < MAX_RETRIES:
-            try:
-                connection = Connector().connect(
-                    instance_connection_name,
-                    "pymysql",
-                    user=db_user,
-                    password=db_pass,
-                    db=db_name,
-                )
-                return connection
-            except pymysql.MySQLError as e:
-                print(f"Failed to connect to database: {e}")
-                retries += 1
-                print(f"Retrying ({retries}/{MAX_RETRIES})...")
-                sleep(RETRY_DELAY)
 
     def create_users_table(self):
         cursor = self.connection.cursor()

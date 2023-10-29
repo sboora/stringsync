@@ -1,41 +1,12 @@
 import json
-import os
-import tempfile
-
 import pytz
-from google.cloud.sql.connector import Connector
-
 import pymysql
 
 
 class UserActivityRepository:
-    def __init__(self):
-        self.connection = self.connect()
+    def __init__(self, connection):
+        self.connection = connection
         self.create_activities_table()
-
-    @staticmethod
-    def connect():
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            temp_file.write(os.environ["GOOGLE_APP_CRED"])
-            temp_file_path = temp_file.name
-
-        # Use the temporary file path as the value for GOOGLE_APPLICATION_CREDENTIALS
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
-
-        instance_connection_name = os.environ[
-            "MYSQL_CONNECTION_STRING"
-        ]
-        db_user = os.environ["SQL_USERNAME"]
-        db_pass = os.environ["SQL_PASSWORD"]
-        db_name = os.environ["SQL_DATABASE"]
-
-        return Connector().connect(
-            instance_connection_name,
-            "pymysql",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-        )
 
     def create_activities_table(self):
         cursor = self.connection.cursor()
