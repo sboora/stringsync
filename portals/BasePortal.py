@@ -3,11 +3,11 @@ import os
 import tempfile
 import time
 from abc import ABC, abstractmethod
-import pandas as pd
 import streamlit as st
 
 from enums.ActivityType import ActivityType
 from enums.UserType import UserType
+from repositories.FeatureToggleRepository import FeatureToggleRepository
 from repositories.PortalRepository import PortalRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
@@ -32,6 +32,7 @@ class BasePortal(ABC):
         self.recording_repo = None
         self.track_repo = None
         self.storage_repo = None
+        self.feature_repo = None
         self.set_env()
         self.init_repositories()
 
@@ -45,6 +46,7 @@ class BasePortal(ABC):
         self.settings_repo = SettingsRepository()
         self.recording_repo = RecordingRepository()
         self.track_repo = TrackRepository()
+        self.feature_repo = FeatureToggleRepository()
         self.storage_repo = StorageRepository('melodymaster')
 
     def start(self, register=False):
@@ -254,8 +256,7 @@ class BasePortal(ABC):
     def cancel():
         return st.button("Cancel", type="primary")
 
-    @staticmethod
-    def init_session():
+    def init_session(self):
         if 'user_logged_in' not in st.session_state:
             st.session_state['user_logged_in'] = False
         if 'user_id' not in st.session_state:
@@ -270,6 +271,19 @@ class BasePortal(ABC):
             st.session_state['show_register_section'] = None
         if 'last_selected_track' not in st.session_state:
             st.session_state['last_selected_track'] = None
+
+        self.load_all_feature_toggles_into_session()
+
+    def load_all_feature_toggles_into_session(self):
+        features = self.feature_repo.get_all_features()
+        if 'feature_toggles' not in st.session_state:
+            st.session_state['feature_toggles'] = {}
+            for feature in features:
+                feature_name = feature.get('feature_name', 'Unknown')
+                is_enabled = feature.get('is_enabled', False)
+                st.session_state['feature_toggles'][feature_name] = is_enabled
+
+        print(st.session_state['feature_toggles'])
 
     def set_session_state(self, user_id, org_id, username):
         st.session_state['user_logged_in'] = True
@@ -317,8 +331,6 @@ class BasePortal(ABC):
 
     def build_tabs(self):
         tab_dict = self.get_tab_dict()
-        tab_dict['Sessions'] = self.show_sessions_tab
-        tab_dict['Activities'] = self.show_user_activities_tab
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
@@ -498,6 +510,10 @@ class BasePortal(ABC):
             return temp_file.name
 
     @staticmethod
+    def is_feature_enabled(feature):
+        return st.session_state['feature_toggles'].get(feature.name, False)
+
+    @staticmethod
     def user_logged_in():
         return st.session_state['user_logged_in']
 
@@ -508,6 +524,10 @@ class BasePortal(ABC):
     @staticmethod
     def get_user_id():
         return st.session_state['user_id']
+
+    @staticmethod
+    def get_session_id():
+        return st.session_state['session_id']
 
     @staticmethod
     def get_username():

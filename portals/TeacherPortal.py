@@ -1,6 +1,7 @@
 import os
 from abc import ABC
 
+from enums.Features import Features
 from portals.BasePortal import BasePortal
 from repositories.RecordingRepository import RecordingRepository
 import streamlit as st
@@ -20,7 +21,7 @@ class TeacherPortal(BasePortal, ABC):
         return "🎶"
 
     def get_tab_dict(self):
-        return {
+        tab_dict = {
             "👥 Create Group": self.create_group,
             "👩‍🎓 Students": self.display_students,
             "🔀 Assign Students to Groups": self.assign_students_to_group,
@@ -29,6 +30,14 @@ class TeacherPortal(BasePortal, ABC):
             "🎵 Recordings": self.list_recordings,
             "📥 Submissions": self.list_submissions
         }
+
+        if self.is_feature_enabled(Features.TEACHER_PORTAL_SHOW_USER_SESSIONS):
+            tab_dict['Sessions'] = self.show_sessions_tab
+
+        if self.is_feature_enabled(Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY):
+            tab_dict['Activities'] = self.show_user_activities_tab
+
+        return tab_dict
 
     def show_introduction(self):
         self.pre_introduction()

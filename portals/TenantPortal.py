@@ -1,13 +1,18 @@
 from abc import ABC
 
+from enums.Features import Features
 from portals.BasePortal import BasePortal
 import streamlit as st
+import streamlit_toggle as tog
 import os
+
+from repositories.FeatureToggleRepository import FeatureToggleRepository
 
 
 class TenantPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
+        self.feature_repo = FeatureToggleRepository()
 
     def get_title(self):
         return f"{self.get_app_name()} Tenant Portal"
@@ -16,7 +21,6 @@ class TenantPortal(BasePortal, ABC):
         return "🏠"
 
     def show_introduction(self):
-        self.pre_introduction()
         st.write("""
             ### **Tenant Management Portal**!!
 
@@ -33,6 +37,7 @@ class TenantPortal(BasePortal, ABC):
         return {
             "🏢 Register a Tenant": self.register_tenant,
             "📋 List Tenants": self.list_tenants,
+            "⚙️ Feature Toggles": self.feature_toggles  # Add this line
         }
 
     def register_tenant(self):
@@ -100,5 +105,44 @@ class TenantPortal(BasePortal, ABC):
                 "Admin": admin_username
             }
             self.build_row(row_data)
+
+    def feature_toggles(self):
+        # Assume we have a FeatureToggleRepository instance as self.feature_repo
+        features = self.feature_repo.get_all_features()
+
+        if features:
+            for feature in features:
+                feature_enum_name = feature.get('feature_name', 'Unknown')
+                is_enabled = feature.get('is_enabled', False)
+
+                # Map the enum name to its value
+                feature_display_value = Features[
+                    feature_enum_name].value if feature_enum_name != 'Unknown' else 'Unknown'
+
+                # Create columns with padding
+                col1, col2, padding = st.columns([1, 1, 4])
+
+                # Display feature value
+                with col1:
+                    st.write(feature_display_value)
+
+                # Display on/off switch using st_toggles
+                with col2:
+                    current_status = tog.st_toggle_switch(label="",
+                                                          key=f"toggle_{feature_enum_name}",
+                                                          default_value=is_enabled,
+                                                          label_after=False,
+                                                          inactive_color='#D3D3D3',
+                                                          active_color="#11567f",
+                                                          track_color="#29B5E8"
+                                                          )
+
+                # If toggle button is clicked
+                if current_status != is_enabled:
+                    self.feature_repo.toggle_feature(feature_enum_name)
+        else:
+            st.write("No features available.")
+
+
 
 

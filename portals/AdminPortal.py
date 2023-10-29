@@ -2,6 +2,7 @@ from abc import ABC
 
 import streamlit as st
 
+from enums.Features import Features
 from portals.BasePortal import BasePortal
 from enums.UserType import UserType
 
@@ -17,7 +18,7 @@ class AdminPortal(BasePortal, ABC):
         return "🛠"
 
     def get_tab_dict(self):
-        return {
+        tab_dict = {
             "🏫 Register a School": self.register_school,
             "🏢 List Schools": self.list_schools,
             "👩‍🏫 Register a Tutor": self.register_tutor,
@@ -25,6 +26,12 @@ class AdminPortal(BasePortal, ABC):
             "📝 Assign Tutor to School": self.assign_tutor,
             "📋 List Tutor Assignments": self.list_tutor_assignments
         }
+
+        if self.is_feature_enabled(Features.ADMIN_PORTAL_SHOW_USER_SESSIONS):
+            tab_dict['Sessions'] = self.show_sessions_tab
+
+        if self.is_feature_enabled(Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY):
+            tab_dict['Activities'] = self.show_user_activities_tab
 
     def show_introduction(self):
         self.pre_introduction()

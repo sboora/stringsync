@@ -1,14 +1,19 @@
 import datetime
+import time
 from abc import ABC
 
 import pandas as pd
 import hashlib
 import librosa
+import requests
 import streamlit as st
 import os
-
+import streamlit.components.v1 as com
+import json
+from streamlit_lottie import st_lottie
 from enums.ActivityType import ActivityType
 from enums.Badges import Badges
+from enums.Features import Features
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
@@ -30,21 +35,28 @@ class StudentPortal(BasePortal, ABC):
         return "🎶"
 
     def get_tab_dict(self):
-        return {
+        tab_dict = {
             "🎤 Record": self.record,
             "📊 Progress Dashboard": self.display_progress_dashboard,
-            "🏆 Achievements": self.display_achievements
+            "🏆 Badges": self.display_badges
         }
+
+        if self.is_feature_enabled(Features.STUDENT_PORTAL_SHOW_USER_SESSIONS):
+            tab_dict['Sessions'] = self.show_sessions_tab
+
+        if self.is_feature_enabled(Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY):
+            tab_dict['Activities'] = self.show_user_activities_tab
+
+        return tab_dict
 
     def show_introduction(self):
         st.write("""
-            ### What Can You Do Here? 🎸
+            ### What Can You Do Here? 🎻
 
             1. **Listen to Tracks**: Browse through a curated list of tracks that suit your musical taste and skill level.
             2. **Record Performances**: Record your own renditions of these tracks and get instant feedback.
-            3. **Work on Assignments**: Complete assignments set by your teacher to hone your skills further.
-            4. **Progress Dashboard**: Track your practice time, number of tracks completed, and other key metrics.
-            5. **Achievements**: Earn badges for reaching milestones and accomplishing challenges.
+            3. **Progress Dashboard**: Track your practice time, number of tracks completed, and other key metrics.
+            4. **Badges**: Earn badges for reaching milestones and accomplishing challenges.
         """)
 
         if not self.user_logged_in():
@@ -54,7 +66,6 @@ class StudentPortal(BasePortal, ABC):
                 - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
                 - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
                 - **Progress Tracking**: Visualize your growth over time with easy-to-understand charts and metrics.
-                - **Interactive Assignments**: Engage in assignments that are not only educational but also fun.
                 - **Achievements and Badges**: Get rewarded for your hard work and dedication with exciting badges.
             """)
 
@@ -62,6 +73,68 @@ class StudentPortal(BasePortal, ABC):
             "Ready to dive into your musical journey? Scroll down to explore all the exciting features available to "
             "you! "
         )
+
+    def show_animations(self):
+        # Center-aligned, bold text with cursive font, improved visibility, and spacing
+        st.markdown("""
+            <h1 style='text-align: center; letter-spacing: 0.10px; font-family: cursive; font-size: 24px; font-weight: bold;'>
+                <span style='color: red;'>C</span>
+                <span style='color: orange;'>o</span>
+                <span style='color: darkorange;'>n</span>
+                <span style='color: green;'>g</span>
+                <span style='color: blue;'>r</span>
+                <span style='color: indigo;'>a</span>
+                <span style='color: violet;'>t</span>
+                <span style='color: red;'>u</span>
+                <span style='color: orange;'>l</span>
+                <span style='color: darkorange;'>a</span>
+                <span style='color: green;'>t</span>
+                <span style='color: blue;'>i</span>
+                <span style='color: indigo;'>o</span>
+                <span style='color: violet;'>n</span>
+                <span style='color: red;'>s</span>
+                🎉🎇
+            </h1>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <h2 style='text-align: center; letter-spacing: 0.5px; font-family: cursive; font-size: 20spx;'>
+                <span style='color: red;'>Y</span>
+                <span style='color: orange;'>o</span>
+                <span style='color: darkorange;'>u</span>
+                <span style='color: green;'>'</span>
+                <span style='color: blue;'>v</span>
+                <span style='color: indigo;'>e</span>
+                <span style='color: violet;'>&nbsp;&nbsp;</span>
+                <span style='color: red;'>e</span>
+                <span style='color: orange;'>a</span>
+                <span style='color: darkorange;'>r</span>
+                <span style='color: green;'>n</span>
+                <span style='color: blue;'>e</span>
+                <span style='color: indigo;'>d</span>
+                <span style='color: violet;'>&nbsp;&nbsp;</span>
+                <span style='color: red;'>a</span>
+                <span style='color: orange;'>&nbsp;&nbsp;</span>
+                <span style='color: darkorange;'>n</span>
+                <span style='color: green;'>e</span>
+                <span style='color: blue;'>w</span>
+                <span style='color: indigo;'>&nbsp;&nbsp;</span>
+                <span style='color: violet;'>b</span>
+                <span style='color: red;'>a</span>
+                <span style='color: orange;'>d</span>
+                <span style='color: darkorange;'>g</span>
+                <span style='color: green;'>e</span>
+            </h2>
+        """, unsafe_allow_html=True)
+
+        # Load and center the Lottie animation
+        byte_data = self.storage_repo.download_blob_by_name(f"animations/giftbox.json")
+        lottie_json = json.loads(byte_data.decode('utf-8'))
+
+        col1, col2, col3 = st.columns([1, 6, 1])
+
+        with col2:
+            st_lottie(lottie_json, speed=1, width=300, height=150, loop=True, quality='high', key="badge_awarded")
 
     def record(self):
         track_name, track = self.filter_tracks()
@@ -95,11 +168,15 @@ class StudentPortal(BasePortal, ABC):
                 self.user_activity_repo.log_activity(self.get_user_id(),
                                                      ActivityType.UPLOAD_RECORDING,
                                                      additional_params)
+                self.user_session_repo.update_last_activity_time(self.get_session_id())
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(
                     track_audio_path, recording_name, unique_notes, offset_distance)
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
+                badge_awarded = self.award_badge()
+                if badge_awarded:
+                    self.show_animations()
 
         self.performances(track['id'])
         if is_success:
@@ -107,7 +184,7 @@ class StudentPortal(BasePortal, ABC):
 
     @staticmethod
     def display_performances_header():
-        st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Performances</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Recordings</h3>", unsafe_allow_html=True)
         st.markdown("<hr style='height:2px; margin-top: 0; border-width:0; background: lightblue;'>",
                     unsafe_allow_html=True)
 
@@ -276,6 +353,7 @@ class StudentPortal(BasePortal, ABC):
             "Track": selected_track_name,
         }
         self.user_activity_repo.log_activity(user_id, ActivityType.PLAY_TRACK, additional_params)
+        self.user_session_repo.update_last_activity_time(self.get_session_id())
 
     def fetch_filter_options(self):
         return {
@@ -471,21 +549,38 @@ class StudentPortal(BasePortal, ABC):
         else:
             return "Excellent! You've mastered this track!"
 
-    def display_achievements(self):
-        self.award_badge()
+    @staticmethod
+    def load_lottie_url(url: str):
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+
+    def display_badges(self):
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
-        # Create a Streamlit column layout to display badges in a visually appealing manner
-        cols = st.columns(5)  # Adjust the number of columns as needed
+        if badges:  # If there are badges
+            cols = st.columns(5)
 
-        for i, badge in enumerate(badges):
-            with cols[i % 5]:  # Loop through columns
-                # Display the badge icon from the badge folder
-                badge_url = f"{self.get_badges_bucket()}/{badge}.png"
-                filename = self.download_to_temp_file_by_name(badge_url)
-                st.image(filename, width=200)
+            for i, badge in enumerate(badges):
+                with cols[i % 5]:  # Loop through columns
+                    # Display the badge icon from the badge folder
+                    badge_url = f"{self.get_badges_bucket()}/{badge}.png"
+                    filename = self.download_to_temp_file_by_name(badge_url)
+                    st.image(filename, width=200)
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:  # If there are no badges
+            st.markdown("### No Badges Yet 🎖️")
+            st.markdown("""
+                **What Can You Do to Earn Badges?**
+
+                1. **Listen to Tracks**: The more you listen, the more you learn.
+                2. **Record Performances**: Every recording earns you points towards your next badge.
+                3. **Keep Practicing**: The more points you earn, the more badges you unlock.
+
+                Start by listening to a track and making your first recording today!
+            """)
 
     def award_badge(self):
         # Fetch the total number of tracks and total duration for the user
@@ -493,29 +588,35 @@ class StudentPortal(BasePortal, ABC):
         total_tracks = self.recording_repo.get_total_recordings(self.get_user_id(), min_score)
         total_duration = self.recording_repo.get_total_duration(self.get_user_id(), min_score)
 
-        # Award badges based on the total number of tracks
-        if total_tracks >= 1:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.FIRST_NOTE)
-        if total_tracks >= 20:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.RISING_STAR)
-        if total_tracks >= 40:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.FAST_LEARNER)
-        if total_tracks >= 75:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.SONG_BIRD)
-        if total_tracks >= 100:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.MAESTRO)
+        # Mapping thresholds to badges
+        track_badges = [
+            (1, Badges.FIRST_NOTE),
+            (20, Badges.RISING_STAR),
+            (40, Badges.FAST_LEARNER),
+            (75, Badges.SONG_BIRD),
+            (100, Badges.MAESTRO),
+        ]
 
-        # Award badges based on the total duration
-        if total_duration >= 60:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.PRACTICE_MAKES_PERFECT)
-        if total_duration >= 120:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.PERFECT_PITCH)
-        if total_duration >= 300:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.MUSIC_WIZARD)
-        if total_duration >= 600:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.ROCKSTAR)
-        if total_duration >= 1000:
-            self.user_achievement_repo.award_badge(self.get_user_id(), Badges.VIRTUOSO)
+        duration_badges = [
+            (60, Badges.PRACTICE_MAKES_PERFECT),
+            (120, Badges.PERFECT_PITCH),
+            (300, Badges.MUSIC_WIZARD),
+            (600, Badges.ROCKSTAR),
+            (1000, Badges.VIRTUOSO),
+        ]
+
+        # Award track badges
+        badge_awarded = False
+        for threshold, badge in track_badges:
+            if total_tracks >= threshold:
+                badge_awarded, _ = self.user_achievement_repo.award_badge(self.get_user_id(), badge)
+
+        # Award duration badges
+        for threshold, badge in duration_badges:
+            if total_duration >= threshold:
+                badge_awarded, _ = self.user_achievement_repo.award_badge(self.get_user_id(), badge)
+
+        return badge_awarded
 
     @staticmethod
     def ordinal(n):
