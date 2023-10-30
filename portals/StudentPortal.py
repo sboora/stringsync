@@ -29,19 +29,18 @@ class StudentPortal(BasePortal, ABC):
         return "🎶"
 
     def get_tab_dict(self):
-        tab_dict = {
-            "🎤 Record": self.record,
-            "📊 Progress Dashboard": self.display_progress_dashboard,
-            "🏆 Badges": self.display_badges
-        }
-
-        if self.is_feature_enabled(Features.STUDENT_PORTAL_SHOW_USER_SESSIONS):
-            tab_dict['Sessions'] = self.show_sessions_tab
-
-        if self.is_feature_enabled(Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY):
-            tab_dict['Activities'] = self.show_user_activities_tab
-
-        return tab_dict
+        tabs = [
+            ("🎤 Record", self.record),
+            ("📥 Submissions", self.submissions),
+            ("📊 Progress Dashboard", self.display_progress_dashboard),
+            ("🏆 Badges", self.display_badges),
+            ("⏲️ Practice Log", self.log_practice_time),
+            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+                Features.STUDENT_PORTAL_SHOW_USER_SESSIONS) else None,
+            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+                Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY) else None
+        ]
+        return {tab[0]: tab[1] for tab in tabs if tab}
 
     def show_introduction(self):
         st.write("""
@@ -133,7 +132,6 @@ class StudentPortal(BasePortal, ABC):
     def record(self):
         track = self.filter_tracks()
         if not track:
-            st.info("No tracks found.")
             return
 
         self.create_track_headers()
@@ -166,7 +164,7 @@ class StudentPortal(BasePortal, ABC):
                 if badge_awarded:
                     self.show_animations()
 
-        self.performances(track['id'])
+        self.recordings(track['id'])
         if is_success:
             os.remove(recording_name)
 
@@ -177,17 +175,18 @@ class StudentPortal(BasePortal, ABC):
         return track_notes
 
     @staticmethod
-    def display_performances_header():
+    def display_recordings_header():
         st.markdown("<h3 style='text-align: center; margin-bottom: 0;'>Recordings</h3>", unsafe_allow_html=True)
         st.markdown("<hr style='height:2px; margin-top: 0; border-width:0; background: lightblue;'>",
                     unsafe_allow_html=True)
 
-    def performances(self, track_id):
-        self.display_performances_header()
-        recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(self.get_user_id(), track_id)
+    def recordings(self, track_id):
+        self.display_recordings_header()
+        recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(
+            self.get_user_id(), track_id)
 
         if not recordings:
-            st.write("No recordings found.")
+            st.info("No recordings found.")
             return
 
         # Create a DataFrame to hold the recording data
@@ -204,7 +203,6 @@ class StudentPortal(BasePortal, ABC):
             else:
                 col1.write("No core data available.")
 
-            # Use Markdown to make the text black and larger
             col2.write("")
             col2.markdown(
                 f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
@@ -233,6 +231,51 @@ class StudentPortal(BasePortal, ABC):
         formatted_timestamp = timestamp.strftime('%I:%M %p, ') + self.ordinal(
             int(timestamp.strftime('%d'))) + timestamp.strftime(' %b, %Y')
         return formatted_timestamp
+
+    def submissions(self):
+        # Fetch submissions from the database
+        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id())
+
+        if not submissions:
+            st.info("No submissions found.")
+            return
+
+        self.build_header(
+            column_names=["Track", "Recording", "Teacher Remarks", "System Remarks", "Time"])
+
+        # Display submissions
+        for submission in submissions:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+
+            col1.write("")
+            if submission['track_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
+                col1.audio(track_audio, format='core/m4a')
+            else:
+                col1.warning("No audio available.")
+
+            col2.write("")
+            if submission['recording_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+                col2.audio(track_audio, format='core/m4a')
+            else:
+                col2.warning("No audio available.")
+
+            col3.write("", style={"fontSize": "5px"})
+            col3.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+                unsafe_allow_html=True)
+
+            col4.write("", style={"fontSize": "5px"})
+            col4.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+                unsafe_allow_html=True)
+
+            col5.write("")
+            formatted_timestamp = submission['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
+                int(submission['timestamp'].strftime('%d'))) + submission['timestamp'].strftime(' %b, %Y')
+            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                          unsafe_allow_html=True)
 
     def assignments(self):
         pass
@@ -382,8 +425,6 @@ class StudentPortal(BasePortal, ABC):
 
     @staticmethod
     def display_track_files(track_file):
-        st.write("")
-        st.write("")
         st.audio(track_file, format='core/m4a')
 
     def handle_file_upload(self, user_id, track_id):
@@ -610,6 +651,16 @@ class StudentPortal(BasePortal, ABC):
                 badge_awarded, _ = self.user_achievement_repo.award_badge(self.get_user_id(), badge)
 
         return badge_awarded
+
+    def log_practice_time(self):
+        with st.form("log_practice_time_form"):
+            practice_date = st.date_input("Practice Date")
+            practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
+            submit = st.form_submit_button("Log Practice", type="primary")
+            if submit:
+                user_id = self.get_user_id()
+                self.user_practice_log_repo.log_practice(user_id, practice_date, practice_minutes)
+                st.success(f"Logged {practice_minutes} minutes of practice on {practice_date}.")
 
     @staticmethod
     def ordinal(n):

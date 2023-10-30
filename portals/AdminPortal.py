@@ -18,22 +18,19 @@ class AdminPortal(BasePortal, ABC):
         return "🛠"
 
     def get_tab_dict(self):
-        tab_dict = {
-            "🏫 Register a School": self.register_school,
-            "🏢 List Schools": self.list_schools,
-            "👩‍🏫 Register a Tutor": self.register_tutor,
-            "👨‍🏫 List Tutors": self.list_tutors,
-            "📝 Assign Tutor to School": self.assign_tutor,
-            "📋 List Tutor Assignments": self.list_tutor_assignments
-        }
-
-        if self.is_feature_enabled(Features.ADMIN_PORTAL_SHOW_USER_SESSIONS):
-            tab_dict['Sessions'] = self.show_sessions_tab
-
-        if self.is_feature_enabled(Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY):
-            tab_dict['Activities'] = self.show_user_activities_tab
-
-        return tab_dict
+        tabs = [
+            ("🏫 Register a School", self.register_school),
+            ("🏢 List Schools", self.list_schools),
+            ("👩‍🏫 Register a Tutor", self.register_tutor),
+            ("👨‍🏫 List Tutors", self.list_tutors),
+            ("📝 Assign Tutor to School", self.assign_tutor),
+            ("📋 List Tutor Assignments", self.list_tutor_assignments),
+            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+                Features.ADMIN_PORTAL_SHOW_USER_SESSIONS) else None,
+            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+                Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY) else None
+        ]
+        return {tab[0]: tab[1] for tab in tabs if tab}
 
     def show_introduction(self):
         st.write("""

@@ -22,23 +22,21 @@ class TeacherPortal(BasePortal, ABC):
         return "🎶"
 
     def get_tab_dict(self):
-        tab_dict = {
-            "👥 Create Group": self.create_group,
-            "👩‍🎓 Students": self.display_students,
-            "🔀 Assign Students to Groups": self.assign_students_to_group,
-            "🎵 Create Track": self.create_track,
-            "🎵 Remove Track": self.remove_track,
-            "🎵 Recordings": self.list_recordings,
-            "📥 Submissions": self.list_submissions
-        }
-
-        if self.is_feature_enabled(Features.TEACHER_PORTAL_SHOW_USER_SESSIONS):
-            tab_dict['Sessions'] = self.show_sessions_tab
-
-        if self.is_feature_enabled(Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY):
-            tab_dict['Activities'] = self.show_user_activities_tab
-
-        return tab_dict
+        tabs = [
+            ("👥 Create Group", self.create_group),
+            ("👩‍🎓 Students", self.display_students),
+            ("🔀 Assign Students to Groups", self.assign_students_to_group),
+            ("🎵 Create Track", self.create_track),
+            ("🎵 List Tracks", self.list_tracks),
+            ("🎵 Remove Track", self.remove_track),
+            ("🎵 Recordings", self.list_recordings),
+            ("📥 Submissions", self.submissions),
+            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+                Features.TEACHER_PORTAL_SHOW_USER_SESSIONS) else None,
+            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+                Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY) else None
+        ]
+        return {tab[0]: tab[1] for tab in tabs if tab}
 
     def show_introduction(self):
         st.write("""
@@ -58,7 +56,7 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def assign_students_to_group(self):
-        # Feature to assign a user to a group
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Assign Students To Groups</h2>", unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
         users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
@@ -85,7 +83,7 @@ class TeacherPortal(BasePortal, ABC):
                         st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     def create_group(self):
-        # Feature to create a new group
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Student Group</h2>", unsafe_allow_html=True)
         group_name = st.text_input("Create a new group:")
         if st.button("Create Group", type='primary'):
             if group_name:
@@ -115,6 +113,7 @@ class TeacherPortal(BasePortal, ABC):
             self.build_row(row_data)
 
     def create_track(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Track</h2>", unsafe_allow_html=True)
         with st.form(key='create_track_form'):
             track_name = st.text_input("Track Name")
             track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
@@ -133,16 +132,15 @@ class TeacherPortal(BasePortal, ABC):
             if st.form_submit_button("Submit", type="primary"):
                 if self.validate_inputs(track_name, track_file, ref_track_file):
                     ragam_id = ragam_options[selected_ragam]
-                    track_url = self.upload_to_storage(track_file)
-                    ref_track_url = self.upload_to_storage(ref_track_file)
-                    tags_list = [tag.strip() for tag in tags.split(",")]
                     track_data = track_file.getbuffer()
                     track_hash = self.calculate_file_hash(track_data)
                     if self.track_repo.is_duplicate(track_hash):
                         st.error("You have already uploaded this track.")
                         return
-                    # self.save_track(track_data, track_file.name)
-                    # self.save_track(ref_track_data, ref_track_file.name)
+                    track_url = self.upload_to_storage(track_file, track_data)
+                    ref_track_data = ref_track_file.getbuffer()
+                    ref_track_url = self.upload_to_storage(ref_track_file, ref_track_data)
+                    tags_list = [tag.strip() for tag in tags.split(",")]
                     offset = self.audio_processor.compare_audio(track_file.name, ref_track_file.name)
                     self.track_repo.add_track(
                         name=track_name,
@@ -156,6 +154,42 @@ class TeacherPortal(BasePortal, ABC):
                         track_hash=track_hash
                     )
                     st.success("Track added successfully!")
+
+    def list_tracks(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Track Details</h2>", unsafe_allow_html=True)
+
+        # Fetching all track details using the method from PortalRepository
+        tracks = self.portal_repo.list_tracks()
+
+        self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"])
+
+        for track_detail in tracks:
+            blob_url = track_detail['track_path']
+            audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
+            col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+            row_data = {
+                "Track Name": track_detail['track_name'],
+                "Ragam": track_detail['ragam'],
+                "Level": track_detail['level'],
+                "Description": track_detail['description']
+            }
+            col1.audio(audio_file_path, format='core/m4a')  # Displaying audio using the audio widget
+            col2.write("")
+            col2.markdown(
+                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Track Name']}</div>",
+                unsafe_allow_html=True)
+            col3.write("")
+            col3.markdown(
+                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Ragam']}</div>",
+                unsafe_allow_html=True)
+            col4.write("")
+            col4.markdown(
+                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Level']}</div>",
+                unsafe_allow_html=True)
+            col5.write("")
+            col5.markdown(
+                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Description']}</div>",
+                unsafe_allow_html=True)
 
     def validate_inputs(self, track_name, track_file, ref_track_file):
         if not track_name:
@@ -172,11 +206,12 @@ class TeacherPortal(BasePortal, ABC):
             return False
         return True
 
-    def upload_to_storage(self, file):
-        file_path = f'{self.get_tracks_bucket()}/{file.name}'
-        return self.storage_repo.upload_file(file.name, file_path)
+    def upload_to_storage(self, file, data):
+        blob_path = f'{self.get_tracks_bucket()}/{file.name}'
+        return self.storage_repo.upload_blob(data, blob_path)
 
     def remove_track(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Remove Track</h2>", unsafe_allow_html=True)
         # Fetch all tracks
         all_tracks = self.track_repo.get_all_tracks()
         track_options = {track['name']: track['id'] for track in all_tracks}
@@ -283,6 +318,7 @@ class TeacherPortal(BasePortal, ABC):
         st.audio(track_file, format='core/m4a')
 
     def list_recordings(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Student Recordings</h2>", unsafe_allow_html=True)
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
         if user_id is None:
             return
@@ -330,7 +366,8 @@ class TeacherPortal(BasePortal, ABC):
             col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                           unsafe_allow_html=True)
 
-    def list_submissions(self):
+    def submissions(self):
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Submissions</h2>", unsafe_allow_html=True)
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
 
@@ -354,19 +391,19 @@ class TeacherPortal(BasePortal, ABC):
         # Create a table header
         header_html = """
             <div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>
-                <div style='display:inline-block;width:28%;text-align:center;'>
+                <div style='display:inline-block;width:26%;text-align:center;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Track</p>
                 </div>
-                <div style='display:inline-block;width:8%;text-align:left;'>
+                <div style='display:inline-block;width:8%;text-align:center;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Score</p>
                 </div>
-                <div style='display:inline-block;width:20%;text-align:left;'>
+                <div style='display:inline-block;width:25%;text-align:center;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Analysis</p>
                 </div>
-                <div style='display:inline-block;width:20%;text-align:left;'>
+                <div style='display:inline-block;width:25%;text-align:center;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Remarks</p>
                 </div>
-                <div style='display:inline-block;width:10%;text-align:left;'>
+                <div style='display:inline-block;width:10%;text-align:center;'>
                     <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Time</p>
                 </div>
             </div>
@@ -405,11 +442,6 @@ class TeacherPortal(BasePortal, ABC):
     @staticmethod
     def calculate_file_hash(recording_data):
         return hashlib.md5(recording_data).hexdigest()
-
-    @staticmethod
-    def save_track(track_data, track_path):
-        with open(track_path, "wb") as f:
-            f.write(track_data)
 
     @staticmethod
     def ordinal(n):

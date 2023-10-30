@@ -18,6 +18,7 @@ from repositories.TenantRepository import TenantRepository
 from repositories.TrackRepository import TrackRepository
 from repositories.UserAchievementRepository import UserAchievementRepository
 from repositories.UserActivityRepository import UserActivityRepository
+from repositories.UserPracticeLogRepository import UserPracticeLogRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
 from repositories.UserSessionRepository import UserSessionRepository
@@ -38,6 +39,7 @@ class BasePortal(ABC):
         self.storage_repo = None
         self.feature_repo = None
         self.raga_repo = None
+        self.user_practice_log_repo = None
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
@@ -55,6 +57,7 @@ class BasePortal(ABC):
         self.feature_repo = FeatureToggleRepository(self.get_connection())
         self.raga_repo = RagaRepository(self.get_connection())
         self.user_achievement_repo = UserAchievementRepository(self.get_connection())
+        self.user_practice_log_repo = UserPracticeLogRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
 
     def get_connection(self):
@@ -66,7 +69,7 @@ class BasePortal(ABC):
     def start(self, register=False):
         self.init_session()
         self.set_app_layout()
-        self.pre_introduction()
+        self.show_app_title()
         self.show_introduction()
         if not self.user_logged_in():
             if register:
@@ -77,7 +80,7 @@ class BasePortal(ABC):
             self.build_tabs()
 
         self.show_copyright()
-        self.close_connection()
+        self.clean_up()
 
     def set_app_layout(self):
         st.set_page_config(
@@ -121,7 +124,7 @@ class BasePortal(ABC):
             st.image(image, use_column_width=True)
 
     @staticmethod
-    def pre_introduction():
+    def show_app_title():
         st.markdown("""
             <style>
                 .cursive-font {
@@ -486,7 +489,7 @@ class BasePortal(ABC):
         header_html = "<div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>"
 
         for column_name in column_names:
-            header_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
+            header_html += f"<div style='display:inline-block;width:{width}%;text-align:center;box-sizing: border-box;'>"
             header_html += f"<p style='color:black;margin:0;font-size:15px;font-weight:bold;'>{column_name}</p>"
             header_html += "</div>"
 
@@ -521,6 +524,24 @@ class BasePortal(ABC):
         with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
             temp_file.write(blob_data)
             return temp_file.name
+
+    def clean_up(self):
+        self.tenant_repo = None
+        self.org_repo = None
+        self.user_repo = None
+        self.user_session_repo = None
+        self.user_activity_repo = None
+        self.user_achievement_repo = None
+        self.portal_repo = None
+        self.settings_repo = None
+        self.recording_repo = None
+        self.track_repo = None
+        self.storage_repo = None
+        self.feature_repo = None
+        self.raga_repo = None
+        self.user_practice_log_repo = None
+        self.close_connection()
+        self.database_manager = None
 
     @staticmethod
     def is_feature_enabled(feature):
