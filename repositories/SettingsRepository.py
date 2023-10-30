@@ -35,15 +35,4 @@ class SettingsRepository:
 
     def create_seed_data(self):
         success, message = self.set_minimum_score_for_badges(7)
-        if success:
-            print(f"Upsert successful: {message}")
-        else:
-            print(f"Upsert failed: {message}")
 
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()

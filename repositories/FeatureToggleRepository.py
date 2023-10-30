@@ -67,10 +67,3 @@ class FeatureToggleRepository:
 
         self.connection.commit()
 
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()

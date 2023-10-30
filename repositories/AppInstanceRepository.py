@@ -67,10 +67,3 @@ class AppInstanceRepository:
             _, message, instance_id = self.register_instance(url)
             print(message)
 
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()

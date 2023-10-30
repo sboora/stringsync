@@ -1,6 +1,5 @@
 from time import sleep
 
-from google.cloud.sql.connector import Connector
 import os
 import tempfile
 
@@ -44,3 +43,10 @@ class DatabaseManager:
                 retries += 1
                 print(f"Retrying ({retries}/{MAX_RETRIES})...")
                 sleep(RETRY_DELAY)
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+
+

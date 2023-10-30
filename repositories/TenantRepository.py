@@ -40,10 +40,3 @@ class TenantRepository:
         tenants = [{'id': row[0], 'name': row[1]} for row in result]
         return tenants
 
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()

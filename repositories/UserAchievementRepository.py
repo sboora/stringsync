@@ -36,11 +36,3 @@ class UserAchievementRepository:
         cursor.execute("SELECT badge FROM user_achievements WHERE user_id = %s", (user_id,))
         badges = cursor.fetchall()
         return [badge[0] for badge in badges]
-
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()

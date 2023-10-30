@@ -11,16 +11,18 @@ class TrackRepository:
         cursor = self.connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracks (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255),
-            track_path TEXT,
-            track_ref_path TEXT,
-            notation_path TEXT,
-            level INT,
-            ragam VARCHAR(255),
-            track_group VARCHAR(255),
-            description TEXT,
-            offset INT
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255),
+                track_path TEXT,
+                track_ref_path TEXT,
+                notation_path TEXT,
+                level INT,
+                ragam_id INT, 
+                track_group VARCHAR(255),
+                description TEXT,
+                offset INT,
+                track_hash VARCHAR(32),
+                FOREIGN KEY (ragam_id) REFERENCES ragas (id)
             );
         """)
         cursor.execute("""
@@ -68,11 +70,6 @@ class TrackRepository:
         cursor.execute("SELECT DISTINCT tag_name FROM tags")
         return [row[0] for row in cursor.fetchall()]
 
-    def get_all_ragams(self):
-        cursor = self.connection.cursor()
-        cursor.execute("SELECT DISTINCT ragam FROM tracks")
-        return [row[0] for row in cursor.fetchall()]
-
     def get_all_levels(self):
         cursor = self.connection.cursor()
         cursor.execute("SELECT DISTINCT level FROM tracks")
@@ -88,7 +85,7 @@ class TrackRepository:
         """, (track_id,))
         return [row[0] for row in cursor.fetchall()]
 
-    def add_track(self, name, track_path, track_ref_path, level, ragam, tags, description, offset):
+    def add_track(self, name, track_path, track_ref_path, level, ragam_id, tags, description, offset, track_hash):
         cursor = self.connection.cursor()
         cursor.execute("SELECT id FROM tracks WHERE name = %s", (name,))
         existing_track = cursor.fetchone()
@@ -96,15 +93,15 @@ class TrackRepository:
         if existing_track:
             cursor.execute("""
                 UPDATE tracks
-                SET track_path = %s, track_ref_path = %s, level = %s, ragam = %s, description = %s, offset = %s
+                SET track_path = %s, track_ref_path = %s, level = %s, ragam_id = %s, description = %s, offset = %s
                 WHERE name = %s
-            """, (track_path, track_ref_path, level, ragam, description, offset, name))
+            """, (track_path, track_ref_path, level, ragam_id, description, offset, name))
             track_id = existing_track[0]
         else:
             cursor.execute("""
-                INSERT INTO tracks (name, track_path, track_ref_path, level, ragam, description, offset)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (name, track_path, track_ref_path, level, ragam, description, offset))
+                INSERT INTO tracks (name, track_path, track_ref_path, level, ragam_id, description, offset, track_hash)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (name, track_path, track_ref_path, level, ragam_id, description, offset, track_hash))
             track_id = cursor.lastrowid
 
         # Handle tags
@@ -143,9 +140,17 @@ class TrackRepository:
         result = cursor.fetchall()
         return {row[0]: row[1] for row in result}
 
-    def search_tracks(self, ragam=None, level=None, tags=None):
+    def is_duplicate(self, track_hash):
+        cursor = self.connection.cursor()
+        query = """SELECT COUNT(*) FROM tracks
+                   WHERE track_hash = %s;"""
+        cursor.execute(query, track_hash)
+        count = cursor.fetchone()[0]
+        return count > 0
+
+    def search_tracks(self, ragam_id=None, level=None, tags=None):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam FROM tracks"  # Removed 'type'
+        query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam_id, offset FROM tracks"
         params = []
 
         if tags:
@@ -156,9 +161,9 @@ class TrackRepository:
 
         where_clauses = []
 
-        if ragam is not None:
-            where_clauses.append("ragam = %s")
-            params.append(ragam)
+        if ragam_id is not None:
+            where_clauses.append("ragam_id = %s")
+            params.append(ragam_id)
 
         if level is not None:
             where_clauses.append("level = %s")
@@ -178,12 +183,4 @@ class TrackRepository:
 
         cursor.execute(query, params)
         return cursor.fetchall()
-
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()
 

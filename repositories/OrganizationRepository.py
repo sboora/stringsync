@@ -113,10 +113,3 @@ class OrganizationRepository:
         else:
             return False, "Organization not found."
 
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self):
-        self.close()
