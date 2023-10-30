@@ -77,7 +77,7 @@ class AdminPortal(BasePortal, ABC):
         button, form_data = self.build_form(form_key, field_names, button_label)
 
         if button:
-            success, message = self.user_repo.register_user(
+            success, message, user_id = self.user_repo.register_user(
                 name=form_data['Name'],
                 username=form_data['Username'],
                 email=form_data['Email'],
