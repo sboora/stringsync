@@ -1,5 +1,7 @@
+import hashlib
 from abc import ABC
 
+from core.AudioProcessor import AudioProcessor
 from enums.Features import Features
 from portals.BasePortal import BasePortal
 import streamlit as st
@@ -11,6 +13,7 @@ from enums.UserType import UserType
 class TeacherPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
+        self.audio_processor = AudioProcessor()
 
     def get_title(self):
         return f"{self.get_app_name()} Teacher Portal"
@@ -85,7 +88,6 @@ class TeacherPortal(BasePortal, ABC):
         # Feature to create a new group
         group_name = st.text_input("Create a new group:")
         if st.button("Create Group", type='primary'):
-            print("Creating group", group_name)
             if group_name:
                 success, message = self.user_repo.create_user_group(group_name, self.get_org_id())
                 if success:
@@ -117,26 +119,41 @@ class TeacherPortal(BasePortal, ABC):
             track_name = st.text_input("Track Name")
             track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             ref_track_file = st.file_uploader("Choose a reference audio file", type=["m4a", "mp3"])
+
             description = st.text_input("Description")
-            ragam = st.text_input("Ragam")
+
+            ragas = self.raga_repo.get_all_ragas()
+            ragam_options = {raga['name']: raga['id'] for raga in ragas}
+            selected_ragam = st.selectbox("Select Ragam",
+                                          ['--Select a Ragam--'] + list(ragam_options.keys()))
+
             tags = st.text_input("Tags (comma-separated)")
             level = st.selectbox("Select Level", [1, 2, 3, 4, 5])
 
             if st.form_submit_button("Submit", type="primary"):
                 if self.validate_inputs(track_name, track_file, ref_track_file):
+                    ragam_id = ragam_options[selected_ragam]
                     track_url = self.upload_to_storage(track_file)
                     ref_track_url = self.upload_to_storage(ref_track_file)
                     tags_list = [tag.strip() for tag in tags.split(",")]
-
+                    track_data = track_file.getbuffer()
+                    track_hash = self.calculate_file_hash(track_data)
+                    if self.track_repo.is_duplicate(track_hash):
+                        st.error("You have already uploaded this track.")
+                        return
+                    # self.save_track(track_data, track_file.name)
+                    # self.save_track(ref_track_data, ref_track_file.name)
+                    offset = self.audio_processor.compare_audio(track_file.name, ref_track_file.name)
                     self.track_repo.add_track(
                         name=track_name,
                         track_path=track_url,
                         track_ref_path=ref_track_url,
                         level=level,
-                        ragam=ragam,
+                        ragam_id=ragam_id,
                         tags=tags_list,
                         description=description,
-                        offset=0
+                        offset=offset,
+                        track_hash=track_hash
                     )
                     st.success("Track added successfully!")
 
@@ -209,7 +226,8 @@ class TeacherPortal(BasePortal, ABC):
         # Show groups in a dropdown
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
-        selected_group_name = st.selectbox(key=f"{source}-group", label="Select a group:", options=['--Select a group--'] + list(group_options.keys()))
+        selected_group_name = st.selectbox(key=f"{source}-group", label="Select a group:",
+                                           options=['--Select a group--'] + list(group_options.keys()))
 
         # Filter users by the selected group
         selected_group_id = None
@@ -221,7 +239,8 @@ class TeacherPortal(BasePortal, ABC):
 
         user_options = {user['username']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
-        selected_username = st.selectbox(key=f"{source}-user", label="Select a student to view their recordings:", options=options)
+        selected_username = st.selectbox(key=f"{source}-user", label="Select a student to view their recordings:",
+                                         options=options)
 
         selected_user_id = None
         if selected_username != '--Select a student--':
@@ -366,7 +385,6 @@ class TeacherPortal(BasePortal, ABC):
 
         score = col2.text_input("", key=f"score_{recording['id']}", value=recording['score'])
         if score:
-            print(recording["id"], score)
             self.recording_repo.update_score(recording["id"], score)
 
         col3.write("", style={"fontSize": "5px"})
@@ -383,6 +401,15 @@ class TeacherPortal(BasePortal, ABC):
             int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
         col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
+
+    @staticmethod
+    def calculate_file_hash(recording_data):
+        return hashlib.md5(recording_data).hexdigest()
+
+    @staticmethod
+    def save_track(track_data, track_path):
+        with open(track_path, "wb") as f:
+            f.write(track_data)
 
     @staticmethod
     def ordinal(n):

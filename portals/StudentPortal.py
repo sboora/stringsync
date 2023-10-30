@@ -15,8 +15,6 @@ from enums.Features import Features
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
-from repositories.UserAchievementRepository import UserAchievementRepository
-from repositories.UserSessionRepository import UserSessionRepository
 
 
 class StudentPortal(BasePortal, ABC):
@@ -133,32 +131,26 @@ class StudentPortal(BasePortal, ABC):
             st_lottie(lottie_json, speed=1, width=300, height=150, loop=True, quality='high', key="badge_awarded")
 
     def record(self):
-        track_name, track = self.filter_tracks()
+        track = self.filter_tracks()
         if not track:
-            if track_name != "Select a Track":
-                st.info("No tracks found.")
+            st.info("No tracks found.")
             return
 
         self.create_track_headers()
 
         # Download and save the audio files to temporary locations
         track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
-        track_ref_audio_path = self.download_to_temp_file_by_url(track['track_ref_path'])
-
-        # Use librosa to compare the audio files
-        offset_distance = self.audio_processor.compare_audio(track_audio_path, track_ref_audio_path)
 
         col1, col2, col3 = st.columns([5, 5, 5])
         with col1:
             self.display_track_files(track_audio_path)
-            notation_builder = NotationBuilder(track, track['notation_path'])
-            unique_notes = notation_builder.display_notation()
+            track_notes = self.raga_repo.get_notes(track['ragam_id'])
         with col2:
             recording_name, recording_id, is_success = \
                 self.handle_file_upload(self.get_user_id(), track['id'])
             if is_success:
                 additional_params = {
-                    "Track": track_name,
+                    "Track": track['name'],
                     "Recording": recording_name,
                 }
                 self.user_activity_repo.log_activity(self.get_user_id(),
@@ -168,7 +160,7 @@ class StudentPortal(BasePortal, ABC):
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(
-                    track_audio_path, recording_name, unique_notes, offset_distance)
+                    track_audio_path, recording_name, track_notes, track['offset'])
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
                 badge_awarded = self.award_badge()
                 if badge_awarded:
@@ -177,6 +169,12 @@ class StudentPortal(BasePortal, ABC):
         self.performances(track['id'])
         if is_success:
             os.remove(recording_name)
+
+    @staticmethod
+    def show_notations(track):
+        notation_builder = NotationBuilder(track, track['notation_path'])
+        track_notes = notation_builder.display_notation()
+        return track_notes
 
     @staticmethod
     def display_performances_header():
@@ -312,18 +310,20 @@ class StudentPortal(BasePortal, ABC):
         return track_details
 
     def filter_tracks(self):
-        filter_options = self.fetch_filter_options()
+        ragas = self.raga_repo.get_all_ragas()
+        filter_options = self.fetch_filter_options(ragas)
 
         # Create three columns
         col1, col2, col3 = st.columns(3)
 
-        # Place a dropdown in each column
         level = col1.selectbox("Filter by Level", ["All"] + filter_options["Level"])
-        ragam = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
+        raga = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
         tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
 
+        raga_id = None if raga == "All" else ragas[raga]
+
         tracks = self.track_repo.search_tracks(
-            ragam=None if ragam == "All" else ragam,
+            ragam_id=None if raga == "All" else raga_id,
             level=None if level == "All" else level,
             tags=None if tags == ["All"] else tags
         )
@@ -341,7 +341,7 @@ class StudentPortal(BasePortal, ABC):
 
         st.session_state['last_selected_track'] = selected_track_name
 
-        return selected_track_name, self.get_selected_track_details(tracks, selected_track_name)
+        return self.get_selected_track_details(tracks, selected_track_name)
 
     def log_track_selection_change(self, selected_track_name):
         user_id = self.get_user_id()  # Assuming you have a method to get the current user ID
@@ -351,10 +351,10 @@ class StudentPortal(BasePortal, ABC):
         self.user_activity_repo.log_activity(user_id, ActivityType.PLAY_TRACK, additional_params)
         self.user_session_repo.update_last_activity_time(self.get_session_id())
 
-    def fetch_filter_options(self):
+    def fetch_filter_options(self, ragas):
         return {
             "Level": self.track_repo.get_all_levels(),
-            "Ragam": self.track_repo.get_all_ragams(),
+            "Ragam": [raga['name'] for raga in ragas],
             "Tags": self.track_repo.get_all_tags()
         }
 

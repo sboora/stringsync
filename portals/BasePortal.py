@@ -10,6 +10,7 @@ from enums.UserType import UserType
 from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
 from repositories.PortalRepository import PortalRepository
+from repositories.RagaRepository import RagaRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
@@ -36,23 +37,31 @@ class BasePortal(ABC):
         self.track_repo = None
         self.storage_repo = None
         self.feature_repo = None
+        self.raga_repo = None
         self.set_env()
+        self.database_manager = DatabaseManager()
         self.init_repositories()
 
     def init_repositories(self):
-        database_manager = DatabaseManager()
-        self.tenant_repo = TenantRepository(database_manager.connection)
-        self.org_repo = OrganizationRepository(database_manager.connection)
-        self.user_repo = UserRepository(database_manager.connection)
-        self.user_session_repo = UserSessionRepository(database_manager.connection)
-        self.user_activity_repo = UserActivityRepository(database_manager.connection)
-        self.portal_repo = PortalRepository(database_manager.connection)
-        self.settings_repo = SettingsRepository(database_manager.connection)
-        self.recording_repo = RecordingRepository(database_manager.connection)
-        self.track_repo = TrackRepository(database_manager.connection)
-        self.feature_repo = FeatureToggleRepository(database_manager.connection)
-        self.user_achievement_repo = UserAchievementRepository(database_manager.connection)
+        self.tenant_repo = TenantRepository(self.get_connection())
+        self.org_repo = OrganizationRepository(self.get_connection())
+        self.user_repo = UserRepository(self.get_connection())
+        self.user_session_repo = UserSessionRepository(self.get_connection())
+        self.user_activity_repo = UserActivityRepository(self.get_connection())
+        self.portal_repo = PortalRepository(self.get_connection())
+        self.settings_repo = SettingsRepository(self.get_connection())
+        self.recording_repo = RecordingRepository(self.get_connection())
+        self.track_repo = TrackRepository(self.get_connection())
+        self.feature_repo = FeatureToggleRepository(self.get_connection())
+        self.raga_repo = RagaRepository(self.get_connection())
+        self.user_achievement_repo = UserAchievementRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
+
+    def get_connection(self):
+        return self.database_manager.connection
+
+    def close_connection(self):
+        self.database_manager.close()
 
     def start(self, register=False):
         self.init_session()
@@ -68,6 +77,7 @@ class BasePortal(ABC):
             self.build_tabs()
 
         self.show_copyright()
+        self.close_connection()
 
     def set_app_layout(self):
         st.set_page_config(
