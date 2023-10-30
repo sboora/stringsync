@@ -347,6 +347,29 @@ class BasePortal(ABC):
         st.markdown(footer_html, unsafe_allow_html=True)
 
     def build_tabs(self):
+        st.markdown("""
+        <style>
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 2px;
+            }
+        
+            .stTabs [data-baseweb="tab"] {
+                height: 30px;
+                white-space: pre-wrap;               
+                background-color: #F4F6F6;
+                border-radius: 6px 6px 0px 0px;
+                gap: 5px;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                padding-left: 10px;
+                padding-right: 10px;
+                font-weight: bold;
+            }
+        
+            .stTabs [aria-selected="true"] {
+                background-color: #FFFFFF;
+            }
+        </style>""", unsafe_allow_html=True)
         tab_dict = self.get_tab_dict()
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
@@ -504,7 +527,7 @@ class BasePortal(ABC):
         row_html = "<div style='padding:5px;border-radius:3px;border:1px solid black;'>"
 
         for column_name, value in row_data.items():
-            row_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
+            row_html += f"<div style='display:inline-block;width:{width}%;text-align:center;box-sizing: border-box;'>"
             row_html += f"<p style='color:black;margin:0;font-size:14px;'>{value}</p>"
             row_html += "</div>"
 
@@ -620,5 +643,3 @@ class BasePortal(ABC):
     @abstractmethod
     def get_tab_dict(self):
         pass
-
-

@@ -1,6 +1,7 @@
 from abc import ABC
 
 from enums.Features import Features
+from enums.UserType import UserType
 from portals.BasePortal import BasePortal
 import streamlit as st
 import streamlit_toggle as tog
@@ -60,20 +61,20 @@ class TenantPortal(BasePortal, ABC):
             if success:
                 success, org_id, join_code, org_message = self.org_repo.register_organization(
                     tenant_id, name, description, is_root=True)
-                if not success:
+                if  not success:
                     st.error(org_message)
                     return
 
                 username = f"{tenant_id}admin"
                 password = os.environ["ADMIN_PASSWORD"]
 
-                user_success, user_message = self.user_repo.register_user(
+                user_success, user_message, user_id = self.user_repo.register_user(
                     name=f"{tenant_id}_admin",
                     username=username,
                     email=email,
                     password=password,
                     org_id=org_id,
-                    user_type="admin"
+                    user_type=UserType.ADMIN.value
                 )
                 if user_success:
                     st.success(f"{message}, {org_message}, and {user_message}")
