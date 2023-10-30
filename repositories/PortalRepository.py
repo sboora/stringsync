@@ -53,3 +53,60 @@ class PortalRepository:
 
         return users
 
+    def list_tracks(self):
+        cursor = self.connection.cursor()
+        query = """
+        SELECT t.name, r.name AS ragam_name, t.level, t.description, t.track_path
+        FROM tracks t
+        JOIN ragas r ON t.ragam_id = r.id;
+        """
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        tracks_details = [
+            {
+                "track_name": row[0],
+                "ragam": row[1],
+                "level": row[2],
+                "description": row[3],
+                "track_path": row[4]
+            }
+            for row in results
+        ]
+
+        return tracks_details
+
+    def get_submissions_by_user_id(self, user_id):
+        cursor = self.connection.cursor()
+        query = """
+        SELECT r.timestamp, t.name AS track_name, r.blob_url AS recording_audio_url, 
+               t.track_path AS track_audio_url, r.analysis AS system_remarks, r.remarks AS teacher_remarks
+        FROM recordings r
+        JOIN tracks t ON r.track_id = t.id
+        WHERE r.user_id = %s
+        ORDER BY r.timestamp DESC;
+        """
+
+        cursor.execute(query, (user_id,))
+        results = cursor.fetchall()
+
+        submissions = [
+            {
+                "timestamp": row[0],
+                "track_name": row[1],
+                "recording_audio_url": row[2],
+                "track_audio_url": row[3],
+                "system_remarks": row[4],
+                "teacher_remarks": row[5]
+            }
+            for row in results
+        ]
+
+        return submissions
+
+
+
+
+
+

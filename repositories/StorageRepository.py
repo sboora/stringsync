@@ -1,4 +1,5 @@
 import os
+import uuid
 from urllib.parse import urlparse, unquote
 
 from google.cloud import storage
@@ -25,6 +26,16 @@ class StorageRepository:
         bucket = self.get_bucket()
         blob = bucket.blob(blob_name)
         blob.upload_from_string('')
+
+    def upload_blob(self, data, blob_name):
+        filename = f"{uuid.uuid4()}.tmp"
+        with open(filename, "wb") as f:
+            f.write(data)
+        bucket = self.get_bucket()
+        blob = bucket.blob(blob_name)
+        blob.upload_from_filename(filename)
+        os.remove(filename)
+        return blob.public_url
 
     def upload_file(self, file_path, blob_name):
         bucket = self.get_bucket()
