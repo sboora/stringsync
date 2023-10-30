@@ -37,11 +37,13 @@ class StorageRepository:
         os.remove(filename)
         return blob.public_url
 
-    def upload_file(self, file_path, blob_name):
+    def download_blob(self, blob_url, filename):
+        blob_name = self.get_blob_name(blob_url)
         bucket = self.get_bucket()
         blob = bucket.blob(blob_name)
-        blob.upload_from_filename(file_path)
-        return blob.public_url
+        data = blob.download_as_bytes()
+        with open(filename, "wb") as f:
+            f.write(data)
 
     def delete_file(self, blob_url):
         blob_name = self.get_blob_name(blob_url)

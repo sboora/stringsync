@@ -43,6 +43,15 @@ class RecordingRepository:
         count = cursor.fetchone()[0]
         return count > 0
 
+    def recordings_exist_for_track(self, track_id):
+        cursor = self.connection.cursor()
+        query = """SELECT EXISTS (
+                       SELECT 1 FROM recordings WHERE track_id = %s
+                   ) AS recording_exists;"""
+        cursor.execute(query, (track_id,))
+        result = cursor.fetchone()
+        return result[0] == 1
+
     def get_recordings_by_user_id_and_track_id(self, user_id, track_id):
         cursor = self.connection.cursor()
         query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks 

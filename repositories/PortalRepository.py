@@ -81,7 +81,8 @@ class PortalRepository:
         cursor = self.connection.cursor()
         query = """
         SELECT r.timestamp, t.name AS track_name, r.blob_url AS recording_audio_url, 
-               t.track_path AS track_audio_url, r.analysis AS system_remarks, r.remarks AS teacher_remarks
+               t.track_path AS track_audio_url, r.analysis AS system_remarks, 
+               r.remarks AS teacher_remarks, r.score
         FROM recordings r
         JOIN tracks t ON r.track_id = t.id
         WHERE r.user_id = %s
@@ -98,7 +99,8 @@ class PortalRepository:
                 "recording_audio_url": row[2],
                 "track_audio_url": row[3],
                 "system_remarks": row[4],
-                "teacher_remarks": row[5]
+                "teacher_remarks": row[5],
+                "score": row[6]
             }
             for row in results
         ]

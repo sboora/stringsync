@@ -133,12 +133,12 @@ class TrackRepository:
             cursor.close()
             return False
 
-    def get_track_names_by_ids(self, track_ids):
-        cursor = self.connection.cursor()
-        query = "SELECT id, name FROM tracks WHERE id IN ({})".format(','.join(['%s'] * len(track_ids)))
+    def get_tracks_by_ids(self, track_ids):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = "SELECT * FROM tracks WHERE id IN ({})".format(','.join(['%s'] * len(track_ids)))
         cursor.execute(query, track_ids)
         result = cursor.fetchall()
-        return {row[0]: row[1] for row in result}
+        return {row['id']: row for row in result}
 
     def is_duplicate(self, track_hash):
         cursor = self.connection.cursor()
