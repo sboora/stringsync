@@ -1,4 +1,5 @@
 import hashlib
+import os
 from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
@@ -31,9 +32,9 @@ class TeacherPortal(BasePortal, ABC):
             ("🎵 Remove Track", self.remove_track),
             ("🎵 Recordings", self.list_recordings),
             ("📥 Submissions", self.submissions),
-            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_SESSIONS) else None,
-            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+            ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY) else None
         ]
         return {tab[0]: tab[1] for tab in tabs if tab}
@@ -141,7 +142,11 @@ class TeacherPortal(BasePortal, ABC):
                     ref_track_data = ref_track_file.getbuffer()
                     ref_track_url = self.upload_to_storage(ref_track_file, ref_track_data)
                     tags_list = [tag.strip() for tag in tags.split(",")]
+                    self.storage_repo.download_blob(track_url, track_file.name)
+                    self.storage_repo.download_blob(ref_track_url, ref_track_file.name)
                     offset = self.audio_processor.compare_audio(track_file.name, ref_track_file.name)
+                    os.remove(track_file.name)
+                    os.remove(ref_track_file.name)
                     self.track_repo.add_track(
                         name=track_name,
                         track_path=track_url,
@@ -173,22 +178,23 @@ class TeacherPortal(BasePortal, ABC):
                 "Level": track_detail['level'],
                 "Description": track_detail['description']
             }
+            col1.write("")
             col1.audio(audio_file_path, format='core/m4a')  # Displaying audio using the audio widget
             col2.write("")
             col2.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Track Name']}</div>",
+                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Track Name']}</div>",
                 unsafe_allow_html=True)
             col3.write("")
             col3.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Ragam']}</div>",
+                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Ragam']}</div>",
                 unsafe_allow_html=True)
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Level']}</div>",
+                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Level']}</div>",
                 unsafe_allow_html=True)
             col5.write("")
             col5.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;'>{row_data['Description']}</div>",
+                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Description']}</div>",
                 unsafe_allow_html=True)
 
     def validate_inputs(self, track_name, track_file, ref_track_file):
@@ -226,9 +232,7 @@ class TeacherPortal(BasePortal, ABC):
                 selected_track_id = track_options[selected_track_name]
 
                 # Check if recordings for the track exist
-                recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(
-                    self.get_user_id(), selected_track_id)
-                if recordings:
+                if self.recording_repo.recordings_exist_for_track(selected_track_id):
                     st.error(
                         f"Cannot remove track '{selected_track_name}' as there are recordings associated with it.")
                     return
@@ -247,10 +251,9 @@ class TeacherPortal(BasePortal, ABC):
                 # Remove the track from database
                 if self.track_repo.remove_track_by_id(selected_track_id):
                     st.success(f"Track '{selected_track_name}' removed successfully!")
+                    st.rerun()
                 else:
                     st.error("Error removing track from database.")
-            else:
-                st.warning("Please select a valid track to remove.")
 
     @staticmethod
     def save_audio(audio, path):
@@ -276,7 +279,6 @@ class TeacherPortal(BasePortal, ABC):
         options = ['--Select a student--'] + list(user_options.keys())
         selected_username = st.selectbox(key=f"{source}-user", label="Select a student to view their recordings:",
                                          options=options)
-
         selected_user_id = None
         if selected_username != '--Select a student--':
             selected_user_id = user_options[selected_username]
@@ -285,19 +287,20 @@ class TeacherPortal(BasePortal, ABC):
         track_path = None
         if selected_user_id is not None:
             track_ids = self.recording_repo.get_unique_tracks_by_user(selected_user_id)
-
             if track_ids:
                 # Fetch track names by their IDs
-                track_names = self.track_repo.get_track_names_by_ids(track_ids)
-
+                tracks = self.track_repo.get_tracks_by_ids(track_ids)
                 # Create a mapping for the dropdown
-                track_options = {track_names[id]: id for id in track_ids}
-
+                track_options = {tracks[id]['name']: id for id in track_ids if id in tracks}
                 selected_track_name = st.selectbox(key=f"{source}-track", label="Select a track:",
                                                    options=['--Select a track--'] + list(track_options.keys()))
+                print("Step 10")
                 if selected_track_name != '--Select a track--':
+                    print("Step 11")
                     selected_track_id = track_options[selected_track_name]
-                    track = self.track_repo.get_track_by_name(selected_track_name)
+                    print("selected track:", selected_track_id)
+                    track = tracks[selected_track_id]
+                    print("track:", track)
                     track_path = track['track_path']
 
         return selected_group_id, selected_username, selected_user_id, selected_track_id, track_path
@@ -370,7 +373,7 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Submissions</h2>", unsafe_allow_html=True)
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
-
+        print(group_id, username, user_id, track_id, track_name)
         # Fetch and sort recordings
         recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
         if not recordings:

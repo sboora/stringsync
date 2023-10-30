@@ -25,9 +25,9 @@ class AdminPortal(BasePortal, ABC):
             ("👨‍🏫 List Tutors", self.list_tutors),
             ("📝 Assign Tutor to School", self.assign_tutor),
             ("📋 List Tutor Assignments", self.list_tutor_assignments),
-            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_SESSIONS) else None,
-            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+            ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY) else None
         ]
         return {tab[0]: tab[1] for tab in tabs if tab}

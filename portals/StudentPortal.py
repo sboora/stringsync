@@ -32,12 +32,12 @@ class StudentPortal(BasePortal, ABC):
         tabs = [
             ("🎤 Record", self.record),
             ("📥 Submissions", self.submissions),
-            ("📊 Progress Dashboard", self.display_progress_dashboard),
-            ("🏆 Badges", self.display_badges),
-            ("⏲️ Practice Log", self.log_practice_time),
-            ("🗂️ Sessions", self.show_sessions_tab) if self.is_feature_enabled(
+            ("📊 Progress Dashboard", self.progress_dashboard),
+            ("🏆 Badges", self.badges),
+            ("⏲️ Practice Log", self.practicelog),
+            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SHOW_USER_SESSIONS) else None,
-            ("📊 Activities", self.show_user_activities_tab) if self.is_feature_enabled(
+            ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY) else None
         ]
         return {tab[0]: tab[1] for tab in tabs if tab}
@@ -241,46 +241,50 @@ class StudentPortal(BasePortal, ABC):
             return
 
         self.build_header(
-            column_names=["Track", "Recording", "Teacher Remarks", "System Remarks", "Time"])
+            column_names=["Tack Name", "Track", "Recording", "Teacher Remarks", "System Remarks", "Score"])
 
         # Display submissions
         for submission in submissions:
-            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+            col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
 
             col1.write("")
-            if submission['track_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
-                col1.audio(track_audio, format='core/m4a')
-            else:
-                col1.warning("No audio available.")
+            col1.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:center;'>{submission['track_name']}</div>",
+                unsafe_allow_html=True)
 
             col2.write("")
-            if submission['recording_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+            if submission['track_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
                 col2.audio(track_audio, format='core/m4a')
             else:
                 col2.warning("No audio available.")
 
-            col3.write("", style={"fontSize": "5px"})
-            col3.markdown(
+            col3.write("")
+            if submission['recording_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+                col3.audio(track_audio, format='core/m4a')
+            else:
+                col3.warning("No audio available.")
+
+            col4.write("")
+            col4.markdown(
                 f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
-            col4.write("", style={"fontSize": "5px"})
-            col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+            col5.write("")
+            col5.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:16px;'>{submission.get('system_remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
-            col5.write("")
-            formatted_timestamp = submission['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-                int(submission['timestamp'].strftime('%d'))) + submission['timestamp'].strftime(' %b, %Y')
-            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
-                          unsafe_allow_html=True)
+            col6.write("")
+            col6.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:center;'>{submission.get('score', 'N/A')}</div>",
+                unsafe_allow_html=True)
 
     def assignments(self):
         pass
 
-    def display_progress_dashboard(self):
+    def progress_dashboard(self):
         st.write("")
         self.display_tracks()
         st.write("")
@@ -590,7 +594,7 @@ class StudentPortal(BasePortal, ABC):
             return None
         return r.json()
 
-    def display_badges(self):
+    def badges(self):
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
         if badges:  # If there are badges
@@ -652,7 +656,7 @@ class StudentPortal(BasePortal, ABC):
 
         return badge_awarded
 
-    def log_practice_time(self):
+    def practicelog(self):
         with st.form("log_practice_time_form"):
             practice_date = st.date_input("Practice Date")
             practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])

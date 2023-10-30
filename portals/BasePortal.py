@@ -356,7 +356,7 @@ class BasePortal(ABC):
             with tab:
                 tab_function()
 
-    def show_user_activities_tab(self):
+    def activities(self):
         user_id = self.get_user_id()  # Get the current user ID
 
         # Fetch user activities data for the current user
@@ -385,7 +385,7 @@ class BasePortal(ABC):
                 'Additional Parameters': additional_params_str
             })
 
-    def show_sessions_tab(self):
+    def sessions(self):
         user_id = self.get_user_id()  # Get the current user ID
 
         # Fetch time series data for the current user
