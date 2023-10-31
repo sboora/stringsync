@@ -191,7 +191,9 @@ class StudentPortal(BasePortal, ABC):
 
         # Create a DataFrame to hold the recording data
         df = pd.DataFrame(recordings)
-        self.build_header(["Track", "Remarks", "Score", "Analysis", "Time"])
+        column_widths = [20, 20, 20, 20, 20]
+        self.build_header(column_names=["Track", "Remarks", "Score", "Analysis", "Time"],
+                          column_widths=column_widths)
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
@@ -239,9 +241,10 @@ class StudentPortal(BasePortal, ABC):
         if not submissions:
             st.info("No submissions found.")
             return
-
+        column_widths = [16.66, 16.66, 16.66, 16.66, 16.66, 16.66]
         self.build_header(
-            column_names=["Tack Name", "Track", "Recording", "Teacher Remarks", "System Remarks", "Score"])
+            column_names=["Tack Name", "Track", "Recording", "Teacher Remarks", "System Remarks", "Score"],
+            column_widths=column_widths)
 
         # Display submissions
         for submission in submissions:
@@ -292,9 +295,10 @@ class StudentPortal(BasePortal, ABC):
 
     def display_tracks(self):
         tracks = self.get_tracks()
-
+        column_widths = [20, 20, 20, 20, 20]
         self.build_header(
-            column_names=["Track", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
+            column_names=["Track", "Number of Recordings", "Average Score", "Min Score", "Max Score"],
+            column_widths=column_widths)
         for track_detail in tracks:
             row_data = {
                 "Track": track_detail['track']['name'],
@@ -303,7 +307,7 @@ class StudentPortal(BasePortal, ABC):
                 "Min Score": track_detail['min_score'],
                 "Max Score": track_detail['max_score']
             }
-            self.build_row(row_data)
+            self.build_row(row_data=row_data, column_widths=column_widths)
 
     def show_line_graph(self):
         user_id = self.get_user_id()

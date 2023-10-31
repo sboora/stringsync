@@ -139,9 +139,8 @@ class BasePortal(ABC):
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""<div style="text-align: center; font-size: 17px; "> Embark on a musical journey from novice to 
-        maestro at GuruShishya, where the age-old guru-shishya tradition fosters endless artistic 
-        exploration.</div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="text-align: center; font-size: 17px; "> Embark on a musical journey at GuruShishya, 
+        where the age-old guru-shishya tradition fosters endless artistic exploration.</div>""", unsafe_allow_html=True)
 
         st.write("")
         st.write("")
@@ -348,28 +347,28 @@ class BasePortal(ABC):
 
     def build_tabs(self):
         st.markdown("""
-        <style>
-            .stTabs [data-baseweb="tab-list"] {
-                gap: 2px;
-            }
-        
-            .stTabs [data-baseweb="tab"] {
-                height: 30px;
-                white-space: pre-wrap;               
-                background-color: #F4F6F6;
-                border-radius: 6px 6px 0px 0px;
-                gap: 5px;
-                padding-top: 10px;
-                padding-bottom: 10px;
-                padding-left: 10px;
-                padding-right: 10px;
-                font-weight: bold;
-            }
-        
-            .stTabs [aria-selected="true"] {
-                background-color: #FFFFFF;
-            }
-        </style>""", unsafe_allow_html=True)
+                <style>
+                    .stTabs [data-baseweb="tab-list"] {
+                        gap: 2px;
+                    }
+
+                    .stTabs [data-baseweb="tab"] {
+                        height: 30px;
+                        white-space: pre-wrap;               
+                        background-color: #AED6F1;
+                        border-radius: 6px 6px 0px 0px;
+                        gap: 5px;
+                        padding-top: 10px;
+                        padding-bottom: 10px;
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        font-weight: bold;
+                    }
+
+                    .stTabs [aria-selected="true"] {
+                        background-color: #FFFFFF;
+                    }
+                </style>""", unsafe_allow_html=True)
         tab_dict = self.get_tab_dict()
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
@@ -390,7 +389,9 @@ class BasePortal(ABC):
             return
 
         # Build the header for the user activities listing
-        self.build_header(['Activity Type', 'Timestamp', 'Additional Information'])
+        column_widths = [33.33, 33.33, 33.33]
+        self.build_header(column_names=['Activity Type', 'Timestamp', 'Additional Information'],
+                          column_widths=column_widths)
 
         # Build rows for the user activities listing
         for activity in user_activities_data:
@@ -402,11 +403,11 @@ class BasePortal(ABC):
             else:
                 additional_params_str = 'No additional information available'
 
-            self.build_row({
+            self.build_row(row_data={
                 'Activity Type': activity_type,
                 'Timestamp': timestamp,
                 'Additional Parameters': additional_params_str
-            })
+            }, column_widths=column_widths)
 
     def sessions(self):
         user_id = self.get_user_id()  # Get the current user ID
@@ -442,7 +443,9 @@ class BasePortal(ABC):
             return
 
         # Build the header for the session listing
-        self.build_header(['Open Session Time', 'Close Session Time', 'Duration (minutes)'])
+        column_widths = [33.33, 33.33, 33.33]
+        self.build_header(column_names=['Open Session Time', 'Close Session Time', 'Duration (minutes)'],
+                          column_widths=column_widths)
 
         # Build rows for the session listing
         for session in session_details:
@@ -451,8 +454,9 @@ class BasePortal(ABC):
                 'close_session_time'] else 'N/A'
             # Convert the session duration from seconds to minutes
             duration_minutes = session['session_duration'] / 60
-            self.build_row({'Open Session Time': open_time, 'Close Session Time': close_time,
-                            'Duration (minutes)': f'{duration_minutes:.2f}'})
+            self.build_row(row_data={'Open Session Time': open_time, 'Close Session Time': close_time,
+                            'Duration (minutes)': f'{duration_minutes:.2f}'},
+                           column_widths=column_widths)
 
     @staticmethod
     def build_form(form_key, field_names, button_label='Submit', clear_on_submit=True):
@@ -505,14 +509,11 @@ class BasePortal(ABC):
         return button, form_data
 
     @staticmethod
-    def build_header(column_names):
-        num_columns = len(column_names)
-        width = int(100 / num_columns)  # Calculate the width for each column
-
+    def build_header(column_names, column_widths):
         header_html = "<div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>"
 
-        for column_name in column_names:
-            header_html += f"<div style='display:inline-block;width:{width}%;text-align:center;box-sizing: border-box;'>"
+        for column_name, width in zip(column_names, column_widths):
+            header_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
             header_html += f"<p style='color:black;margin:0;font-size:15px;font-weight:bold;'>{column_name}</p>"
             header_html += "</div>"
 
@@ -520,14 +521,13 @@ class BasePortal(ABC):
         st.markdown(header_html, unsafe_allow_html=True)
 
     @staticmethod
-    def build_row(row_data):
+    def build_row(row_data, column_widths):
         num_columns = len(row_data)
-        width = int(100 / num_columns)  # Calculate the width for each column
 
         row_html = "<div style='padding:5px;border-radius:3px;border:1px solid black;'>"
 
-        for column_name, value in row_data.items():
-            row_html += f"<div style='display:inline-block;width:{width}%;text-align:center;box-sizing: border-box;'>"
+        for (column_name, value), width in zip(row_data.items(), column_widths):
+            row_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
             row_html += f"<p style='color:black;margin:0;font-size:14px;'>{value}</p>"
             row_html += "</div>"
 

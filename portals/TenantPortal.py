@@ -22,7 +22,7 @@ class TenantPortal(BasePortal, ABC):
 
     def show_introduction(self):
         st.write("""
-            ### **Tenant Management Portal**!!
+            ### **Tenant Management Portal**
 
             **Your Centralized Platform for Multi-Organization Educational Oversight**
 
@@ -86,7 +86,8 @@ class TenantPortal(BasePortal, ABC):
     def list_tenants(self):
         tenants = self.tenant_repo.get_all_tenants()
         column_names = ["Name", "Id", "Root Organization", "Admin"]
-        self.build_header(column_names)
+        column_widths = [25, 25, 25, 25]
+        self.build_header(column_names=column_names, column_widths=column_widths)
 
         for tenant in tenants:
             tenant_name = tenant.get('name', 'Not Found')
@@ -104,7 +105,7 @@ class TenantPortal(BasePortal, ABC):
                 "Root Organization": root_org_name,
                 "Admin": admin_username
             }
-            self.build_row(row_data)
+            self.build_row(row_data=row_data, column_widths=column_widths)
 
     def feature_toggles(self):
         # Assume we have a FeatureToggleRepository instance as self.feature_repo

@@ -57,7 +57,8 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def assign_students_to_group(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Assign Students To Groups</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Assign Students To Groups</h2>",
+                    unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
         users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
@@ -84,7 +85,8 @@ class TeacherPortal(BasePortal, ABC):
                         st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     def create_group(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Student Group</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Student Group</h2>",
+                    unsafe_allow_html=True)
         group_name = st.text_input("Create a new group:")
         if st.button("Create Group", type='primary'):
             if group_name:
@@ -101,8 +103,9 @@ class TeacherPortal(BasePortal, ABC):
 
         # Assuming you have a method to get students assigned to you
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
-
-        self.build_header(column_names=["Name", "Username", "Email", "Group"])
+        column_widths = [25, 25, 25, 25]
+        self.build_header(column_names=["Name", "Username", "Email", "Group"],
+                          column_widths=column_widths)
 
         for student_detail in students:
             row_data = {
@@ -111,7 +114,7 @@ class TeacherPortal(BasePortal, ABC):
                 "Email": student_detail['email'],
                 "Group": student_detail['group_name'],
             }
-            self.build_row(row_data)
+            self.build_row(row_data=row_data, column_widths=column_widths)
 
     def create_track(self):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Track</h2>", unsafe_allow_html=True)
@@ -166,12 +169,14 @@ class TeacherPortal(BasePortal, ABC):
         # Fetching all track details using the method from PortalRepository
         tracks = self.portal_repo.list_tracks()
 
-        self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"])
+        column_widths = [25, 25, 17, 15, 15]
+        self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"],
+                          column_widths=column_widths)
 
         for track_detail in tracks:
             blob_url = track_detail['track_path']
             audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
-            col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+            col1, col2, col3, col4, col5 = st.columns([2, 2.2, 1.5, 1, 2.5])
             row_data = {
                 "Track Name": track_detail['track_name'],
                 "Ragam": track_detail['ragam'],
@@ -179,7 +184,8 @@ class TeacherPortal(BasePortal, ABC):
                 "Description": track_detail['description']
             }
             col1.write("")
-            col1.audio(audio_file_path, format='core/m4a')  # Displaying audio using the audio widget
+            col1.audio(audio_file_path, format='core/m4a')
+
             col2.write("")
             col2.markdown(
                 f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Track Name']}</div>",
