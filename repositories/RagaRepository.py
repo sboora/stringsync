@@ -12,12 +12,12 @@ class RagaRepository:
         cursor = self.connection.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS ragas (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255),
-            is_melakarta BOOLEAN,
-            parent_raga VARCHAR(255),
-            aarohanam TEXT,
-            avarohanam TEXT
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE,
+                is_melakarta BOOLEAN,
+                parent_raga VARCHAR(255),
+                aarohanam TEXT,
+                avarohanam TEXT
             );
         """)
         cursor.execute("""

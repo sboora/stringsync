@@ -58,6 +58,5 @@ class UserActivityRepository:
             utc_timestamp = pytz.utc.localize(activity['timestamp'])
             local_tz = pytz.timezone(timezone)
             local_timestamp = utc_timestamp.astimezone(local_tz)
-            print(type(local_timestamp))
             activity['timestamp'] = local_timestamp
         return result

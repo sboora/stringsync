@@ -148,34 +148,30 @@ class TrackRepository:
         count = cursor.fetchone()[0]
         return count > 0
 
-    def search_tracks(self, ragam_id=None, level=None, tags=None):
+    def search_tracks(self, raga=None, level=None, tags=None):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = "SELECT tracks.id, name, track_path, track_ref_path, notation_path, level, ragam_id, offset FROM tracks"
+        query = "SELECT tracks.id, tracks.name, track_path, track_ref_path, notation_path, level, ragam_id, " \
+                "offset FROM tracks "
         params = []
 
+        joins = []
+        if raga:
+            joins.append("JOIN ragas ON tracks.ragam_id = ragas.id")
         if tags:
-            query += """
-            JOIN track_tags ON tracks.id = track_tags.track_id
-            JOIN tags ON track_tags.tag_id = tags.id
-            """
+            joins.append("JOIN track_tags ON tracks.id = track_tags.track_id JOIN tags ON track_tags.tag_id = tags.id")
 
         where_clauses = []
-
-        if ragam_id is not None:
-            where_clauses.append("ragam_id = %s")
-            params.append(ragam_id)
-
-        if level is not None:
+        if raga:
+            where_clauses.append("ragas.name = %s")
+            params.append(raga)
+        if level:
             where_clauses.append("level = %s")
             params.append(level)
-
-        if tags is not None:
-            tags_placeholder = ', '.join(['%s'] * len(tags))
-            where_clauses.append(f"tags.tag_name IN ({tags_placeholder})")
+        if tags:
+            where_clauses.append(f"tags.tag_name IN ({', '.join(['%s'] * len(tags))})")
             params.extend(tags)
 
-        if where_clauses:
-            query += " WHERE " + " AND ".join(where_clauses)
+        query += f" {' '.join(joins)} {' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''}"
 
         if tags:
             query += " GROUP BY tracks.id HAVING COUNT(tracks.id) = %s"
@@ -183,4 +179,5 @@ class TrackRepository:
 
         cursor.execute(query, params)
         return cursor.fetchall()
+
 
