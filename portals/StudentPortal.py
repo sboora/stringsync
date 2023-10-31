@@ -213,20 +213,20 @@ class StudentPortal(BasePortal, ABC):
 
             col2.write("")
             col2.markdown(
-                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
             col3.write("")
             col3.markdown(
-                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('score')}</div>",
+                f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
                 unsafe_allow_html=True)
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
                 unsafe_allow_html=True)
             formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
                 int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
             col5.write("")
-            col5.markdown(f"<div style='padding-top:14px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                           unsafe_allow_html=True)
 
     def get_audio_data(self, recording):

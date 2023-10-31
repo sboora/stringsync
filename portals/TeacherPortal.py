@@ -444,7 +444,7 @@ class TeacherPortal(BasePortal, ABC):
 
         col3.write("", style={"fontSize": "5px"})
         col3.markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+            f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
 
         remarks = col4.text_input("", key=f"remarks_{recording['id']}")
@@ -454,7 +454,7 @@ class TeacherPortal(BasePortal, ABC):
         col5.write("")
         formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
             int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-        col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+        col5.markdown(f"<div style='padding-top:14px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                       unsafe_allow_html=True)
 
     @staticmethod
