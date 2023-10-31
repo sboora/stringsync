@@ -36,7 +36,9 @@ class TeacherPortal(BasePortal, ABC):
             ("🎵 Remove Track", self.remove_track),
             ("🎵 Recordings", self.list_recordings),
             ("📥 Submissions", self.submissions),
-            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
+            ("⚙️ Settings", self.settings) if self.is_feature_enabled(
+                Features.TEACHER_PORTAL_SETTINGS) else None,
+             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_SESSIONS) else None,
             ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY) else None
@@ -133,7 +135,13 @@ class TeacherPortal(BasePortal, ABC):
             selected_ragam = st.selectbox("Select Ragam",
                                           ['--Select a Ragam--'] + list(ragam_options.keys()))
 
-            tags = st.text_input("Tags (comma-separated)")
+            # Existing tags
+            tags = self.track_repo.get_all_tags()
+            selected_tags = st.multiselect("Select tags:", tags)
+            new_tags = st.text_input("Add new tags (comma-separated):")
+            if new_tags:
+                new_tags = [tag.strip() for tag in new_tags.split(",")]
+                selected_tags.extend(new_tags)
             level = st.selectbox("Select Level", [1, 2, 3, 4, 5])
 
             if st.form_submit_button("Submit", type="primary"):
@@ -147,7 +155,6 @@ class TeacherPortal(BasePortal, ABC):
                     track_url = self.upload_to_storage(track_file, track_data)
                     ref_track_data = ref_track_file.getbuffer()
                     ref_track_url = self.upload_to_storage(ref_track_file, ref_track_data)
-                    tags_list = [tag.strip() for tag in tags.split(",")]
                     self.storage_repo.download_blob(track_url, track_file.name)
                     self.storage_repo.download_blob(ref_track_url, ref_track_file.name)
                     offset = self.audio_processor.compare_audio(track_file.name, ref_track_file.name)
@@ -159,7 +166,7 @@ class TeacherPortal(BasePortal, ABC):
                         track_ref_path=ref_track_url,
                         level=level,
                         ragam_id=ragam_id,
-                        tags=tags_list,
+                        tags=selected_tags,
                         description=description,
                         offset=offset,
                         track_hash=track_hash
@@ -211,10 +218,10 @@ class TeacherPortal(BasePortal, ABC):
             st.warning("Please provide a name for the track.")
             return False
         if not track_file:
-            st.warning("Please upload an audio file.")
+            st.error("Please upload an audio file.")
             return False
         if not ref_track_file:
-            st.warning("Please upload a reference audio file.")
+            st.error("Please upload a reference audio file.")
             return False
         if self.track_repo.get_track_by_name(track_name):
             st.error(f"A track with the name '{track_name}' already exists.")

@@ -39,10 +39,12 @@ class StudentPortal(BasePortal, ABC):
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("🏆 Badges", self.badges),
             ("⏲️ Practice Log", self.practicelog),
+            ("⚙️ Settings", self.settings) if self.is_feature_enabled(
+                Features.STUDENT_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SHOW_USER_SESSIONS) else None,
             ("📊 Activities", self.activities) if self.is_feature_enabled(
-                Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY) else None
+                Features.STUDENT_PORTAL_SHOW_USER_ACTIVITY) else None,
         ]
         return {tab[0]: tab[1] for tab in tabs if tab}
 
@@ -375,10 +377,8 @@ class StudentPortal(BasePortal, ABC):
         raga = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
         tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
 
-        raga_id = None if raga == "All" else ragas[raga]
-
         tracks = self.track_repo.search_tracks(
-            ragam_id=None if raga == "All" else raga_id,
+            raga=None if raga == "All" else raga,
             level=None if level == "All" else level,
             tags=None if tags == ["All"] else tags
         )

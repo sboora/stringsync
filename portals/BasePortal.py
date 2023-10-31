@@ -51,14 +51,14 @@ class BasePortal(ABC):
         self.user_repo = UserRepository(self.get_connection())
         self.user_session_repo = UserSessionRepository(self.get_connection())
         self.user_activity_repo = UserActivityRepository(self.get_connection())
-        self.portal_repo = PortalRepository(self.get_connection())
-        self.settings_repo = SettingsRepository(self.get_connection())
-        self.recording_repo = RecordingRepository(self.get_connection())
-        self.track_repo = TrackRepository(self.get_connection())
-        self.feature_repo = FeatureToggleRepository(self.get_connection())
-        self.raga_repo = RagaRepository(self.get_connection())
         self.user_achievement_repo = UserAchievementRepository(self.get_connection())
         self.user_practice_log_repo = UserPracticeLogRepository(self.get_connection())
+        self.feature_repo = FeatureToggleRepository(self.get_connection())
+        self.settings_repo = SettingsRepository(self.get_connection())
+        self.raga_repo = RagaRepository(self.get_connection())
+        self.track_repo = TrackRepository(self.get_connection())
+        self.recording_repo = RecordingRepository(self.get_connection())
+        self.portal_repo = PortalRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
 
     @abstractmethod
@@ -298,10 +298,11 @@ class BasePortal(ABC):
         features = self.feature_repo.get_all_features()
         if 'feature_toggles' not in st.session_state:
             st.session_state['feature_toggles'] = {}
-            for feature in features:
-                feature_name = feature.get('feature_name', 'Unknown')
-                is_enabled = feature.get('is_enabled', False)
-                st.session_state['feature_toggles'][feature_name] = is_enabled
+
+        for feature in features:
+            feature_name = feature.get('feature_name', 'Unknown')
+            is_enabled = feature.get('is_enabled', False)
+            st.session_state['feature_toggles'][feature_name] = is_enabled
 
     def set_session_state(self, user_id, org_id, username):
         st.session_state['user_logged_in'] = True
@@ -319,6 +320,7 @@ class BasePortal(ABC):
         st.session_state['org_id'] = None
         st.session_state['tenant_id'] = None
         st.session_state['username'] = None
+        st.session_state['feature_toggles'] = {}
 
     def logout_user(self):
         session_id = st.session_state.get('session_id')
@@ -374,8 +376,8 @@ class BasePortal(ABC):
                     }}
                 </style>""", unsafe_allow_html=True)
         tab_dict = self.get_tab_dict()
-        tab_dict["⚙️ Settings"] = self.settings
         tab_names = list(tab_dict.keys())
+        print(tab_names)
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
 
@@ -624,7 +626,7 @@ class BasePortal(ABC):
 
     @staticmethod
     def is_feature_enabled(feature):
-        return st.session_state['feature_toggles'].get(feature.name, False)
+        return st.session_state['feature_toggles'][feature.name]
 
     @staticmethod
     def user_logged_in():

@@ -29,7 +29,9 @@ class AdminPortal(BasePortal, ABC):
             ("👨‍🏫 List Tutors", self.list_tutors),
             ("📝 Assign Tutor to School", self.assign_tutor),
             ("📋 List Tutor Assignments", self.list_tutor_assignments),
-            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
+            ("⚙️ Settings", self.settings) if self.is_feature_enabled(
+                Features.ADMIN_PORTAL_SETTINGS) else None,
+             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_SESSIONS) else None,
             ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY) else None
@@ -41,11 +43,15 @@ class AdminPortal(BasePortal, ABC):
             ### **Administrative Portal**
 
             **Your Comprehensive Dashboard for Educational Management**
-            
+
             This portal is designed to provide a centralized platform for seamless administration of your educational organization. Here are the core functionalities you can leverage:
-            - 🏫 **Register Schools**: Incorporate new educational institutions into your organizational network, complete with unique identifiers and profiles.
-            - 👩‍🏫 **Register Tutors**: Facilitate the onboarding process for new tutors, allowing you to collect essential information and credentials.
-            - 📝 **Assign Tutors to Schools**: Efficiently allocate tutors to specific schools, ensuring optimal resource distribution and academic excellence.
+            - 🏫 **Register Schools**: Incorporate new educational institutions into your organizational network, ensuring each school has a unique identifier and profile.
+            - 👩‍🏫 **Register Tutors**: Onboard new tutors effortlessly, collecting essential information and credentials for future reference.
+            - 📝 **Assign Tutors to Schools**: Allocate tutors to specific schools optimally, ensuring a balanced distribution of resources for academic excellence.
+            - 📋 **List Tutor Assignments**: Keep track of tutor assignments, ensuring transparency and effective resource management.
+            - ⚙️ **Settings**: Customize the portal settings to cater to your organizational preferences and requirements.
+            - 🗂️ **Sessions**: Monitor user sessions for enhanced management and oversight.
+            - 📊 **Activities**: Keep an eye on user activities, fostering a productive and collaborative environment.
 
             Navigate through the tabs to perform these operations and more. Your effective management is just a few clicks away.
         """)
