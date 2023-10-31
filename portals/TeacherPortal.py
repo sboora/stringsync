@@ -123,7 +123,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def create_track(self):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Track</h2>", unsafe_allow_html=True)
-        with st.form(key='create_track_form'):
+        with st.form(key='create_track_form', clear_on_submit=True):
             track_name = st.text_input("Track Name")
             track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             ref_track_file = st.file_uploader("Choose a reference audio file", type=["m4a", "mp3"])
@@ -198,19 +198,19 @@ class TeacherPortal(BasePortal, ABC):
 
             col2.write("")
             col2.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Track Name']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Track Name']}</div>",
                 unsafe_allow_html=True)
             col3.write("")
             col3.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Ragam']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Ragam']}</div>",
                 unsafe_allow_html=True)
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Level']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Level']}</div>",
                 unsafe_allow_html=True)
             col5.write("")
             col5.markdown(
-                f"<div style='padding-top:1px;color:black;font-size:14px;text-align:center'>{row_data['Description']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Description']}</div>",
                 unsafe_allow_html=True)
 
     def validate_inputs(self, track_name, track_file, ref_track_file):

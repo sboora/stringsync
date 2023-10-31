@@ -38,7 +38,7 @@ class StudentPortal(BasePortal, ABC):
             ("📥 Submissions", self.submissions),
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("🏆 Badges", self.badges),
-            ("⏲️ Practice Log", self.practicelog),
+            ("⏲️ Practice Log", self.practice_log),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -76,7 +76,7 @@ class StudentPortal(BasePortal, ABC):
     def show_animations(self):
         # Center-aligned, bold text with cursive font, improved visibility, and spacing
         st.markdown("""
-            <h1 style='text-align: center; letter-spacing: 0.10px; font-family: cursive; font-size: 24px; font-weight: bold;'>
+            <h1 style='text-align: center; letter-spacing: 0.10px; font-size: 24px; font-weight: bold;'>
                 <span style='color: red;'>C</span>
                 <span style='color: orange;'>o</span>
                 <span style='color: darkorange;'>n</span>
@@ -97,7 +97,7 @@ class StudentPortal(BasePortal, ABC):
         """, unsafe_allow_html=True)
 
         st.markdown("""
-            <h2 style='text-align: center; letter-spacing: 0.5px; font-family: cursive; font-size: 20spx;'>
+            <h2 style='text-align: center; letter-spacing: 0.5px; font-size: 20spx;'>
                 <span style='color: red;'>Y</span>
                 <span style='color: orange;'>o</span>
                 <span style='color: darkorange;'>u</span>
@@ -213,20 +213,20 @@ class StudentPortal(BasePortal, ABC):
 
             col2.write("")
             col2.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
             col3.write("")
             col3.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('score')}</div>",
+                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('score')}</div>",
                 unsafe_allow_html=True)
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+                f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
                 unsafe_allow_html=True)
             formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
                 int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
             col5.write("")
-            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+            col5.markdown(f"<div style='padding-top:14px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                           unsafe_allow_html=True)
 
     def get_audio_data(self, recording):
@@ -457,28 +457,20 @@ class StudentPortal(BasePortal, ABC):
                 else:
                     original_timestamp = datetime.datetime.now()
 
-                recording_name = f"{track_id}-{original_timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
                 recording_data = uploaded_student_file.getbuffer()
                 file_hash = self.calculate_file_hash(recording_data)
 
                 # Check for duplicates
                 if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
                     st.error("You have already uploaded this recording.")
-                    return recording_name, -1, False
-
-                # Save the recording
-                self.save_recording(recording_data, recording_name)
-
-                # Calculate duration
-                duration = self.calculate_audio_duration(recording_name)
+                    return "", -1, False
 
                 # Upload the recording to storage repo and recording repo
-                url, recording_id = self.add_recording(user_id,
-                                                       track_id,
-                                                       recording_name,
-                                                       original_timestamp,
-                                                       duration,
-                                                       file_hash)
+                recording_name, url, recording_id = self.add_recording(user_id,
+                                                                       track_id,
+                                                                       recording_data,
+                                                                       original_timestamp,
+                                                                       file_hash)
                 st.audio(recording_name, format='core/m4a')
                 return recording_name, recording_id, True
         return None, -1, False
@@ -497,12 +489,15 @@ class StudentPortal(BasePortal, ABC):
         with open(student_path, "wb") as f:
             f.write(recording_data)
 
-    def add_recording(self, user_id, track_id, recording_name, timestamp, duration, file_hash):
-        recording_path = f'{self.get_recordings_bucket()}/{recording_name}'
-        url = self.storage_repo.upload_file(recording_name, recording_path)
+    def add_recording(self, user_id, track_id, recording_data, timestamp, file_hash):
+        recording_name = f"{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
+        blob_name = f'{self.get_recordings_bucket()}/{recording_name}'
+        blob_url = self.storage_repo.upload_blob(recording_data, blob_name)
+        self.storage_repo.download_blob(blob_url, recording_name)
+        duration = self.calculate_audio_duration(recording_name)
         recording_id = self.recording_repo.add_recording(
-            user_id, track_id, recording_path, url, timestamp, duration, file_hash)
-        return url, recording_id
+            user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash)
+        return recording_name, blob_url, recording_id
 
     def display_student_performance(self, track_file, student_path, track_notes, offset_distance):
         if not student_path:
@@ -513,7 +508,7 @@ class StudentPortal(BasePortal, ABC):
         student_notes = self.get_filtered_student_notes(student_path)
         error_notes, missing_notes = self.audio_processor.error_and_missing_notes(track_notes, student_notes)
         score = self.audio_processor.distance_to_score(distance)
-        analysis = self.display_score_and_analysis(score, error_notes, missing_notes)
+        analysis, score = self.display_score_and_analysis(score, error_notes, missing_notes)
         return score, analysis
 
     def get_audio_distance(self, track_file, student_path, offset_distance):
@@ -531,33 +526,39 @@ class StudentPortal(BasePortal, ABC):
         return self.audio_processor.filter_consecutive_notes(student_notes)
 
     def display_score_and_analysis(self, score, error_notes, missing_notes):
-        self.display_similarity_score(score)
-        analysis = self.generate_note_analysis(error_notes, missing_notes)
+        analysis, off_notes = self.generate_note_analysis(error_notes, missing_notes)
+        new_score = self.display_score(score, off_notes)
         st.info(analysis)
-        encouragement_message = self.generate_message(score)
+        encouragement_message = self.generate_message(new_score)
         st.info(encouragement_message)
-        return analysis + encouragement_message
+        return analysis + encouragement_message, new_score
 
     @staticmethod
-    def display_similarity_score(score):
-        message = f"Similarity score: {score}\n"
+    def display_score(score, errors):
+        new_score = score
+        if score == 10 and errors > 0:
+            new_score = score - errors
+        message = f"Score: {new_score}\n"
         if score <= 3:
             st.error(message)
         elif score <= 7:
             st.warning(message)
         else:
             st.success(message)
+        return new_score
 
     def generate_note_analysis(self, error_notes, missing_notes):
         error_dict = self.group_notes_by_first_letter(error_notes)
         missing_dict = self.group_notes_by_first_letter(missing_notes)
 
         message = ""
+        error_count = 0
         if error_dict == missing_dict:
             message += "Your recording had all the notes that the track had.\n"
         else:
-            message += self.correlate_notes(error_dict, missing_dict)
-        return message
+            msg, error_count = self.correlate_notes(error_dict, missing_dict)
+            message += msg
+        return message, error_count
 
     @staticmethod
     def group_notes_by_first_letter(notes):
@@ -570,19 +571,23 @@ class StudentPortal(BasePortal, ABC):
     @staticmethod
     def correlate_notes(error_dict, missing_dict):
         message = ""
+        error_count = 0
         for first_letter, error_note_list in error_dict.items():
             if first_letter in missing_dict:
                 for error_note in error_note_list:
                     message += f"Play {missing_dict[first_letter][0]} instead of {error_note}\n"
+                    error_count += 1
             else:
                 for error_note in error_note_list:
                     message += f"You played the note {error_note}, however that is not present in the track\n"
+                    error_count += 1
 
         for first_letter, missing_note_list in missing_dict.items():
             if first_letter not in error_dict:
                 for missing_note in missing_note_list:
                     message += f"You missed playing the note {missing_note}\n"
-        return message
+                    error_count += 1
+        return message, error_count
 
     @staticmethod
     def generate_message(score):
@@ -665,7 +670,7 @@ class StudentPortal(BasePortal, ABC):
 
         return badge_awarded
 
-    def practicelog(self):
+    def practice_log(self):
         with st.form("log_practice_time_form"):
             practice_date = st.date_input("Practice Date")
             practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
