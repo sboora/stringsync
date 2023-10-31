@@ -1,18 +1,20 @@
 from abc import ABC
 
 from enums.Features import Features
+from enums.Settings import Portal
 from enums.UserType import UserType
 from portals.BasePortal import BasePortal
 import streamlit as st
 import streamlit_toggle as tog
 import os
 
-from repositories.FeatureToggleRepository import FeatureToggleRepository
-
 
 class TenantPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
+
+    def get_portal(self):
+        return Portal.TENANT
 
     def get_title(self):
         return f"{self.get_app_name()} Tenant Portal"
@@ -61,7 +63,7 @@ class TenantPortal(BasePortal, ABC):
             if success:
                 success, org_id, join_code, org_message = self.org_repo.register_organization(
                     tenant_id, name, description, is_root=True)
-                if  not success:
+                if not success:
                     st.error(org_message)
                     return
 
@@ -108,7 +110,6 @@ class TenantPortal(BasePortal, ABC):
             self.build_row(row_data=row_data, column_widths=column_widths)
 
     def feature_toggles(self):
-        # Assume we have a FeatureToggleRepository instance as self.feature_repo
         features = self.feature_repo.get_all_features()
 
         if features:
@@ -142,8 +143,4 @@ class TenantPortal(BasePortal, ABC):
                 if current_status != is_enabled:
                     self.feature_repo.toggle_feature(feature_enum_name)
         else:
-            st.write("No features available.")
-
-
-
-
+            st.info("No features available.")

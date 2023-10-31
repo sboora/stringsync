@@ -3,6 +3,7 @@ from abc import ABC
 import streamlit as st
 
 from enums.Features import Features
+from enums.Settings import Portal
 from portals.BasePortal import BasePortal
 from enums.UserType import UserType
 
@@ -10,6 +11,9 @@ from enums.UserType import UserType
 class AdminPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
+
+    def get_portal(self):
+        return Portal.ADMIN
 
     def get_title(self):
         return f"{self.get_app_name()} Admin Portal"

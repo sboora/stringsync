@@ -4,6 +4,7 @@ from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
 from enums.Features import Features
+from enums.Settings import Portal
 from portals.BasePortal import BasePortal
 import streamlit as st
 import pandas as pd
@@ -15,6 +16,9 @@ class TeacherPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
+
+    def get_portal(self):
+        return Portal.TEACHER
 
     def get_title(self):
         return f"{self.get_app_name()} Teacher Portal"
@@ -101,7 +105,6 @@ class TeacherPortal(BasePortal, ABC):
     def display_students(self):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Student Details</h2>", unsafe_allow_html=True)
 
-        # Assuming you have a method to get students assigned to you
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
         column_widths = [25, 25, 25, 25]
         self.build_header(column_names=["Name", "Username", "Email", "Group"],
@@ -338,7 +341,7 @@ class TeacherPortal(BasePortal, ABC):
         self.display_track_files(track_name)
         recordings = self.recording_repo.get_recordings_by_user_id_and_track_id(user_id, track_id)
         if not recordings:
-            st.write("No recordings found.")
+            st.info("No recordings found.")
             return
 
         # Create a DataFrame to hold the recording data
@@ -379,11 +382,10 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown("<h2 style='text-align: center; font-size: 20px;'>Submissions</h2>", unsafe_allow_html=True)
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
-        print(group_id, username, user_id, track_id, track_name)
         # Fetch and sort recordings
         recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
         if not recordings:
-            st.write("No submissions found.")
+            st.info("No submissions found.")
             return
 
         df = pd.DataFrame(recordings)

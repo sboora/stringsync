@@ -12,6 +12,7 @@ from streamlit_lottie import st_lottie
 from enums.ActivityType import ActivityType
 from enums.Badges import Badges
 from enums.Features import Features
+from enums.Settings import Settings, Portal
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
@@ -21,6 +22,9 @@ class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
+
+    def get_portal(self):
+        return Portal.STUDENT
 
     def get_title(self):
         return f"{self.get_app_name()} Student Portal"
@@ -313,7 +317,7 @@ class StudentPortal(BasePortal, ABC):
         user_id = self.get_user_id()
         time_series_data = self.recording_repo.get_time_series_data(user_id)
         if not time_series_data:
-            st.write("No data available.")
+            st.info("No data available.")
             return
 
         formatted_dates = [point['date'].strftime('%m/%d') for point in time_series_data]
@@ -395,7 +399,7 @@ class StudentPortal(BasePortal, ABC):
         return self.get_selected_track_details(tracks, selected_track_name)
 
     def log_track_selection_change(self, selected_track_name):
-        user_id = self.get_user_id()  # Assuming you have a method to get the current user ID
+        user_id = self.get_user_id()
         additional_params = {
             "Track": selected_track_name,
         }
@@ -626,7 +630,8 @@ class StudentPortal(BasePortal, ABC):
 
     def award_badge(self):
         # Fetch the total number of tracks and total duration for the user
-        min_score = self.settings_repo.get_minimum_score_for_badges()
+        min_score = self.settings_repo.get_setting(self.get_org_id(),
+                                                   Settings.MIN_SCORE_FOR_EARNING_BADGES)
         total_tracks = self.recording_repo.get_total_recordings(self.get_user_id(), min_score)
         total_duration = self.recording_repo.get_total_duration(self.get_user_id(), min_score)
 

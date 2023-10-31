@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import streamlit as st
 
 from enums.ActivityType import ActivityType
+from enums.Settings import Settings, Portal, SettingType
 from enums.UserType import UserType
 from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
@@ -59,6 +60,10 @@ class BasePortal(ABC):
         self.user_achievement_repo = UserAchievementRepository(self.get_connection())
         self.user_practice_log_repo = UserPracticeLogRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
+
+    @abstractmethod
+    def get_portal(self):
+        pass
 
     def get_connection(self):
         return self.database_manager.connection
@@ -148,15 +153,12 @@ class BasePortal(ABC):
     def show_user_menu(self):
         col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
         with col2_2:
-            user_options = st.selectbox("", ["", "Settings", "Logout"], index=0,
+            user_options = st.selectbox("", ["", "Logout"], index=0,
                                         format_func=lambda
                                             x: f"👤\u2003{self.get_username()}" if x == "" else x)
 
             if user_options == "Logout":
                 self.logout_user()
-            elif user_options == "Settings":
-                # Navigate to settings page or open settings dialog
-                pass
 
     def login_user(self):
         st.write("### Login")
@@ -346,16 +348,18 @@ class BasePortal(ABC):
         st.markdown(footer_html, unsafe_allow_html=True)
 
     def build_tabs(self):
-        st.markdown("""
+        background_color = self.settings_repo.get_setting(
+            self.get_org_id(), Settings.TAB_BACKGROUND_COLOR)
+        st.markdown(f"""
                 <style>
-                    .stTabs [data-baseweb="tab-list"] {
+                    .stTabs [data-baseweb="tab-list"] {{
                         gap: 2px;
-                    }
+                    }}
 
-                    .stTabs [data-baseweb="tab"] {
+                    .stTabs [data-baseweb="tab"] {{
                         height: 30px;
                         white-space: pre-wrap;               
-                        background-color: #AED6F1;
+                        background-color: {background_color};
                         border-radius: 6px 6px 0px 0px;
                         gap: 5px;
                         padding-top: 10px;
@@ -363,13 +367,14 @@ class BasePortal(ABC):
                         padding-left: 10px;
                         padding-right: 10px;
                         font-weight: bold;
-                    }
+                    }}
 
-                    .stTabs [aria-selected="true"] {
+                    .stTabs [aria-selected="true"] {{
                         background-color: #FFFFFF;
-                    }
+                    }}
                 </style>""", unsafe_allow_html=True)
         tab_dict = self.get_tab_dict()
+        tab_dict["⚙️ Settings"] = self.settings
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
@@ -385,7 +390,7 @@ class BasePortal(ABC):
         user_activities_data = self.user_activity_repo.get_user_activities(user_id)
 
         if not user_activities_data:
-            st.write("No user activity data available.")
+            st.info("No user activity data available.")
             return
 
         # Build the header for the user activities listing
@@ -416,7 +421,7 @@ class BasePortal(ABC):
         time_series_data = self.user_session_repo.get_time_series_data(user_id)
 
         if not time_series_data:
-            st.write("No session data available.")
+            st.info("No session data available.")
             return
 
         # Prepare data for visualization
@@ -439,7 +444,7 @@ class BasePortal(ABC):
         session_details = self.user_session_repo.get_user_sessions(user_id)  # Corrected method name
 
         if not session_details:
-            st.write("No session details available.")
+            st.info("No session details available.")
             return
 
         # Build the header for the session listing
@@ -457,6 +462,57 @@ class BasePortal(ABC):
             self.build_row(row_data={'Open Session Time': open_time, 'Close Session Time': close_time,
                             'Duration (minutes)': f'{duration_minutes:.2f}'},
                            column_widths=column_widths)
+
+    def settings(self):
+        settings = self.settings_repo.get_all_settings_by_portal(self.get_portal())
+        if len(settings.keys()) == 0:
+            st.info("No settings found")
+            return
+
+        with st.form(key='settings_form'):
+            new_settings = {}
+
+            for setting_name, setting_value in settings.items():
+                cols = st.columns(5)  # Create two columns
+                cols[0].write("")
+                cols[0].markdown(
+                    f"<div style='padding-top:15px;color:black;font-size:14px;text-align:left'>{setting_name}</div>",
+                    unsafe_allow_html=True)
+
+                setting_enum = Settings.get_by_description(setting_name)
+                data_type = setting_enum.data_type
+
+                # Display input field in the second column based on data type
+                if data_type == SettingType.INTEGER:
+                    new_value = cols[1].number_input('Value', value=int(setting_value))
+                elif data_type == SettingType.FLOAT:
+                    new_value = cols[1].number_input('Value', value=float(setting_value), format="%f")
+                elif data_type == SettingType.BOOL:
+                    new_value = cols[1].checkbox('Value', value=bool(setting_value))
+                elif data_type == SettingType.COLOR:
+                    new_value = cols[1].color_picker('Value', value=str(setting_value))
+                else:
+                    new_value = cols[1].text_input('Value', value=str(setting_value))
+
+                new_settings[setting_name] = new_value  # Storing new values
+
+            st.write("")
+            st.write("")
+            submit = st.form_submit_button('Update Settings', type="primary")
+            if submit:
+                self.update_settings(new_settings)
+                st.success('Settings updated successfully!')
+
+    def update_settings(self, new_settings):
+        for setting_name, new_value in new_settings.items():
+            setting_enum = Settings.get_by_description(setting_name)
+            if setting_enum is not None:
+                self.settings_repo.upsert_setting(
+                    self.get_org_id(),
+                    setting_enum,
+                    new_value,
+                    self.get_portal()
+                )
 
     @staticmethod
     def build_form(form_key, field_names, button_label='Submit', clear_on_submit=True):
