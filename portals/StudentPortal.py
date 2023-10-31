@@ -9,10 +9,11 @@ import streamlit as st
 import os
 import json
 from streamlit_lottie import st_lottie
+
+from core.BadgeAwardProcessor import BadgeAwardProcessor
 from enums.ActivityType import ActivityType
-from enums.Badges import Badges
 from enums.Features import Features
-from enums.Settings import Settings, Portal
+from enums.Settings import Portal
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
@@ -22,6 +23,7 @@ class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
+        self.badge_awarder = BadgeAwardProcessor(self.settings_repo, self.recording_repo, self.user_achievement_repo)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -166,7 +168,7 @@ class StudentPortal(BasePortal, ABC):
                 score, analysis = self.display_student_performance(
                     track_audio_path, recording_name, track_notes, track['offset'])
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
-                badge_awarded = self.award_badge()
+                badge_awarded = self.badge_awarder.award_badge(self.get_org_id(), self.get_user_id())
                 if badge_awarded:
                     self.show_animations()
 
@@ -254,11 +256,11 @@ class StudentPortal(BasePortal, ABC):
 
         # Display submissions
         for submission in submissions:
-            col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
+            col1, col2, col3, col4, col5, col6 = st.columns([0.9, 1, 1, 1, 1, 1])
 
             col1.write("")
             col1.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:center;'>{submission['track_name']}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
                 unsafe_allow_html=True)
 
             col2.write("")
@@ -479,22 +481,12 @@ class StudentPortal(BasePortal, ABC):
     def calculate_file_hash(recording_data):
         return hashlib.md5(recording_data).hexdigest()
 
-    @staticmethod
-    def calculate_audio_duration(student_path):
-        y, sr = librosa.load(student_path)
-        return librosa.get_duration(y=y, sr=sr)
-
-    @staticmethod
-    def save_recording(recording_data, student_path):
-        with open(student_path, "wb") as f:
-            f.write(recording_data)
-
     def add_recording(self, user_id, track_id, recording_data, timestamp, file_hash):
         recording_name = f"{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
         blob_name = f'{self.get_recordings_bucket()}/{recording_name}'
         blob_url = self.storage_repo.upload_blob(recording_data, blob_name)
         self.storage_repo.download_blob(blob_url, recording_name)
-        duration = self.calculate_audio_duration(recording_name)
+        duration = self.audio_processor.calculate_audio_duration(recording_name)
         recording_id = self.recording_repo.add_recording(
             user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash)
         return recording_name, blob_url, recording_id
@@ -632,43 +624,6 @@ class StudentPortal(BasePortal, ABC):
 
                 Start by listening to a track and making your first recording today!
             """)
-
-    def award_badge(self):
-        # Fetch the total number of tracks and total duration for the user
-        min_score = self.settings_repo.get_setting(self.get_org_id(),
-                                                   Settings.MIN_SCORE_FOR_EARNING_BADGES)
-        total_tracks = self.recording_repo.get_total_recordings(self.get_user_id(), min_score)
-        total_duration = self.recording_repo.get_total_duration(self.get_user_id(), min_score)
-
-        # Mapping thresholds to badges
-        track_badges = [
-            (1, Badges.FIRST_NOTE),
-            (20, Badges.RISING_STAR),
-            (40, Badges.FAST_LEARNER),
-            (75, Badges.SONG_BIRD),
-            (100, Badges.MAESTRO),
-        ]
-
-        duration_badges = [
-            (60, Badges.PRACTICE_MAKES_PERFECT),
-            (120, Badges.PERFECT_PITCH),
-            (300, Badges.MUSIC_WIZARD),
-            (600, Badges.ROCKSTAR),
-            (1000, Badges.VIRTUOSO),
-        ]
-
-        # Award track badges
-        badge_awarded = False
-        for threshold, badge in track_badges:
-            if total_tracks >= threshold:
-                badge_awarded, _ = self.user_achievement_repo.award_badge(self.get_user_id(), badge)
-
-        # Award duration badges
-        for threshold, badge in duration_badges:
-            if total_duration >= threshold:
-                badge_awarded, _ = self.user_achievement_repo.award_badge(self.get_user_id(), badge)
-
-        return badge_awarded
 
     def practice_log(self):
         with st.form("log_practice_time_form"):
