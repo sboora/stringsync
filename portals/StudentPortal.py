@@ -3,7 +3,7 @@ from abc import ABC
 
 import pandas as pd
 import hashlib
-import librosa
+
 import requests
 import streamlit as st
 import os
@@ -591,13 +591,15 @@ class StudentPortal(BasePortal, ABC):
     def practice_log(self):
         with st.form("log_practice_time_form"):
             practice_date = st.date_input("Practice Date")
+            practice_time = st.time_input("Practice Time")
             practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
             submit = st.form_submit_button("Log Practice", type="primary")
             if submit:
                 user_id = self.get_user_id()
-                self.user_practice_log_repo.log_practice(user_id, practice_date, practice_minutes)
-                st.success(f"Logged {practice_minutes} minutes of practice on {practice_date}.")
-                badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_date)
+                practice_datetime = datetime.datetime.combine(practice_date, practice_time)
+                self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
+                st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
+                badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_datetime)
                 if badge_awarded:
                     self.show_animations()
 

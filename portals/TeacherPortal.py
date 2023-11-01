@@ -3,7 +3,6 @@ import os
 from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
-from enums import Badges
 from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
