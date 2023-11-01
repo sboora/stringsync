@@ -2,11 +2,8 @@ from portals.TeacherPortal import TeacherPortal
 
 
 def main():
-    try:
-        teacher_portal = TeacherPortal()
-        teacher_portal.start()
-    except Exception as e:
-        print("An error has occurred: {}".format(e))
+    teacher_portal = TeacherPortal()
+    teacher_portal.start()
 
 
 if __name__ == "__main__":
