@@ -3,6 +3,8 @@ import os
 from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
+from enums import Badges
+from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
 from portals.BasePortal import BasePortal
@@ -38,7 +40,7 @@ class TeacherPortal(BasePortal, ABC):
             ("📥 Submissions", self.submissions),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
-             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
+            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_SESSIONS) else None,
             ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SHOW_USER_ACTIVITY) else None
@@ -310,9 +312,7 @@ class TeacherPortal(BasePortal, ABC):
                 track_options = {tracks[id]['name']: id for id in track_ids if id in tracks}
                 selected_track_name = st.selectbox(key=f"{source}-track", label="Select a track:",
                                                    options=['--Select a track--'] + list(track_options.keys()))
-                print("Step 10")
                 if selected_track_name != '--Select a track--':
-                    print("Step 11")
                     selected_track_id = track_options[selected_track_name]
                     print("selected track:", selected_track_id)
                     track = tracks[selected_track_id]
@@ -355,7 +355,7 @@ class TeacherPortal(BasePortal, ABC):
         df = pd.DataFrame(recordings)
 
         # Create a table header
-        header_html = self.generate_table_header()
+        header_html = self.build_header()
         st.markdown(header_html, unsafe_allow_html=True)
 
         # Loop through each recording and create a table row
@@ -397,39 +397,14 @@ class TeacherPortal(BasePortal, ABC):
 
         df = pd.DataFrame(recordings)
 
-        header_html = self.generate_table_header()
-        st.markdown(header_html, unsafe_allow_html=True)
-
+        self.build_header(column_names=["Track", "Score", "System Analysis", "Remarks", "Badges"],
+                          column_widths=[20, 20, 20, 20, 20])
         # Display each recording
         for index, recording in df.iterrows():
             self.display_submission_row(recording)
 
-    @staticmethod
-    def generate_table_header():
-        # Create a table header
-        header_html = """
-            <div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>
-                <div style='display:inline-block;width:26%;text-align:center;'>
-                    <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Track</p>
-                </div>
-                <div style='display:inline-block;width:8%;text-align:center;'>
-                    <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Score</p>
-                </div>
-                <div style='display:inline-block;width:25%;text-align:center;'>
-                    <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Analysis</p>
-                </div>
-                <div style='display:inline-block;width:25%;text-align:center;'>
-                    <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Remarks</p>
-                </div>
-                <div style='display:inline-block;width:10%;text-align:center;'>
-                    <p style='color:black;margin:0;font-size:15px;font-weight:bold;'>Time</p>
-                </div>
-            </div>
-            """
-        return header_html
-
     def display_submission_row(self, recording):
-        col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
 
         col1.write("")
         if recording['blob_url']:
@@ -448,18 +423,21 @@ class TeacherPortal(BasePortal, ABC):
             unsafe_allow_html=True)
 
         remarks = col4.text_input("", key=f"remarks_{recording['id']}")
-        if remarks:
-            self.recording_repo.update_remarks(recording["id"], remarks)
 
-        col5.write("")
-        formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-            int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-        col5.markdown(f"<div style='padding-top:14px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
-                      unsafe_allow_html=True)
+        badge_options = [badge.value for badge in TrackBadges]
+        selected_badge = col5.selectbox("", ['--Select a badge--', 'N/A'] + badge_options, key=f"badge_{recording['id']}")
+
+        if remarks and selected_badge != '--Select a badge--':
+            self.recording_repo.update_remarks(recording["id"], remarks)
+            if selected_badge != 'N/A':
+                self.user_achievement_repo.award_track_badge(recording['user_id'],
+                                                             recording['id'],
+                                                             TrackBadges(selected_badge))
+            st.rerun()
 
     @staticmethod
-    def calculate_file_hash(recording_data):
-        return hashlib.md5(recording_data).hexdigest()
+    def calculate_file_hash(audio_data):
+        return hashlib.md5(audio_data).hexdigest()
 
     @staticmethod
     def ordinal(n):

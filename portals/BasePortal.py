@@ -471,39 +471,38 @@ class BasePortal(ABC):
             st.info("No settings found")
             return
 
-        with st.form(key='settings_form'):
-            new_settings = {}
+        new_settings = {}
 
-            for setting_name, setting_value in settings.items():
-                cols = st.columns(5)  # Create two columns
-                cols[0].write("")
-                cols[0].markdown(
-                    f"<div style='padding-top:15px;color:black;font-size:14px;text-align:left'>{setting_name}</div>",
-                    unsafe_allow_html=True)
+        for setting_name, setting_value in settings.items():
+            cols = st.columns(5)  # Create two columns
+            cols[0].write("")
+            cols[0].markdown(
+                f"<div style='padding-top:15px;color:black;font-size:14px;text-align:left'>{setting_name}</div>",
+                unsafe_allow_html=True)
 
-                setting_enum = Settings.get_by_description(setting_name)
-                data_type = setting_enum.data_type
+            setting_enum = Settings.get_by_description(setting_name)
+            data_type = setting_enum.data_type
 
-                # Display input field in the second column based on data type
-                if data_type == SettingType.INTEGER:
-                    new_value = cols[1].number_input('Value', value=int(setting_value))
-                elif data_type == SettingType.FLOAT:
-                    new_value = cols[1].number_input('Value', value=float(setting_value), format="%f")
-                elif data_type == SettingType.BOOL:
-                    new_value = cols[1].checkbox('Value', value=bool(setting_value))
-                elif data_type == SettingType.COLOR:
-                    new_value = cols[1].color_picker('Value', value=str(setting_value))
-                else:
-                    new_value = cols[1].text_input('Value', value=str(setting_value))
+            # Display input field in the second column based on data type
+            if data_type == SettingType.INTEGER:
+                new_value = cols[1].number_input(key=setting_name, label='Value', value=int(setting_value))
+            elif data_type == SettingType.FLOAT:
+                new_value = cols[1].number_input(key=setting_name, label='Value', value=float(setting_value), format="%f")
+            elif data_type == SettingType.BOOL:
+                new_value = cols[1].checkbox(key=setting_name, label='Value', value=bool(setting_value))
+            elif data_type == SettingType.COLOR:
+                new_value = cols[1].color_picker(key=setting_name, label='Value', value=str(setting_value))
+            else:
+                new_value = cols[1].text_input(key=setting_name, label='Value', value=str(setting_value))
 
-                new_settings[setting_name] = new_value  # Storing new values
+            new_settings[setting_name] = new_value
 
-            st.write("")
-            st.write("")
-            submit = st.form_submit_button('Update Settings', type="primary")
-            if submit:
-                self.update_settings(new_settings)
-                st.success('Settings updated successfully!')
+        st.write("")
+        st.write("")
+        submit = st.button('Update Settings', type="primary")
+        if submit:
+            self.update_settings(new_settings)
+            st.success("Settings updated successfully")
 
     def update_settings(self, new_settings):
         for setting_name, new_value in new_settings.items():

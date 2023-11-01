@@ -13,7 +13,7 @@ from streamlit_lottie import st_lottie
 from core.BadgeAwardProcessor import BadgeAwardProcessor
 from enums.ActivityType import ActivityType
 from enums.Features import Features
-from enums.Settings import Portal
+from enums.Settings import Portal, Settings
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
@@ -23,7 +23,8 @@ class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
-        self.badge_awarder = BadgeAwardProcessor(self.settings_repo, self.recording_repo, self.user_achievement_repo)
+        self.badge_awarder = BadgeAwardProcessor(
+            self.settings_repo, self.recording_repo, self.user_achievement_repo, self.user_practice_log_repo)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -78,53 +79,12 @@ class StudentPortal(BasePortal, ABC):
     def show_animations(self):
         # Center-aligned, bold text with cursive font, improved visibility, and spacing
         st.markdown("""
-            <h1 style='text-align: center; letter-spacing: 0.10px; font-size: 24px; font-weight: bold;'>
-                <span style='color: red;'>C</span>
-                <span style='color: orange;'>o</span>
-                <span style='color: darkorange;'>n</span>
-                <span style='color: green;'>g</span>
-                <span style='color: blue;'>r</span>
-                <span style='color: indigo;'>a</span>
-                <span style='color: violet;'>t</span>
-                <span style='color: red;'>u</span>
-                <span style='color: orange;'>l</span>
-                <span style='color: darkorange;'>a</span>
-                <span style='color: green;'>t</span>
-                <span style='color: blue;'>i</span>
-                <span style='color: indigo;'>o</span>
-                <span style='color: violet;'>n</span>
-                <span style='color: red;'>s</span>
-                🎉🎇
+            <h1 style='text-align: center; font-weight: bold; color: #CB5A8A; font-size: 48px;'>
+                Congratulations!!!!
             </h1>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-            <h2 style='text-align: center; letter-spacing: 0.5px; font-size: 20spx;'>
-                <span style='color: red;'>Y</span>
-                <span style='color: orange;'>o</span>
-                <span style='color: darkorange;'>u</span>
-                <span style='color: green;'>'</span>
-                <span style='color: blue;'>v</span>
-                <span style='color: indigo;'>e</span>
-                <span style='color: violet;'>&nbsp;&nbsp;</span>
-                <span style='color: red;'>e</span>
-                <span style='color: orange;'>a</span>
-                <span style='color: darkorange;'>r</span>
-                <span style='color: green;'>n</span>
-                <span style='color: blue;'>e</span>
-                <span style='color: indigo;'>d</span>
-                <span style='color: violet;'>&nbsp;&nbsp;</span>
-                <span style='color: red;'>a</span>
-                <span style='color: orange;'>&nbsp;&nbsp;</span>
-                <span style='color: darkorange;'>n</span>
-                <span style='color: green;'>e</span>
-                <span style='color: blue;'>w</span>
-                <span style='color: indigo;'>&nbsp;&nbsp;</span>
-                <span style='color: violet;'>b</span>
-                <span style='color: red;'>a</span>
-                <span style='color: orange;'>d</span>
-                <span style='color: darkorange;'>g</span>
-                <span style='color: green;'>e</span>
+            <h2 style='text-align: center; color: #CB5A8A; font-size: 24px;'>
+                You have earned a badge!!
+                🎉🎇
             </h2>
         """, unsafe_allow_html=True)
 
@@ -132,10 +92,10 @@ class StudentPortal(BasePortal, ABC):
         byte_data = self.storage_repo.download_blob_by_name(f"animations/giftbox.json")
         lottie_json = json.loads(byte_data.decode('utf-8'))
 
-        col1, col2, col3 = st.columns([1, 6, 1])
+        cols = st.columns([1.8, 3, 1])
 
-        with col2:
-            st_lottie(lottie_json, speed=1, width=300, height=150, loop=True, quality='high', key="badge_awarded")
+        with cols[1]:  # Selects the middle column
+            st_lottie(lottie_json, speed=1, width=500, height=250, loop=True, quality='high', key="badge_awarded")
 
     def record(self):
         track = self.filter_tracks()
@@ -168,9 +128,6 @@ class StudentPortal(BasePortal, ABC):
                 score, analysis = self.display_student_performance(
                     track_audio_path, recording_name, track_notes, track['offset'])
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
-                badge_awarded = self.badge_awarder.award_badge(self.get_org_id(), self.get_user_id())
-                if badge_awarded:
-                    self.show_animations()
 
         self.recordings(track['id'])
         if is_success:
@@ -244,19 +201,21 @@ class StudentPortal(BasePortal, ABC):
 
     def submissions(self):
         # Fetch submissions from the database
-        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id())
+        limit = self.settings_repo.get_setting(
+            self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
+        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id(), limit=limit)
 
         if not submissions:
             st.info("No submissions found.")
             return
-        column_widths = [16.66, 16.66, 16.66, 16.66, 16.66, 16.66]
+        column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
         self.build_header(
-            column_names=["Tack Name", "Track", "Recording", "Teacher Remarks", "System Remarks", "Score"],
+            column_names=["Tack Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
             column_widths=column_widths)
 
         # Display submissions
         for submission in submissions:
-            col1, col2, col3, col4, col5, col6 = st.columns([0.9, 1, 1, 1, 1, 1])
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
 
             col1.write("")
             col1.markdown(
@@ -279,18 +238,25 @@ class StudentPortal(BasePortal, ABC):
 
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
             col5.write("")
             col5.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:16px;'>{submission.get('system_remarks', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
             col6.write("")
             col6.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:center;'>{submission.get('score', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
                 unsafe_allow_html=True)
+
+            col7.write("")
+            badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
+            if badge:
+                badge_name = f"{self.get_badges_bucket()}/{badge}.png"
+                filename = self.download_to_temp_file_by_name(badge_name)
+                col7.image(filename, width=75)
 
     def assignments(self):
         pass
@@ -299,7 +265,6 @@ class StudentPortal(BasePortal, ABC):
         st.write("")
         self.display_tracks()
         st.write("")
-        self.show_line_graph()
 
     def display_tracks(self):
         tracks = self.get_tracks()
@@ -611,8 +576,6 @@ class StudentPortal(BasePortal, ABC):
                     badge_url = f"{self.get_badges_bucket()}/{badge}.png"
                     filename = self.download_to_temp_file_by_name(badge_url)
                     st.image(filename, width=200)
-
-            st.markdown("</div>", unsafe_allow_html=True)
         else:  # If there are no badges
             st.markdown("### No Badges Yet 🎖️")
             st.markdown("""
@@ -634,6 +597,9 @@ class StudentPortal(BasePortal, ABC):
                 user_id = self.get_user_id()
                 self.user_practice_log_repo.log_practice(user_id, practice_date, practice_minutes)
                 st.success(f"Logged {practice_minutes} minutes of practice on {practice_date}.")
+                badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_date)
+                if badge_awarded:
+                    self.show_animations()
 
     @staticmethod
     def ordinal(n):
