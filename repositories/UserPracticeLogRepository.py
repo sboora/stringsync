@@ -1,6 +1,8 @@
 import pymysql
 import pymysql.cursors
 
+from enums.Badges import UserBadges
+
 
 class UserPracticeLogRepository:
     def __init__(self, connection):
@@ -38,3 +40,76 @@ class UserPracticeLogRepository:
         """
         cursor.execute(insert_log_query, (user_id, practice_date, practice_minutes))
         self.connection.commit()
+
+    def get_streaks(self, user_id):
+        cursor = self.connection.cursor()
+        streaks = {
+            '2_day_streak': 0,
+            '3_day_streak': 0,
+            '5_day_streak': 0,
+            '7_day_streak': 0,
+            '10_day_streak': 0
+        }
+
+        query = """
+            SELECT DATEDIFF(MAX(practice_date), MIN(practice_date)) + 1 AS streak_length 
+            FROM user_practice_logs 
+            WHERE user_id = %s 
+            GROUP BY DATE_SUB(practice_date, INTERVAL DATEDIFF(MAX(practice_date), practice_date) DAY)
+        """
+
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+
+        for row in result:
+            streak_length = row['streak_length']
+            if streak_length >= 10:
+                streaks['10_day_streak'] += 1
+            elif streak_length >= 7:
+                streaks['7_day_streak'] += 1
+            elif streak_length >= 5:
+                streaks['5_day_streak'] += 1
+            elif streak_length >= 3:
+                streaks['3_day_streak'] += 1
+            elif streak_length >= 2:
+                streaks['2_day_streak'] += 1
+
+        return streaks
+
+    def get_streak(self, user_id, practice_date):
+        cursor = self.connection.cursor()
+        query = """
+                SELECT DISTINCT practice_date
+                FROM user_practice_logs
+                WHERE user_id = %s
+                ORDER BY practice_date DESC 
+            """
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+
+        previous_date = practice_date
+        streak = 1
+        for row in result:
+            current_date = row[0]
+            day_diff = (previous_date - current_date).days
+            if day_diff in [0, 1]:
+                if day_diff == 1:
+                    streak += 1
+                    previous_date = current_date
+            else:
+                break
+        print(streak)
+        # Determine the streak badge
+        if streak >= 10:
+            return UserBadges.TEN_DAY_STREAK
+        elif streak >= 7:
+            return UserBadges.SEVEN_DAY_STREAK
+        elif streak >= 5:
+            return UserBadges.FIVE_DAY_STREAK
+        elif streak >= 3:
+            return UserBadges.THREE_DAY_STREAK
+        elif streak >= 2:
+            return UserBadges.TWO_DAY_STREAK
+        else:
+            return None
+

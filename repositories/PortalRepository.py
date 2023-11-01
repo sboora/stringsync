@@ -77,19 +77,19 @@ class PortalRepository:
 
         return tracks_details
 
-    def get_submissions_by_user_id(self, user_id):
+    def get_submissions_by_user_id(self, user_id, limit=20):
         cursor = self.connection.cursor()
         query = """
         SELECT r.timestamp, t.name AS track_name, r.blob_url AS recording_audio_url, 
                t.track_path AS track_audio_url, r.analysis AS system_remarks, 
-               r.remarks AS teacher_remarks, r.score
+               r.remarks AS teacher_remarks, r.score, t.id as track_id, r.id
         FROM recordings r
         JOIN tracks t ON r.track_id = t.id
         WHERE r.user_id = %s
-        ORDER BY r.timestamp DESC;
+        ORDER BY r.timestamp DESC
+        LIMIT %s
         """
-
-        cursor.execute(query, (user_id,))
+        cursor.execute(query, (user_id, limit))
         results = cursor.fetchall()
 
         submissions = [
@@ -100,12 +100,27 @@ class PortalRepository:
                 "track_audio_url": row[3],
                 "system_remarks": row[4],
                 "teacher_remarks": row[5],
-                "score": row[6]
+                "score": row[6],
+                "track_id": row[7],
+                "recording_id": row[8]
             }
             for row in results
         ]
 
         return submissions
+
+    def get_badges_grouped_by_tracks(self, user_id):
+        cursor = self.connection.cursor()
+        cursor.execute("""
+            SELECT recordings.track_id, GROUP_CONCAT(user_achievements.badge) as badges 
+            FROM user_achievements 
+            JOIN recordings ON user_achievements.recording_id = recordings.id
+            WHERE user_achievements.user_id = %s 
+            GROUP BY recordings.track_id
+        """, (user_id,))
+        result = cursor.fetchall()
+        return [{'track_id': row['track_id'], 'badges': row['badges'].split(',')} for row in result]
+
 
 
 

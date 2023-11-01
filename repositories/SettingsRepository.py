@@ -118,3 +118,6 @@ class SettingsRepository:
         cursor.execute(query, (Settings.TAB_BACKGROUND_COLOR.description, Portal.TEACHER.value))
         if cursor.fetchone() is None:
             self.upsert_setting(None, Settings.TAB_BACKGROUND_COLOR, "#AED6F1", Portal.TEACHER)
+        cursor.execute(query, (Settings.MAX_ROW_COUNT_IN_LIST.description, Portal.TEACHER.value))
+        if cursor.fetchone() is None:
+            self.upsert_setting(None, Settings.MAX_ROW_COUNT_IN_LIST, 25, Portal.TEACHER)

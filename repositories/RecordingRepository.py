@@ -180,8 +180,8 @@ class RecordingRepository:
 
     def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
         cursor = self.connection.cursor()
-        query = "SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks" \
-                " FROM recordings WHERE remarks IS NULL OR remarks = ''"
+        query = "SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks, " \
+                "user_id FROM recordings WHERE remarks IS NULL OR remarks = '' "
         filters = []
 
         if group_id is not None:
@@ -212,7 +212,8 @@ class RecordingRepository:
                 'track_id': row[5],
                 'score': row[6],
                 'analysis': row[7],
-                'remarks': row[8]
+                'remarks': row[8],
+                'user_id': row[9]
             }
             recordings.append(recording)
 
@@ -269,4 +270,3 @@ class RecordingRepository:
             # Move to the next day
             current_date += timedelta(days=1)
         return all_days_data
-
