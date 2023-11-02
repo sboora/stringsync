@@ -15,12 +15,11 @@ class UserPracticeLogRepository:
             CREATE TABLE IF NOT EXISTS `user_practice_logs` (
                 log_id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT,
-                practice_date DATE,
-                practice_minutes INT,
+                timestamp DATETIME,
+                minutes INT,
                 FOREIGN KEY (user_id) REFERENCES `users`(id)
             );
         """
-
         cursor.execute(create_table_query)
         self.connection.commit()
 
@@ -32,13 +31,13 @@ class UserPracticeLogRepository:
         cursor.execute(query, (user_id,))
         return cursor.fetchall()
 
-    def log_practice(self, user_id, practice_date, practice_minutes):
+    def log_practice(self, user_id, timestamp, minutes):
         cursor = self.connection.cursor()
         insert_log_query = """
-            INSERT INTO user_practice_logs (user_id, practice_date, practice_minutes)
+            INSERT INTO user_practice_logs (user_id, timestamp, minutes)
             VALUES (%s, %s, %s);
         """
-        cursor.execute(insert_log_query, (user_id, practice_date, practice_minutes))
+        cursor.execute(insert_log_query, (user_id, timestamp, minutes))
         self.connection.commit()
 
     def get_streaks(self, user_id):
@@ -50,14 +49,12 @@ class UserPracticeLogRepository:
             '7_day_streak': 0,
             '10_day_streak': 0
         }
-
         query = """
-            SELECT DATEDIFF(MAX(practice_date), MIN(practice_date)) + 1 AS streak_length 
+            SELECT DATEDIFF(MAX(timestamp), MIN(timestamp)) + 1 AS streak_length 
             FROM user_practice_logs 
             WHERE user_id = %s 
-            GROUP BY DATE_SUB(practice_date, INTERVAL DATEDIFF(MAX(practice_date), practice_date) DAY)
+            GROUP BY DATE_SUB(timestamp, INTERVAL DATEDIFF(MAX(timestamp), timestamp) DAY)
         """
-
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
 
@@ -79,10 +76,10 @@ class UserPracticeLogRepository:
     def get_streak(self, user_id, practice_date):
         cursor = self.connection.cursor()
         query = """
-                SELECT DISTINCT practice_date
+                SELECT DISTINCT DATE(timestamp) as practice_date
                 FROM user_practice_logs
                 WHERE user_id = %s
-                ORDER BY practice_date DESC 
+                ORDER BY DATE(timestamp) DESC 
             """
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
@@ -98,7 +95,6 @@ class UserPracticeLogRepository:
                     previous_date = current_date
             else:
                 break
-        print(streak)
         # Determine the streak badge
         if streak >= 10:
             return UserBadges.TEN_DAY_STREAK
@@ -112,4 +108,19 @@ class UserPracticeLogRepository:
             return UserBadges.TWO_DAY_STREAK
         else:
             return None
+
+    def fetch_daily_practice_minutes(self, user_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+            SELECT DATE(timestamp) as date, SUM(minutes) as total_minutes
+            FROM user_practice_logs
+            WHERE user_id = %s
+            GROUP BY DATE(timestamp)
+            ORDER BY DATE(timestamp)
+        """
+        cursor.execute(query, (user_id,))
+        practice_data = cursor.fetchall()
+        return practice_data
+
+
 

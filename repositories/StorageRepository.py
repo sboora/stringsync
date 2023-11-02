@@ -73,6 +73,13 @@ class StorageRepository:
         blob = bucket.blob(blob_name)
         return blob.download_as_bytes()
 
+    def download_blob_and_save(self, blob_name, filename):
+        bucket = self.get_bucket()
+        blob = bucket.blob(blob_name)
+        data = blob.download_as_bytes()
+        with open(filename, "wb") as f:
+            f.write(data)
+
     def download_blob_by_url(self, blob_url):
         blob_name = self.get_blob_name(blob_url)
         bucket = self.get_bucket()
