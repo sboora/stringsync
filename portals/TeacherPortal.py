@@ -306,9 +306,7 @@ class TeacherPortal(BasePortal, ABC):
                                                    options=['--Select a track--'] + list(track_options.keys()))
                 if selected_track_name != '--Select a track--':
                     selected_track_id = track_options[selected_track_name]
-                    print("selected track:", selected_track_id)
                     track = tracks[selected_track_id]
-                    print("track:", track)
                     track_path = track['track_path']
 
         return selected_group_id, selected_username, selected_user_id, selected_track_id, track_path
@@ -330,9 +328,6 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_recordings(self):
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
-        if user_id is None:
-            return
-
         if user_id is None or track_id is None:
             return
 
@@ -379,6 +374,9 @@ class TeacherPortal(BasePortal, ABC):
     def submissions(self):
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
+        if group_id is None and user_id is None:
+            return
+        
         # Fetch and sort recordings
         recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
         if not recordings:
