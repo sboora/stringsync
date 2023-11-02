@@ -209,94 +209,55 @@ class StudentPortal(BasePortal, ABC):
         if not submissions:
             st.info("No submissions found.")
             return
+        column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
+        self.build_header(
+            column_names=["Tack Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
+            column_widths=column_widths)
 
-        # Initialize session state for reviewed submission ID if it doesn't exist
-        if 'reviewed_submission_id' not in st.session_state:
-            st.session_state.reviewed_submission_id = None
+        # Display submissions
+        for submission in submissions:
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
 
-        # Create a mapping of recording_id to submission
-        submission_dict = {sub['recording_id']: sub for sub in submissions}
+            col1.write("")
+            col1.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
+                unsafe_allow_html=True)
 
-        # Decide column names and widths based on selection
-        column_names = ["Track Name", "Score", "Teacher Remarks", "System Remarks", "Badges", ""] \
-            if st.session_state.reviewed_submission_id is None else \
-            ["Track", "Recording", "Score", "Teacher Remarks", "System Remarks"]
+            col2.write("")
+            if submission['track_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
+                col2.audio(track_audio, format='core/m4a')
+            else:
+                col2.warning("No audio available.")
 
-        column_widths = [15, 5, 20, 20, 20, 20] \
-            if st.session_state.reviewed_submission_id is None else [25, 25, 5, 22.5, 22.5]
+            col3.write("")
+            if submission['recording_audio_url']:
+                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+                col3.audio(track_audio, format='core/m4a')
+            else:
+                col3.warning("No audio available.")
 
-        self.build_header(column_names=column_names, column_widths=column_widths)
+            col4.write("")
+            col4.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
+                unsafe_allow_html=True)
 
-        if st.session_state.reviewed_submission_id:
-            # If a specific submission is selected, just display that
-            submission = submission_dict.get(st.session_state.reviewed_submission_id, None)
-            if submission:
-                self.display_submission_details(submission, column_names, column_widths)
-                st.write("")
-                if st.button("Show All", type='primary'):
-                    st.session_state.reviewed_submission_id = None
-                    st.rerun()
-        else:
-            # If no submission is selected, loop through all
-            for submission in submissions:
-                self.display_submission_details(submission, column_names, column_widths)
+            col5.write("")
+            col5.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+                unsafe_allow_html=True)
 
-    def display_submission_details(self, submission, column_names, column_widths):
-        cols = st.columns(column_widths)
+            col6.write("")
+            col6.markdown(
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+                unsafe_allow_html=True)
 
-        if st.session_state.reviewed_submission_id is None:
-            self.display_all_submissions_columns(submission, cols[:-1])
-            # Button for review
-            cols[-1].write("")
-            if cols[-1].button("Review", key=submission['recording_id'], type='primary'):
-                st.session_state.reviewed_submission_id = submission['recording_id']
-                st.rerun()  # Refresh the page
-        else:
-            self.display_single_submission_columns(submission, cols)
-
-    def display_all_submissions_columns(self, submission, cols):
-        # Displaying columns for the "all submissions" case
-        cols[0].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
-            unsafe_allow_html=True)
-        cols[1].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
-            unsafe_allow_html=True)
-        cols[2].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
-            unsafe_allow_html=True)
-        cols[3].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
-            unsafe_allow_html=True)
-        # Badges
-        badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
-        if badge:
-            badge_name = f"{self.get_badges_bucket()}/{badge}.png"
-            filename = self.download_to_temp_file_by_name(badge_name)
-            cols[4].image(filename, width=75)
-
-    def display_single_submission_columns(self, submission, cols):
-        if submission['track_audio_url']:
-            track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
-            cols[0].audio(track_audio, format='core/m4a')
-        else:
-            cols[0].warning("No audio available.")
-
-        if submission['recording_audio_url']:
-            recording_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
-            cols[1].audio(recording_audio, format='core/m4a')
-        else:
-            cols[1].warning("No audio available.")
-
-        cols[2].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
-            unsafe_allow_html=True)
-        cols[3].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
-            unsafe_allow_html=True)
-        cols[4].markdown(
-            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
-            unsafe_allow_html=True)
+            col7.write("")
+            badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
+            if badge:
+                badge_name = f"{self.get_badges_bucket()}/{badge}.png"
+                filename = self.download_to_temp_file_by_name(badge_name)
+                col7.image(filename, width=75)
 
     def assignments(self):
         pass
