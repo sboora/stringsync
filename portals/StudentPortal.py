@@ -17,6 +17,7 @@ from enums.Settings import Portal, Settings
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
+import plotly.figure_factory as ff
 
 
 class StudentPortal(BasePortal, ABC):
@@ -79,10 +80,10 @@ class StudentPortal(BasePortal, ABC):
     def show_animations(self):
         # Center-aligned, bold text with cursive font, improved visibility, and spacing
         st.markdown("""
-            <h1 style='text-align: center; font-weight: bold; color: #CB5A8A; font-size: 48px;'>
+            <h1 style='text-align: center; font-weight: bold; color: #CB5A8A; font-size: 30px;'>
                 Congratulations!!!!
             </h1>
-            <h2 style='text-align: center; color: #CB5A8A; font-size: 24px;'>
+            <h2 style='text-align: center; color: #CB5A8A; font-size: 18px;'>
                 You have earned a badge!!
                 🎉🎇
             </h2>
@@ -92,10 +93,10 @@ class StudentPortal(BasePortal, ABC):
         byte_data = self.storage_repo.download_blob_by_name(f"animations/giftbox.json")
         lottie_json = json.loads(byte_data.decode('utf-8'))
 
-        cols = st.columns([1.8, 3, 1])
+        cols = st.columns([1, 2, 1])
 
         with cols[1]:  # Selects the middle column
-            st_lottie(lottie_json, speed=1, width=500, height=250, loop=True, quality='high', key="badge_awarded")
+            st_lottie(lottie_json, speed=1, width=300, height=150, loop=True, quality='high', key="badge_awarded")
 
     def record(self):
         track = self.filter_tracks()
@@ -208,55 +209,94 @@ class StudentPortal(BasePortal, ABC):
         if not submissions:
             st.info("No submissions found.")
             return
-        column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
-        self.build_header(
-            column_names=["Tack Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
-            column_widths=column_widths)
 
-        # Display submissions
-        for submission in submissions:
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
+        # Initialize session state for reviewed submission ID if it doesn't exist
+        if 'reviewed_submission_id' not in st.session_state:
+            st.session_state.reviewed_submission_id = None
 
-            col1.write("")
-            col1.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
-                unsafe_allow_html=True)
+        # Create a mapping of recording_id to submission
+        submission_dict = {sub['recording_id']: sub for sub in submissions}
 
-            col2.write("")
-            if submission['track_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
-                col2.audio(track_audio, format='core/m4a')
-            else:
-                col2.warning("No audio available.")
+        # Decide column names and widths based on selection
+        column_names = ["Track Name", "Score", "Teacher Remarks", "System Remarks", "Badges", ""] \
+            if st.session_state.reviewed_submission_id is None else \
+            ["Track", "Recording", "Score", "Teacher Remarks", "System Remarks"]
 
-            col3.write("")
-            if submission['recording_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
-                col3.audio(track_audio, format='core/m4a')
-            else:
-                col3.warning("No audio available.")
+        column_widths = [15, 5, 20, 20, 20, 20] \
+            if st.session_state.reviewed_submission_id is None else [25, 25, 5, 22.5, 22.5]
 
-            col4.write("")
-            col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
-                unsafe_allow_html=True)
+        self.build_header(column_names=column_names, column_widths=column_widths)
 
-            col5.write("")
-            col5.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
-                unsafe_allow_html=True)
+        if st.session_state.reviewed_submission_id:
+            # If a specific submission is selected, just display that
+            submission = submission_dict.get(st.session_state.reviewed_submission_id, None)
+            if submission:
+                self.display_submission_details(submission, column_names, column_widths)
+                st.write("")
+                if st.button("Show All", type='primary'):
+                    st.session_state.reviewed_submission_id = None
+                    st.rerun()
+        else:
+            # If no submission is selected, loop through all
+            for submission in submissions:
+                self.display_submission_details(submission, column_names, column_widths)
 
-            col6.write("")
-            col6.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
-                unsafe_allow_html=True)
+    def display_submission_details(self, submission, column_names, column_widths):
+        cols = st.columns(column_widths)
 
-            col7.write("")
-            badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
-            if badge:
-                badge_name = f"{self.get_badges_bucket()}/{badge}.png"
-                filename = self.download_to_temp_file_by_name(badge_name)
-                col7.image(filename, width=75)
+        if st.session_state.reviewed_submission_id is None:
+            self.display_all_submissions_columns(submission, cols[:-1])
+            # Button for review
+            cols[-1].write("")
+            if cols[-1].button("Review", key=submission['recording_id'], type='primary'):
+                st.session_state.reviewed_submission_id = submission['recording_id']
+                st.rerun()  # Refresh the page
+        else:
+            self.display_single_submission_columns(submission, cols)
+
+    def display_all_submissions_columns(self, submission, cols):
+        # Displaying columns for the "all submissions" case
+        cols[0].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
+            unsafe_allow_html=True)
+        cols[1].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        cols[2].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        cols[3].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        # Badges
+        badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
+        if badge:
+            badge_name = f"{self.get_badges_bucket()}/{badge}.png"
+            filename = self.download_to_temp_file_by_name(badge_name)
+            cols[4].image(filename, width=75)
+
+    def display_single_submission_columns(self, submission, cols):
+        if submission['track_audio_url']:
+            track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
+            cols[0].audio(track_audio, format='core/m4a')
+        else:
+            cols[0].warning("No audio available.")
+
+        if submission['recording_audio_url']:
+            recording_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+            cols[1].audio(recording_audio, format='core/m4a')
+        else:
+            cols[1].warning("No audio available.")
+
+        cols[2].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        cols[3].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+            unsafe_allow_html=True)
+        cols[4].markdown(
+            f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+            unsafe_allow_html=True)
 
     def assignments(self):
         pass
@@ -589,19 +629,83 @@ class StudentPortal(BasePortal, ABC):
             """)
 
     def practice_log(self):
-        with st.form("log_practice_time_form"):
-            practice_date = st.date_input("Practice Date")
-            practice_time = st.time_input("Practice Time")
-            practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
-            submit = st.form_submit_button("Log Practice", type="primary")
-            if submit:
-                user_id = self.get_user_id()
-                practice_datetime = datetime.datetime.combine(practice_date, practice_time)
-                self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
-                st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
-                badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_datetime)
-                if badge_awarded:
-                    self.show_animations()
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #769AA0; font-size: 24px;'>🎵 Practice "
+                    "Tracker & Insights 🎵</h2>", unsafe_allow_html=True)
+        badge_awarded = False
+        cols = st.columns(2)
+        with cols[0]:
+            st.write("")
+            st.write("")
+            st.write("")
+            with st.form("log_practice_time_form"):
+                practice_date = st.date_input("Practice Date")
+                practice_time = st.time_input("Practice Time")
+                practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
+                submit = st.form_submit_button("Log Practice", type="primary")
+                if submit:
+                    user_id = self.get_user_id()
+                    practice_datetime = datetime.datetime.combine(practice_date, practice_time)
+                    self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
+                    st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
+                    badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_date)
+
+        with cols[1]:
+            self.show_calendar()
+
+        if badge_awarded:
+            self.show_animations()
+
+    def show_calendar(self):
+        user_id = self.get_user_id()
+        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
+
+        df = pd.DataFrame(practice_data)
+        df['date'] = pd.to_datetime(df['date'])
+
+        # Generate date range covering the entire period of interest
+        date_range = pd.date_range(start='2023-10-01', end=df['date'].max())
+        date_df = pd.DataFrame(date_range, columns=['date'])
+
+        # Merge with the practice data, filling in zeros for missing days
+        merged_df = pd.merge(date_df, df, on='date', how='left').fillna(0)
+
+        # Convert the minutes back to integers (fillna converts them to floats)
+        merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
+
+        # Create a pivot table to get the matrix format
+        pivot_table = merged_df.pivot_table(values='total_minutes', index=merged_df['date'].dt.dayofweek,
+                                            columns=merged_df['date'].dt.isocalendar().week, fill_value=0)
+
+        # Use the Plotly Figure Factory to create the annotated heatmap
+        z = pivot_table.values
+        x = ['Week ' + str(week) for week in pivot_table.columns]
+        y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+        fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
+        fig.update_layout(
+            title='',
+            xaxis_title='Week',
+            yaxis_title='Day'
+        )
+
+        fig.update_layout(
+            shapes=[
+                dict(
+                    type="rect",
+                    xref="paper",
+                    yref="paper",
+                    x0=0,
+                    y0=0,
+                    x1=1,
+                    y1=1,
+                    line=dict(
+                        color="#EAEDED",
+                        width=1,
+                    )
+                )
+            ]
+        )
+        st.plotly_chart(fig, use_column_width=True)
 
     @staticmethod
     def ordinal(n):
