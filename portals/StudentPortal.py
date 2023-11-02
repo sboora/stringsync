@@ -80,10 +80,10 @@ class StudentPortal(BasePortal, ABC):
     def show_animations(self):
         # Center-aligned, bold text with cursive font, improved visibility, and spacing
         st.markdown("""
-            <h1 style='text-align: center; font-weight: bold; color: #CB5A8A; font-size: 30px;'>
+            <h1 style='text-align: center; font-weight: bold; color: #CB5A8A; font-size: 40px;'>
                 Congratulations!!!!
             </h1>
-            <h2 style='text-align: center; color: #CB5A8A; font-size: 18px;'>
+            <h2 style='text-align: center; color: #CB5A8A; font-size: 24px;'>
                 You have earned a badge!!
                 🎉🎇
             </h2>
@@ -93,10 +93,13 @@ class StudentPortal(BasePortal, ABC):
         byte_data = self.storage_repo.download_blob_by_name(f"animations/giftbox.json")
         lottie_json = json.loads(byte_data.decode('utf-8'))
 
-        cols = st.columns([1, 2, 1])
+        # Create three columns: left, center, right
+        left_col, center_col, right_col = st.columns([2, 2.5, 1])
 
-        with cols[1]:  # Selects the middle column
-            st_lottie(lottie_json, speed=1, width=300, height=150, loop=True, quality='high', key="badge_awarded")
+        # Use the center column to display the lottie animation
+        with center_col:
+            st_lottie(lottie_json, speed=1, width=400, height=200, loop=True, quality='high',
+                      key="badge_awarded")
 
     def record(self):
         track = self.filter_tracks()
@@ -107,11 +110,14 @@ class StudentPortal(BasePortal, ABC):
 
         # Download and save the audio files to temporary locations
         track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
-
+        load_recordings = False
         col1, col2, col3 = st.columns([5, 5, 5])
         with col1:
             self.display_track_files(track_audio_path)
             track_notes = self.raga_repo.get_notes(track['ragam_id'])
+            if st.button("Load Recordings", type="primary"):
+                load_recordings = True
+
         with col2:
             recording_name, recording_id, is_success = \
                 self.handle_file_upload(self.get_user_id(), track['id'])
@@ -130,7 +136,8 @@ class StudentPortal(BasePortal, ABC):
                     track_audio_path, recording_name, track_notes, track['offset'])
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
 
-        self.recordings(track['id'])
+        if load_recordings:
+            self.recordings(track['id'])
         if is_success:
             os.remove(recording_name)
 
@@ -163,31 +170,33 @@ class StudentPortal(BasePortal, ABC):
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
-            if recording['blob_url']:
-                filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
-                col1.write("")
-                col1.audio(filename, format='core/m4a')
-            else:
-                col1.write("No core data available.")
+            st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
+            with st.container():
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+                if recording['blob_url']:
+                    filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
+                    col1.write("")
+                    col1.audio(filename, format='core/m4a')
+                else:
+                    col1.write("No core data available.")
 
-            col2.write("")
-            col2.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
-                unsafe_allow_html=True)
-            col3.write("")
-            col3.markdown(
-                f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
-                unsafe_allow_html=True)
-            col4.write("")
-            col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
-                unsafe_allow_html=True)
-            formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-                int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-            col5.write("")
-            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
-                          unsafe_allow_html=True)
+                col2.write("")
+                col2.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                    unsafe_allow_html=True)
+                col3.write("")
+                col3.markdown(
+                    f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
+                    unsafe_allow_html=True)
+                col4.write("")
+                col4.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+                    unsafe_allow_html=True)
+                formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
+                    int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+                col5.write("")
+                col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                              unsafe_allow_html=True)
 
     def get_audio_data(self, recording):
         if recording['blob_url']:
@@ -201,6 +210,9 @@ class StudentPortal(BasePortal, ABC):
         return formatted_timestamp
 
     def submissions(self):
+        if not st.button("Load Submissions", type='primary'):
+            return
+
         # Fetch submissions from the database
         limit = self.settings_repo.get_setting(
             self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
@@ -216,48 +228,43 @@ class StudentPortal(BasePortal, ABC):
 
         # Display submissions
         for submission in submissions:
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
+            st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
+            with st.container():
+                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
 
-            col1.write("")
-            col1.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
-                unsafe_allow_html=True)
+                col1.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
+                    unsafe_allow_html=True)
+                if submission['track_audio_url']:
+                    track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
+                    col2.audio(track_audio, format='core/m4a')
+                else:
+                    col2.warning("No audio available.")
 
-            col2.write("")
-            if submission['track_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
-                col2.audio(track_audio, format='core/m4a')
-            else:
-                col2.warning("No audio available.")
+                if submission['recording_audio_url']:
+                    track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
+                    col3.audio(track_audio, format='core/m4a')
+                else:
+                    col3.warning("No audio available.")
 
-            col3.write("")
-            if submission['recording_audio_url']:
-                track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
-                col3.audio(track_audio, format='core/m4a')
-            else:
-                col3.warning("No audio available.")
+                col4.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
+                    unsafe_allow_html=True)
 
-            col4.write("")
-            col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
-                unsafe_allow_html=True)
+                col5.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+                    unsafe_allow_html=True)
 
-            col5.write("")
-            col5.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
-                unsafe_allow_html=True)
+                col6.markdown(
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
+                    unsafe_allow_html=True)
 
-            col6.write("")
-            col6.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
-                unsafe_allow_html=True)
+                badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
+                if badge:
+                    col7.image(self.get_badge(badge), width=75)
 
-            col7.write("")
-            badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
-            if badge:
-                badge_name = f"{self.get_badges_bucket()}/{badge}.png"
-                filename = self.download_to_temp_file_by_name(badge_name)
-                col7.image(filename, width=75)
+                # End of the border div
+                st.markdown("</div>", unsafe_allow_html=True)
 
     def assignments(self):
         pass
@@ -574,9 +581,7 @@ class StudentPortal(BasePortal, ABC):
             for i, badge in enumerate(badges):
                 with cols[i % 5]:  # Loop through columns
                     # Display the badge icon from the badge folder
-                    badge_url = f"{self.get_badges_bucket()}/{badge}.png"
-                    filename = self.download_to_temp_file_by_name(badge_url)
-                    st.image(filename, width=200)
+                    st.image(self.get_badge(badge), width=200)
         else:  # If there are no badges
             st.markdown("### No Badges Yet 🎖️")
             st.markdown("""

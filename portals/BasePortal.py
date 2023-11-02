@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import streamlit as st
 
 from enums.ActivityType import ActivityType
+from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, Portal, SettingType
 from enums.UserType import UserType
 from repositories.DatabaseManager import DatabaseManager
@@ -72,6 +73,7 @@ class BasePortal(ABC):
 
     def start(self, register=False):
         self.init_session()
+        self.cache_badges()
         self.set_app_layout()
         self.show_app_title()
         self.show_introduction()
@@ -85,6 +87,53 @@ class BasePortal(ABC):
 
         self.show_copyright()
         self.clean_up()
+
+    def cache_badges(self):
+        # Directory where badges are stored locally
+        local_badges_directory = self.get_badges_bucket()
+
+        # Ensure the directory exists
+        if not os.path.exists(local_badges_directory):
+            os.makedirs(local_badges_directory)
+
+        # Check and download badges from UserBadges enum
+        for badge in UserBadges:
+            self._download_badge_if_not_exists(badge.value, local_badges_directory)
+
+        # Check and download badges from TrackBadges enum
+        for badge in TrackBadges:
+            self._download_badge_if_not_exists(badge.value, local_badges_directory)
+
+    def _download_badge_if_not_exists(self, badge_name, local_badges_directory):
+        # Construct the local file path
+        local_file_path = os.path.join(local_badges_directory, f"{badge_name}.png")
+
+        # Check if the badge exists locally
+        if not os.path.exists(local_file_path):
+            # If the badge doesn't exist locally, download it
+            remote_badge_path = f"{self.get_badges_bucket()}/{badge_name}.png"
+            self.storage_repo.download_blob_and_save(remote_badge_path, local_file_path)
+
+    def get_badge(self, badge_name):
+        # Directory where badges are stored locally
+        local_badges_directory = 'badges'
+
+        # Construct the local file path for the badge
+        local_file_path = os.path.join(local_badges_directory, f"{badge_name}.png")
+
+        # Check if the badge exists locally
+        if os.path.exists(local_file_path):
+            return local_file_path
+
+        # If badge not found locally, attempt to download from remote
+        remote_path = f"{self.get_badges_bucket()}/{badge_name}.png"
+        success = self.storage_repo.download_blob_and_save(remote_path, local_file_path)
+
+        if success:
+            return local_file_path
+        else:
+            print(f"Failed to download badge named '{badge_name}' from remote location.")
+            return None
 
     def set_app_layout(self):
         st.set_page_config(
