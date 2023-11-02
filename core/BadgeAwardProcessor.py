@@ -22,8 +22,7 @@ class BadgeAwardProcessor:
 
         badge = self.practice_log_repo.get_streak(user_id, practice_date)
         if badge:
-            self.user_achievement_repo.award_user_badge(user_id, badge)
-            badge_awarded = True
+            badge_awarded, _ = self.user_achievement_repo.award_user_badge(user_id, badge)
 
         return badge_awarded
 
