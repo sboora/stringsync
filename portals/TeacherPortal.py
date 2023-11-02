@@ -172,6 +172,7 @@ class TeacherPortal(BasePortal, ABC):
         tracks = self.portal_repo.list_tracks()
         if not tracks:
             st.info("No tracks found.")
+            return
 
         column_widths = [25, 25, 17, 15, 15]
         self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"],
