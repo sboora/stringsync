@@ -120,52 +120,8 @@ class UserRepository:
             self.connection.rollback()  # Rollback the transaction in case of an error
             return False, f"Failed to create group '{group_name}'. Error: {str(e)}"
 
-    @staticmethod
-    def is_valid_username(username):
-        # The username should be at least 5 characters
-        if len(username) < 5:
-            return False
-
-        # The username can contain alphanumeric characters and special characters
-        if not re.match("^[a-zA-Z0-9_!@#$%^&*()+=-]*$", username):
-            return False
-
-        return True
-
-    @staticmethod
-    def is_valid_password(password):
-        if len(password) < 8:
-            return False
-        if not re.search("[a-z]", password):
-            return False
-        if not re.search("[A-Z]", password):
-            return False
-        if not re.search("[0-9]", password):
-            return False
-        return True
-
-    @staticmethod
-    def is_valid_email(email):
-        # Regular expression for validating an Email
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-
-        if re.search(email_regex, email):
-            return True
-        else:
-            return False
-
     def register_user(self, name, username, email, password, org_id, user_type=UserType.STUDENT.value):
         cursor = self.connection.cursor()
-        if not self.is_valid_username(username):
-            return False, "Invalid username. It should be at least 5 characters and only contain alphanumeric " \
-                          "characters. ", None
-
-        if not self.is_valid_password(password):
-            return False, "Invalid password. It should be at least 8 characters, contain at least one digit, " \
-                          "one lowercase, one uppercase, and one special character. ", None
-
-        if not self.is_valid_email(email):
-            return False, "Invalid email. Please enter a valid email address.", None
 
         # Check if the username or email already exists
         cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))

@@ -67,7 +67,8 @@ class OrganizationRepository:
 
     def get_root_organization_by_tenant_id(self, tenant_id):
         cursor = self.connection.cursor()
-        get_root_org_query = """SELECT id, name FROM organizations WHERE tenant_id = %s AND is_root = 1;"""
+        get_root_org_query = """
+            SELECT id, name FROM organizations WHERE tenant_id = %s AND is_root = 1;"""
         cursor.execute(get_root_org_query, (tenant_id,))
         result = cursor.fetchone()
         if result:
@@ -77,8 +78,9 @@ class OrganizationRepository:
 
     def get_organizations_by_tenant_id(self, tenant_id):
         cursor = self.connection.cursor()
-        get_schools_query = """SELECT id, name, description, join_code FROM organizations WHERE tenant_id = %s AND 
-        is_root = 0; """
+        get_schools_query = """
+            SELECT id, name, description, join_code FROM organizations WHERE tenant_id = %s AND 
+            is_root = 0; """
         cursor.execute(get_schools_query, (tenant_id,))
         result = cursor.fetchall()
         organizations = [{'id': row[0], 'name': row[1], 'description': row[2], 'join_code': row[3]} for row in result]
@@ -86,8 +88,9 @@ class OrganizationRepository:
 
     def get_organization_by_id(self, org_id):
         cursor = self.connection.cursor()
-        get_org_query = """SELECT id, tenant_id, name, description, is_root, join_code 
-                           FROM organizations WHERE id = %s;"""
+        get_org_query = """
+            SELECT id, tenant_id, name, description, is_root, join_code 
+            FROM organizations WHERE id = %s;"""
         cursor.execute(get_org_query, (org_id,))
         result = cursor.fetchone()
         if result:
@@ -109,7 +112,7 @@ class OrganizationRepository:
         cursor.execute(get_org_query, (join_code,))
         result = cursor.fetchone()
         if result:
-            return True, result[0]
+            return True, result[0], ""
         else:
-            return False, "Organization not found."
+            return False, -1, "Invalid join code."
 
