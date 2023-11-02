@@ -660,20 +660,21 @@ class StudentPortal(BasePortal, ABC):
             yaxis_title='Day'
         )
 
+        # Adjust the shape coordinates to encapsulate the entire chart including labels
         fig.update_layout(
             shapes=[
                 dict(
                     type="rect",
                     xref="paper",
                     yref="paper",
-                    x0=0,
-                    y0=0,
-                    x1=1,
-                    y1=1,
+                    x0=-0.07,  # left side
+                    y0=-0.0,  # bottom
+                    x1=1.0,  # right side
+                    y1=1.12,  # top
                     line=dict(
                         color="#EAEDED",
-                        width=1,
-                    )
+                        width=2,
+                    ),
                 )
             ]
         )
