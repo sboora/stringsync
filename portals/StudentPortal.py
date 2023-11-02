@@ -492,7 +492,8 @@ class StudentPortal(BasePortal, ABC):
         return self.audio_processor.filter_consecutive_notes(student_notes)
 
     def display_score_and_analysis(self, score, error_notes, missing_notes):
-        analysis, off_notes = self.generate_note_analysis(error_notes, missing_notes)
+        analysis, off_notes = self.audio_processor.generate_note_analysis(
+            error_notes, missing_notes)
         new_score = self.display_score(score, off_notes)
         st.info(analysis)
         encouragement_message = self.generate_message(new_score)
@@ -512,48 +513,6 @@ class StudentPortal(BasePortal, ABC):
         else:
             st.success(message)
         return new_score
-
-    def generate_note_analysis(self, error_notes, missing_notes):
-        error_dict = self.group_notes_by_first_letter(error_notes)
-        missing_dict = self.group_notes_by_first_letter(missing_notes)
-
-        message = ""
-        error_count = 0
-        if error_dict == missing_dict:
-            message += "Your recording had all the notes that the track had.\n"
-        else:
-            msg, error_count = self.correlate_notes(error_dict, missing_dict)
-            message += msg
-        return message, error_count
-
-    @staticmethod
-    def group_notes_by_first_letter(notes):
-        note_dict = {}
-        for note in notes:
-            first_letter = note[0]
-            note_dict.setdefault(first_letter, []).append(note)
-        return note_dict
-
-    @staticmethod
-    def correlate_notes(error_dict, missing_dict):
-        message = ""
-        error_count = 0
-        for first_letter, error_note_list in error_dict.items():
-            if first_letter in missing_dict:
-                for error_note in error_note_list:
-                    message += f"Play {missing_dict[first_letter][0]} instead of {error_note}\n"
-                    error_count += 1
-            else:
-                for error_note in error_note_list:
-                    message += f"You played the note {error_note}, however that is not present in the track\n"
-                    error_count += 1
-
-        for first_letter, missing_note_list in missing_dict.items():
-            if first_letter not in error_dict:
-                for missing_note in missing_note_list:
-                    message += f"You missed playing the note {missing_note}\n"
-                    error_count += 1
-        return message, error_count
 
     @staticmethod
     def generate_message(score):
@@ -604,8 +563,6 @@ class StudentPortal(BasePortal, ABC):
             st.session_state.form_submitted = False
         if 'badge_awarded_in_last_run' not in st.session_state:
             st.session_state.badge_awarded_in_last_run = False
-        if 'practice_date' not in st.session_state:
-            st.session_state.practice_date = datetime.date.today()
         if 'practice_time' not in st.session_state:
             st.session_state.practice_time = datetime.datetime.now()
         if 'practice_minutes' not in st.session_state:
@@ -619,11 +576,16 @@ class StudentPortal(BasePortal, ABC):
             st.write("")
             with st.form("log_practice_time_form"):
                 # Use the session_state to remember the previously selected practice date
+                practice_date = datetime.date.today() \
+                    if 'practice_date' not in st.session_state else st.session_state.practice_date
+                practice_time = datetime.datetime.now() \
+                    if 'practice_time' not in st.session_state else st.session_state.practice_time
+
                 practice_date = st.date_input("Practice Date",
-                                              value=st.session_state.practice_date,
+                                              value=practice_date,
                                               key="practice_date")
                 practice_time = st.time_input("Practice Time",
-                                              value=st.session_state.practice_time,
+                                              value=practice_time,
                                               key="practice_time")
                 practice_minutes = st.selectbox("Minutes Practiced",
                                                 [i for i in range(15, 61)],
@@ -669,14 +631,13 @@ class StudentPortal(BasePortal, ABC):
         df = pd.DataFrame(practice_data)
         df['date'] = pd.to_datetime(df['date'])
 
-        # Generate date range covering the entire period of interest
-        date_range = pd.date_range(start='2023-10-01', end=df['date'].max())
-        date_df = pd.DataFrame(date_range, columns=['date'])
+        # Determine the start date for the last 4 weeks
+        last_4_weeks_start_date = pd.Timestamp.today() - pd.DateOffset(weeks=4)
 
-        # Merge with the practice data, filling in zeros for missing days
-        merged_df = pd.merge(date_df, df, on='date', how='left').fillna(0)
+        # Filter merged_df for only the last 4 weeks
+        merged_df = df[df['date'] >= last_4_weeks_start_date].copy()
 
-        # Convert the minutes back to integers (fillna converts them to floats)
+        # Convert the minutes back to integers
         merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
 
         # Create a pivot table to get the matrix format
@@ -689,6 +650,10 @@ class StudentPortal(BasePortal, ABC):
         y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
         fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
+        fig.update_layout(
+            xaxis_fixedrange=True,
+            yaxis_fixedrange=True
+        )
         fig.update_layout(
             title='',
             xaxis_title='Week',
@@ -712,7 +677,7 @@ class StudentPortal(BasePortal, ABC):
                 )
             ]
         )
-        st.plotly_chart(fig, use_column_width=True)
+        st.plotly_chart(fig, use_column_width=True, config={'displayModeBar': False, 'displaylogo': False})
 
     @staticmethod
     def ordinal(n):
