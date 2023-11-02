@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import time
 from abc import ABC, abstractmethod
@@ -266,20 +267,27 @@ class BasePortal(ABC):
 
             col1, col2, col3 = st.columns([3, 4, 40])
 
-            if reg_password != confirm_password:
-                st.error("Passwords do not match")
-
-            elif col1.button("Submit", type="primary"):
-                if reg_name and reg_username and reg_email and reg_password and join_code:
-                    _, org_id = self.org_repo.get_org_id_by_join_code(join_code)
-                    is_registered, message, user_id = self.user_repo.register_user(
-                        reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
-                    if is_registered:
-                        st.success(message)
-                        st.session_state["show_register_section"] = False
-                        self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
-                        time.sleep(2)
-                        st.rerun()
+            if col1.button("Submit", type="primary"):
+                if reg_name and reg_username and reg_email and reg_password and confirm_password and join_code:
+                    # Validate user entry
+                    validated, message = self.validate(reg_username, reg_password, confirm_password, reg_email)
+                    # Register user
+                    if validated:
+                        org_found, org_id, message = self.org_repo.get_org_id_by_join_code(join_code)
+                        if org_found:
+                            is_registered, message, user_id = self.user_repo.register_user(
+                                reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
+                            # Successful?
+                            if is_registered:
+                                st.success(message)
+                                st.session_state["show_register_section"] = False
+                                self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
+                                time.sleep(2)
+                                st.rerun()
+                            else:
+                                st.error(message)
+                        else:
+                            st.error(message)
                     else:
                         st.error(message)
                 else:
@@ -290,6 +298,57 @@ class BasePortal(ABC):
                 st.rerun()
 
         return is_authenticated
+
+    def validate(self, username, password, confirm_password, email):
+        if not self.is_valid_username(username):
+            return False, "Invalid username. It should be at least 5 characters and only " \
+                          "contain alphanumeric characters. "
+
+        if not self.is_valid_password(password):
+            return False, "Invalid password. It should be at least 8 characters, contain at least one " \
+                          "digit, one lowercase and one uppercase. "
+
+        if not self.is_valid_email(email):
+            return False, "Invalid email. Please enter a valid email address."
+
+        if password != confirm_password:
+            return False, "Passwords do not match."
+
+        return True, ""
+
+    @staticmethod
+    def is_valid_username(username):
+        # The username should be at least 5 characters
+        if len(username) < 5:
+            return False
+
+        # The username can contain alphanumeric characters and special characters
+        if not re.match("^[a-zA-Z0-9_!@#$%^&*()+=-]*$", username):
+            return False
+
+        return True
+
+    @staticmethod
+    def is_valid_password(password):
+        if len(password) < 8:
+            return False
+        if not re.search("[a-z]", password):
+            return False
+        if not re.search("[A-Z]", password):
+            return False
+        if not re.search("[0-9]", password):
+            return False
+        return True
+
+    @staticmethod
+    def is_valid_email(email):
+        # Regular expression for validating an Email
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+        if re.search(email_regex, email):
+            return True
+        else:
+            return False
 
     @staticmethod
     def show_login_screen():
