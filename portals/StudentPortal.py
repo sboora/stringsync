@@ -1,4 +1,5 @@
 import datetime
+import time
 from abc import ABC
 
 import pandas as pd
@@ -40,9 +41,9 @@ class StudentPortal(BasePortal, ABC):
         tabs = [
             ("🎤 Record", self.record),
             ("📥 Submissions", self.submissions),
-            ("📊 Progress Dashboard", self.progress_dashboard),
-            ("🏆 Badges", self.badges),
             ("⏲️ Practice Log", self.practice_log),
+            ("🏆 Badges", self.badges),
+            ("📊 Progress Dashboard", self.progress_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -597,6 +598,19 @@ class StudentPortal(BasePortal, ABC):
     def practice_log(self):
         st.markdown("<h2 style='text-align: center; font-weight: bold; color: #769AA0; font-size: 24px;'>🎵 Practice "
                     "Tracker & Insights 🎵</h2>", unsafe_allow_html=True)
+
+        # Initialize session state variables if they aren't already
+        if 'form_submitted' not in st.session_state:
+            st.session_state.form_submitted = False
+        if 'badge_awarded_in_last_run' not in st.session_state:
+            st.session_state.badge_awarded_in_last_run = False
+        if 'practice_date' not in st.session_state:
+            st.session_state.practice_date = datetime.date.today()
+        if 'practice_time' not in st.session_state:
+            st.session_state.practice_time = datetime.datetime.now()
+        if 'practice_minutes' not in st.session_state:
+            st.session_state.practice_minutes = 15
+
         badge_awarded = False
         cols = st.columns(2)
         with cols[0]:
@@ -604,26 +618,53 @@ class StudentPortal(BasePortal, ABC):
             st.write("")
             st.write("")
             with st.form("log_practice_time_form"):
-                practice_date = st.date_input("Practice Date")
-                practice_time = st.time_input("Practice Time")
-                practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(15, 61)])
+                # Use the session_state to remember the previously selected practice date
+                practice_date = st.date_input("Practice Date",
+                                              value=st.session_state.practice_date,
+                                              key="practice_date")
+                practice_time = st.time_input("Practice Time",
+                                              value=st.session_state.practice_time,
+                                              key="practice_time")
+                practice_minutes = st.selectbox("Minutes Practiced",
+                                                [i for i in range(15, 61)],
+                                                key="practice_minutes")
                 submit = st.form_submit_button("Log Practice", type="primary")
-                if submit:
-                    user_id = self.get_user_id()
-                    practice_datetime = datetime.datetime.combine(practice_date, practice_time)
-                    self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
-                    st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
-                    badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(), practice_date)
+
+                if submit and not st.session_state.form_submitted:
+                    # Validate if the practice_date is not in the future
+                    if practice_date > datetime.date.today():
+                        st.error("The practice date cannot be in the future.")
+                    else:
+                        user_id = self.get_user_id()
+                        practice_datetime = datetime.datetime.combine(practice_date, practice_time)
+                        self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
+                        st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
+                        badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(),
+                                                                            practice_date)
+                    st.session_state.form_submitted = True
 
         with cols[1]:
             self.show_calendar()
 
         if badge_awarded:
+            st.session_state.badge_awarded_in_last_run = True
+            st.rerun()
+
+        # Reset form submission status after handling it
+        if st.session_state.form_submitted:
+            st.session_state.form_submitted = False
+
+        if st.session_state.badge_awarded_in_last_run:
             self.show_animations()
+            st.session_state.badge_awarded_in_last_run = False
 
     def show_calendar(self):
         user_id = self.get_user_id()
         practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
+
+        # Check if practice_data is empty
+        if not practice_data:
+            return
 
         df = pd.DataFrame(practice_data)
         df['date'] = pd.to_datetime(df['date'])
