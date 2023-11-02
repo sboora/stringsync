@@ -174,14 +174,14 @@ class TeacherPortal(BasePortal, ABC):
             st.info("No tracks found.")
             return
 
-        column_widths = [25, 25, 17, 15, 15]
+        column_widths = [20, 20, 20, 20, 20]
         self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"],
                           column_widths=column_widths)
 
         for track_detail in tracks:
             blob_url = track_detail['track_path']
             audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
-            col1, col2, col3, col4, col5 = st.columns([2, 2.2, 1.5, 1, 2.5])
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
             row_data = {
                 "Track Name": track_detail['track_name'],
                 "Ragam": track_detail['ragam'],
@@ -193,19 +193,19 @@ class TeacherPortal(BasePortal, ABC):
 
             col2.write("")
             col2.markdown(
-                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Track Name']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Track Name']}</div>",
                 unsafe_allow_html=True)
             col3.write("")
             col3.markdown(
-                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Ragam']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Ragam']}</div>",
                 unsafe_allow_html=True)
             col4.write("")
             col4.markdown(
-                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Level']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Level']}</div>",
                 unsafe_allow_html=True)
             col5.write("")
             col5.markdown(
-                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:center'>{row_data['Description']}</div>",
+                f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Description']}</div>",
                 unsafe_allow_html=True)
 
     def validate_inputs(self, track_name, track_file, ref_track_file):
@@ -376,7 +376,7 @@ class TeacherPortal(BasePortal, ABC):
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
         if group_id is None and user_id is None:
             return
-        
+
         # Fetch and sort recordings
         recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
         if not recordings:
