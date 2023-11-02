@@ -64,8 +64,6 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def assign_students_to_group(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Assign Students To Groups</h2>",
-                    unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
         users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
@@ -92,8 +90,6 @@ class TeacherPortal(BasePortal, ABC):
                         st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
 
     def create_group(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Student Group</h2>",
-                    unsafe_allow_html=True)
         group_name = st.text_input("Create a new group:")
         if st.button("Create Group", type='primary'):
             if group_name:
@@ -106,8 +102,6 @@ class TeacherPortal(BasePortal, ABC):
                 st.warning("Group name cannot be empty.")
 
     def display_students(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Student Details</h2>", unsafe_allow_html=True)
-
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
         column_widths = [25, 25, 25, 25]
         self.build_header(column_names=["Name", "Username", "Email", "Group"],
@@ -123,7 +117,6 @@ class TeacherPortal(BasePortal, ABC):
             self.build_row(row_data=row_data, column_widths=column_widths)
 
     def create_track(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Create Track</h2>", unsafe_allow_html=True)
         with st.form(key='create_track_form', clear_on_submit=True):
             track_name = st.text_input("Track Name")
             track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
@@ -175,8 +168,6 @@ class TeacherPortal(BasePortal, ABC):
                     st.success("Track added successfully!")
 
     def list_tracks(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Track Details</h2>", unsafe_allow_html=True)
-
         # Fetching all track details using the method from PortalRepository
         tracks = self.portal_repo.list_tracks()
 
@@ -234,7 +225,6 @@ class TeacherPortal(BasePortal, ABC):
         return self.storage_repo.upload_blob(data, blob_path)
 
     def remove_track(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Remove Track</h2>", unsafe_allow_html=True)
         # Fetch all tracks
         all_tracks = self.track_repo.get_all_tracks()
         track_options = {track['name']: track['id'] for track in all_tracks}
@@ -336,7 +326,6 @@ class TeacherPortal(BasePortal, ABC):
         st.audio(track_file, format='core/m4a')
 
     def list_recordings(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Student Recordings</h2>", unsafe_allow_html=True)
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
         if user_id is None:
             return
@@ -385,7 +374,6 @@ class TeacherPortal(BasePortal, ABC):
                           unsafe_allow_html=True)
 
     def submissions(self):
-        st.markdown("<h2 style='text-align: center; font-size: 20px;'>Submissions</h2>", unsafe_allow_html=True)
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
         # Fetch and sort recordings
