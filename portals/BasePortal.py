@@ -85,7 +85,6 @@ class BasePortal(ABC):
                 self.login_user()
         else:
             self.build_tabs()
-
         self.show_copyright()
         self.clean_up()
 
@@ -215,12 +214,11 @@ class BasePortal(ABC):
         form_key = 'login_form'
         field_names = ['Username', 'Password']
         button_label = 'Login'
-        login_button, form_data = self.build_form(form_key, field_names, button_label, False)
-
+        submitted, form_data = self.build_form(form_key, field_names, button_label, False)
         # Process form data
         username = form_data['Username']
         password = form_data['Password']
-        if login_button:
+        if submitted:
             if not username or not password:
                 st.error("Both username and password are required.")
                 return
@@ -242,7 +240,7 @@ class BasePortal(ABC):
             st.header("Login")
             is_authenticated = False
             password, username = self.show_login_screen()
-            col1, col2, col3 = st.columns([2, 4, 32])
+            col1, col2, col3 = st.columns([2.5, 4, 32])
             if col1.button("Login", type="primary"):
                 if username and password:
                     is_authenticated, user_id, org_id = \
@@ -419,8 +417,8 @@ class BasePortal(ABC):
         st.session_state['org_id'] = org_id
         st.session_state['username'] = username
         success, organization = self.org_repo.get_organization_by_id(org_id)
-        st.session_state['join_code'] = organization['join_code']
         if success:
+            st.session_state['join_code'] = organization['join_code']
             st.session_state['tenant_id'] = organization['tenant_id']
 
     @staticmethod
@@ -643,13 +641,13 @@ class BasePortal(ABC):
         with st.form(key=form_key, clear_on_submit=clear_on_submit):
             for field in field_names:
                 if field.lower() == 'password':
-                    form_data[field] = st.text_input(field.capitalize(), type='password')
+                    form_data[field] = st.text_input(label=field.capitalize(), key=field, type='password')
                 else:
-                    form_data[field] = st.text_input(field.capitalize())
+                    form_data[field] = st.text_input(label=field.capitalize(), key=field)
 
-            button = st.form_submit_button(label=button_label, type="primary")
+            submitted = st.form_submit_button(label=button_label, type="primary")
 
-        return button, form_data
+        return submitted, form_data
 
     @staticmethod
     def build_form_with_select_boxes(form_key, select_box_options, button_label='Submit', clear_on_submit=True):
