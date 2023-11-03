@@ -58,7 +58,7 @@ class AdminPortal(BasePortal, ABC):
 
     def register_school(self):
         form_key = 'register_school'
-        field_names = ['Name', 'Description']
+        field_names = ['School Name', 'Description']
         button_label = 'Register School'
         button, form_data = self.build_form(
             form_key, field_names, button_label)
