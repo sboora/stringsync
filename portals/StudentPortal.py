@@ -1,6 +1,7 @@
 import datetime
 import time
 from abc import ABC
+from functools import cache
 
 import pandas as pd
 import hashlib

@@ -29,9 +29,10 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
-            ("👥 Create Group", self.create_group),
-            ("👩‍🎓 Students", self.display_students),
-            ("🔀 Assign Students to Groups", self.assign_students_to_group),
+            ("👥 Create Team", self.create_team),
+            ("👥 List Teams", self.list_teams),
+            ("👩‍🎓 Students", self.list_students),
+            ("🔀 Assign Students to Teams", self.assign_students_to_team),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
             ("🎵 Remove Track", self.remove_track),
@@ -63,35 +64,13 @@ class TeacherPortal(BasePortal, ABC):
             Tap into the tabs, explore the features, and elevate your teaching methods. Together, let's redefine music education!
         """)
 
-    def assign_students_to_group(self):
-        groups = self.user_repo.get_all_groups()
-        group_options = {group['group_name']: group['group_id'] for group in groups}
-        users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
-        user_options = {user['username']: user['id'] for user in users}
+    def create_team(self):
+        group_name = st.text_input("Create a new Team:")
+        st.button("Create Team", type='primary', key="create_team")
+        if 'create_team' not in st.session_state:
+            st.session_state.create_team = False
 
-        selected_usernames = st.multiselect("Select students:", ['--Select a student--'] + list(user_options.keys()))
-
-        # Check if the list is not empty and doesn't contain the placeholder
-        if selected_usernames and '--Select a student--' not in selected_usernames:
-
-            # Dropdown to assign a new group
-            assign_to_group = st.selectbox("Assign to group:", ['--Select a group--'] + list(group_options.keys()))
-
-            if assign_to_group != '--Select a group--':
-                for selected_username in selected_usernames:
-                    selected_user_id = user_options[selected_username]
-
-                    # Get the current group of the user
-                    current_group = self.user_repo.get_group_by_user_id(selected_user_id)
-                    current_group_name = current_group['group_name'] if current_group else '--Select a group--'
-
-                    if assign_to_group != current_group_name:
-                        self.user_repo.assign_user_to_group(selected_user_id, group_options[assign_to_group])
-                        st.success(f"User '{selected_username}' assigned to group '{assign_to_group}'.")
-
-    def create_group(self):
-        group_name = st.text_input("Create a new group:")
-        if st.button("Create Group", type='primary'):
+        if st.session_state.create_team:
             if group_name:
                 success, message = self.user_repo.create_user_group(group_name, self.get_org_id())
                 if success:
@@ -99,12 +78,42 @@ class TeacherPortal(BasePortal, ABC):
                 else:
                     st.error(message)
             else:
-                st.warning("Group name cannot be empty.")
+                st.warning("Team name cannot be empty.")
 
-    def display_students(self):
+    def list_teams(self):
+        # Fetch all groups
+        groups = self.user_repo.get_all_groups()
+
+        # No groups?
+        if not groups:
+            st.warning("No teams found. Create a new team to get started.")
+            return
+
+        # Define the column widths for three columns
+        column_widths = [33, 33, 33]  # Adjust column widths as necessary
+
+        # Display the table header with an added 'Member Count' column
+        self.build_header(column_names=["Team ID", "Team Name", "Member Count"], column_widths=column_widths)
+
+        # Display each team and its member count in a row
+        for group in groups:
+            row_data = {
+                "Team ID": group['group_id'],
+                "Team Name": group['group_name'],
+                "Member Count": group['member_count']  # Assumes 'member_count' is being returned by get_all_groups
+            }
+            self.build_row(row_data=row_data, column_widths=column_widths)
+
+    def list_students(self):
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
-        column_widths = [25, 25, 25, 25]
-        self.build_header(column_names=["Name", "Username", "Email", "Group"],
+
+        if not students:
+            # Display an informational message if no students are found.
+            st.info(f"Please ask new members to join the team using join code: {st.session_state['join_code']}")
+            return  # Exit the function early since there are no students to list.
+
+        column_widths = [20, 20, 20, 20, 20]
+        self.build_header(column_names=["Name", "Username", "Email", "Team", "Join Code"],
                           column_widths=column_widths)
 
         for student_detail in students:
@@ -112,9 +121,51 @@ class TeacherPortal(BasePortal, ABC):
                 "Name": student_detail['name'],
                 "Username": student_detail['username'],
                 "Email": student_detail['email'],
-                "Group": student_detail['group_name'],
+                "Team": student_detail['group_name'] if 'group_name' in student_detail else 'N/A',
+                "Join Code": st.session_state['join_code']
             }
             self.build_row(row_data=row_data, column_widths=column_widths)
+
+    def assign_students_to_team(self):
+        groups = self.user_repo.get_all_groups()
+        group_options = ["--Select a group--"] + [group['group_name'] for group in groups]
+        group_ids = [None] + [group['group_id'] for group in groups]
+        group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
+
+        students = self.user_repo.get_users_by_org_id_and_type(
+            self.get_org_id(), UserType.STUDENT.value)
+
+        # Column headers
+        self.build_header(column_names=["Name", "Email", "Team"],
+                          column_widths=[33.33, 33.33, 33.33])
+
+        for student in students:
+            st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
+            with st.container():
+                current_group_id = self.user_repo.get_group_by_user_id(student['id'])['group_id']
+                current_group_index = group_ids.index(current_group_id)
+
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    st.write("")
+                    st.markdown(
+                        f"<div style='padding-top:14px;color:black;font-size:14px;'>{student['name']}</div>",
+                        unsafe_allow_html=True)
+                with col2:
+                    st.write("")
+                    st.markdown(
+                        f"<div style='padding-top:14px;color:black;font-size:14px;'>{student['email']}</div>",
+                        unsafe_allow_html=True)
+                with col3:
+                    selected_group = col3.selectbox(
+                        "Select a Team", group_options, index=current_group_index, key=student['id'],
+                    )
+
+                    if selected_group != "--Select a group--":
+                        selected_group_id = group_name_to_id[selected_group]
+                        if selected_group_id != current_group_id:
+                            self.user_repo.assign_user_to_group(student['id'], selected_group_id)
+                            st.rerun()
 
     def create_track(self):
         with st.form(key='create_track_form', clear_on_submit=True):
@@ -274,12 +325,12 @@ class TeacherPortal(BasePortal, ABC):
         # Show groups in a dropdown
         groups = self.user_repo.get_all_groups()
         group_options = {group['group_name']: group['group_id'] for group in groups}
-        selected_group_name = st.selectbox(key=f"{source}-group", label="Select a group:",
-                                           options=['--Select a group--'] + list(group_options.keys()))
+        selected_group_name = st.selectbox(key=f"{source}-group", label="Select a team:",
+                                           options=['--Select a team--'] + list(group_options.keys()))
 
         # Filter users by the selected group
         selected_group_id = None
-        if selected_group_name != '--Select a group--':
+        if selected_group_name != '--Select a team--':
             selected_group_id = group_options[selected_group_name]
             users = self.user_repo.get_users_by_group(selected_group_id)
         else:

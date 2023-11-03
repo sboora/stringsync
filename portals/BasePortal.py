@@ -390,6 +390,8 @@ class BasePortal(ABC):
             st.session_state['user_id'] = None
         if 'org_id' not in st.session_state:
             st.session_state['org_id'] = None
+        if 'join_code' not in st.session_state:
+            st.session_state['join_code'] = None
         if 'tenant_id' not in st.session_state:
             st.session_state['tenant_id'] = None
         if 'username' not in st.session_state:
@@ -417,6 +419,7 @@ class BasePortal(ABC):
         st.session_state['org_id'] = org_id
         st.session_state['username'] = username
         success, organization = self.org_repo.get_organization_by_id(org_id)
+        st.session_state['join_code'] = organization['join_code']
         if success:
             st.session_state['tenant_id'] = organization['tenant_id']
 
