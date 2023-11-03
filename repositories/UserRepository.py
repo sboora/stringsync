@@ -97,7 +97,7 @@ class UserRepository:
         if result:
             return {'group_id': result[0], 'group_name': result[1]}
         else:
-            return None
+            return None, None
 
     def create_user_group(self, group_name, org_id):
         cursor = self.connection.cursor()
@@ -168,10 +168,21 @@ class UserRepository:
 
     def get_all_groups(self):
         cursor = self.connection.cursor()
-        get_groups_query = """SELECT id, name FROM user_groups;"""
+
+        # Modified query to join the users table with the user_groups table and count members per group
+        get_groups_query = """
+        SELECT ug.id, ug.name, COUNT(u.id) as member_count
+        FROM user_groups ug
+        LEFT JOIN users u ON ug.id = u.group_id
+        GROUP BY ug.id, ug.name;
+        """
+
         cursor.execute(get_groups_query)
         result = cursor.fetchall()
-        groups = [{'group_id': row[0], 'group_name': row[1]} for row in result]
+        groups = [
+            {'group_id': row[0], 'group_name': row[1], 'member_count': row[2]}
+            for row in result
+        ]
         return groups
 
     def get_users_by_group(self, group_id):
