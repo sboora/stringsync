@@ -86,7 +86,7 @@ class TeacherPortal(BasePortal, ABC):
 
         # No groups?
         if not groups:
-            st.warning("No teams found. Create a new team to get started.")
+            st.info("No teams found. Create a new team to get started.")
             return
 
         # Define the column widths for three columns
@@ -134,6 +134,14 @@ class TeacherPortal(BasePortal, ABC):
 
         students = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
+
+        if not groups:
+            st.info("Please create a team to get started.")
+            return
+
+        if not students:
+            st.info(f"Please ask new members to join the team using join code: {st.session_state['join_code']}")
+            return
 
         # Column headers
         self.build_header(column_names=["Name", "Email", "Team"],
@@ -222,7 +230,7 @@ class TeacherPortal(BasePortal, ABC):
         # Fetching all track details using the method from PortalRepository
         tracks = self.portal_repo.list_tracks()
         if not tracks:
-            st.info("No tracks found.")
+            st.info("No tracks found. Create a track to get started.")
             return
 
         column_widths = [20, 20, 20, 20, 20]
@@ -281,6 +289,11 @@ class TeacherPortal(BasePortal, ABC):
     def remove_track(self):
         # Fetch all tracks
         all_tracks = self.track_repo.get_all_tracks()
+
+        if not all_tracks:
+            st.info("No tracks found.")
+            return
+
         track_options = {track['name']: track['id'] for track in all_tracks}
 
         # Dropdown to select a track to remove

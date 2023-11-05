@@ -27,7 +27,7 @@ class AdminPortal(BasePortal, ABC):
             ("🏢 List Schools", self.list_schools),
             ("👩‍🏫 Register a Tutor", self.register_tutor),
             ("👨‍🏫 List Tutors", self.list_tutors),
-            ("📝 Assign Tutor to School", self.assign_tutor),
+            ("📝 Assign a Tutor to School", self.assign_tutor),
             ("📋 List Tutor Assignments", self.list_tutor_assignments),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SETTINGS) else None,
@@ -58,14 +58,14 @@ class AdminPortal(BasePortal, ABC):
 
     def register_school(self):
         form_key = 'register_school'
-        field_names = ['School Name', 'Description']
+        field_names = ['School', 'Description']
         button_label = 'Register School'
         button, form_data = self.build_form(
             form_key, field_names, button_label)
 
         if button:
             success, org_id, join_code, message = self.org_repo.register_organization(
-                self.get_tenant_id(), form_data['Name'], form_data['Description'], False)
+                self.get_tenant_id(), form_data['School'], form_data['Description'], False)
             if success:
                 # Create the folder structure in GCS after successful registration
                 tenant_id = self.get_tenant_id()

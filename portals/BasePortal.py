@@ -485,7 +485,6 @@ class BasePortal(ABC):
                 </style>""", unsafe_allow_html=True)
         tab_dict = self.get_tab_dict()
         tab_names = list(tab_dict.keys())
-        print(tab_names)
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
 
@@ -675,7 +674,7 @@ class BasePortal(ABC):
 
     @staticmethod
     def build_header(column_names, column_widths):
-        header_html = "<div style='background-color:lightgrey;padding:5px;border-radius:3px;border:1px solid black;'>"
+        header_html = "<div style='background-color:#5CB5D2;padding:5px;border-radius:3px;border:1px solid black;'>"
 
         for column_name, width in zip(column_names, column_widths):
             header_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
