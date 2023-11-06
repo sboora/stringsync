@@ -25,10 +25,29 @@ class UserSessionRepository:
 
     def open_session(self, user_id):
         cursor = self.connection.cursor()
+
+        # Check for any open sessions for the user
+        check_open_session_query = """
+            SELECT session_id
+            FROM user_sessions
+            WHERE user_id = %s AND is_open = TRUE
+            ORDER BY open_session_time DESC
+            LIMIT 1;
+        """
+        cursor.execute(check_open_session_query, (user_id,))
+        result = cursor.fetchone()
+
+        # If an open session is found, close it
+        if result:
+            self.close_session(result[0])
+
+        # Generate a new session ID and open a new session
         session_id = f'session-{user_id}-{int(time())}'  # Generating a simple session ID
         insert_session_query = """INSERT INTO user_sessions (session_id, user_id) VALUES (%s, %s);"""
         cursor.execute(insert_session_query, (session_id, user_id))
         self.connection.commit()
+
+        cursor.close()  # close the cursor after use
         return session_id
 
     def close_session(self, session_id):
