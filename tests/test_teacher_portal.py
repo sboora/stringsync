@@ -5,7 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from seleniumbase import BaseCase
-from config import USERNAME, PASSWORD, TRACKS_INFO
+from config import TEACHER_USERNAME, TEACHER_PASSWORD, TRACKS_INFO
 
 
 class TeacherPortalTest(BaseCase):
@@ -61,9 +61,9 @@ class TeacherPortalTest(BaseCase):
         # Login
         self.open_login_page()
         time.sleep(sleep_timer)
-        self.find_input_and_type("input[aria-label='Username']", USERNAME)
+        self.find_input_and_type("input[aria-label='Username']", TEACHER_USERNAME)
         time.sleep(sleep_timer)
-        self.find_input_and_type("input[aria-label='Password']", PASSWORD)
+        self.find_input_and_type("input[aria-label='Password']", TEACHER_PASSWORD)
         time.sleep(sleep_timer)
         self.click_button("button:contains('Login')")
         time.sleep(sleep_timer)
