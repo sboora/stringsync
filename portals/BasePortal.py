@@ -226,7 +226,7 @@ class BasePortal(ABC):
             if success:
                 self.set_session_state(user_id, org_id, username)
                 st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
-                self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
+                self.user_activity_repo.log_activity(user_id, self.get_session_id(), ActivityType.LOG_IN)
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
@@ -248,7 +248,8 @@ class BasePortal(ABC):
                     if is_authenticated:
                         self.set_session_state(user_id, org_id, username)
                         st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
-                        self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
+                        self.user_activity_repo.log_activity(
+                            user_id, self.get_session_id(), ActivityType.LOG_IN)
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
@@ -279,7 +280,6 @@ class BasePortal(ABC):
                             if is_registered:
                                 st.success(message)
                                 st.session_state["show_register_section"] = False
-                                self.user_activity_repo.log_activity(user_id, ActivityType.LOG_IN)
                                 time.sleep(2)
                                 st.rerun()
                             else:
@@ -441,7 +441,8 @@ class BasePortal(ABC):
                 }
             else:
                 additional_params = {}
-            self.user_activity_repo.log_activity(self.get_user_id(), ActivityType.LOG_OUT, additional_params)
+            self.user_activity_repo.log_activity(
+                self.get_user_id(), self.get_session_id(), ActivityType.LOG_OUT, additional_params)
         self.clear_session_state()
         st.rerun()
 

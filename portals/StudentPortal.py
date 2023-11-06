@@ -129,6 +129,7 @@ class StudentPortal(BasePortal, ABC):
                     "Recording": recording_name,
                 }
                 self.user_activity_repo.log_activity(self.get_user_id(),
+                                                     self.get_session_id(),
                                                      ActivityType.UPLOAD_RECORDING,
                                                      additional_params)
                 self.user_session_repo.update_last_activity_time(self.get_session_id())
@@ -380,7 +381,8 @@ class StudentPortal(BasePortal, ABC):
         additional_params = {
             "Track": selected_track_name,
         }
-        self.user_activity_repo.log_activity(user_id, ActivityType.PLAY_TRACK, additional_params)
+        self.user_activity_repo.log_activity(
+            user_id, self.get_session_id(), ActivityType.PLAY_TRACK, additional_params)
         self.user_session_repo.update_last_activity_time(self.get_session_id())
 
     def fetch_filter_options(self, ragas):

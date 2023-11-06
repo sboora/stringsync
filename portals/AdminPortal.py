@@ -2,6 +2,7 @@ from abc import ABC
 
 import streamlit as st
 
+from enums.ActivityType import ActivityType
 from enums.Features import Features
 from enums.Settings import Portal
 from portals.BasePortal import BasePortal
@@ -76,6 +77,13 @@ class AdminPortal(BasePortal, ABC):
                 self.storage_repo.create_folder(f'{tenant_id}/logo')
                 self.storage_repo.create_folder(f'{tenant_id}/badges')
 
+                additional_params = {
+                    "School Name": form_data['School'],
+                }
+                self.user_activity_repo.log_activity(self.get_user_id(),
+                                                     self.get_session_id(),
+                                                     ActivityType.REGISTER_SCHOOL,
+                                                     additional_params)
                 st.success(message)
             else:
                 st.error(message)
@@ -96,6 +104,15 @@ class AdminPortal(BasePortal, ABC):
                 user_type=UserType.TEACHER.value
             )
             if success:
+                additional_params = {
+                    "Tutor Name": form_data['Name'],
+                    "Tutor Username": form_data['Username'],
+                    "Tutor Email:": form_data['Email'],
+                }
+                self.user_activity_repo.log_activity(self.get_user_id(),
+                                                     self.get_session_id(),
+                                                     ActivityType.REGISTER_TUTOR,
+                                                     additional_params)
                 st.success(message)
             else:
                 st.error(message)
