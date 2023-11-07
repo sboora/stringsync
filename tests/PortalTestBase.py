@@ -6,7 +6,7 @@ from seleniumbase import BaseCase
 
 
 class PortalTestBase(BaseCase):
-    sleep_timer = 0
+    sleep_timer = 1
 
     def open_login_page(self, url):
         self.open(url)
@@ -41,7 +41,7 @@ class PortalTestBase(BaseCase):
         self.find_input_and_type("input[aria-label='Username']", username)
         self.delay()
         self.find_input_and_type("input[aria-label='Password']", password)
-        self.delay()
+        self.sleep(2)
         self.click_button("button:contains('Login')")
         self.delay()
         self.verify_login_successful()
@@ -67,12 +67,10 @@ class PortalTestBase(BaseCase):
     def get_url():
         return ""
 
-    @staticmethod
-    def get_username():
+    def get_username(self):
         return ""
 
-    @staticmethod
-    def get_password():
+    def get_password(self):
         return ""
 
     def delay(self):

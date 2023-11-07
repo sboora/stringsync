@@ -11,12 +11,10 @@ class TeacherPortalTest(PortalTestBase):
     def get_url():
         return "http://localhost:8503/"
 
-    @staticmethod
-    def get_username():
+    def get_username(self):
         return TEACHER_USERNAME
 
-    @staticmethod
-    def get_password():
+    def get_password(self):
         return TEACHER_PASSWORD
 
     def verify_login_successful(self):
