@@ -420,7 +420,7 @@ class StudentPortal(BasePortal, ABC):
 
     def handle_file_upload(self, user_id, track_id):
         with st.form("recording_uploader_form", clear_on_submit=True):
-            uploaded_student_file = st.file_uploader("", type=["m4a", "mp3"])
+            uploaded_student_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             original_date = st.date_input("Original File Date", value=None)  # Default value is None
             uploaded = st.form_submit_button("Upload", type="primary")
 
