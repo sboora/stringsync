@@ -109,9 +109,9 @@ class TeacherPortalTest(PortalTestBase):
 
     def get_test_flow_methods(self):
         return [
-            #self.create_team,
+            self.create_team,
             self.assign_students_to_teams,
-            #self.create_tracks,
+            self.create_tracks,
         ]
 
     def test_flow(self):
