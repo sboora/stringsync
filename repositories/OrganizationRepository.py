@@ -63,7 +63,7 @@ class OrganizationRepository:
         cursor.execute(add_org_query, (tenant_id, org_name, description, is_root, join_code))
         self.connection.commit()
         org_id = cursor.lastrowid
-        return True, org_id, join_code, f"School {org_name} registered successfully with join code {join_code}."
+        return True, org_id, join_code, f"School {org_name} registered successfully with join code: {join_code}."
 
     def get_root_organization_by_tenant_id(self, tenant_id):
         cursor = self.connection.cursor()
@@ -104,7 +104,7 @@ class OrganizationRepository:
             }
             return True, organization
         else:
-            return False, "Organization not found."
+            return False, {}
 
     def get_org_id_by_join_code(self, join_code):
         cursor = self.connection.cursor()

@@ -97,7 +97,7 @@ class UserRepository:
         if result:
             return {'group_id': result[0], 'group_name': result[1]}
         else:
-            return None, None
+            return {'group_id': None, 'group_name': None}
 
     def create_user_group(self, group_name, org_id):
         cursor = self.connection.cursor()
@@ -108,14 +108,14 @@ class UserRepository:
         count = cursor.fetchone()[0]
 
         if count > 0:
-            return False, f"Group '{group_name}' already exists."
+            return False, f"Team {group_name} already exists."
 
         # If the group doesn't exist, proceed to create it
         create_query = """INSERT INTO user_groups (name, org_id) VALUES (%s, %s);"""
         try:
             cursor.execute(create_query, (group_name, org_id))
             self.connection.commit()
-            return True, f"Group '{group_name}' successfully created."
+            return True, f"Team {group_name} successfully created."
         except Exception as e:
             self.connection.rollback()  # Rollback the transaction in case of an error
             return False, f"Failed to create group '{group_name}'. Error: {str(e)}"

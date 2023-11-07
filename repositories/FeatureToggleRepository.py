@@ -62,8 +62,13 @@ class FeatureToggleRepository:
         cursor = self.connection.cursor()
 
         for feature in Features:
-            cursor.execute("INSERT IGNORE INTO feature_toggles (feature_name, is_enabled) VALUES (%s, TRUE)",
-                           (feature.name,))  # Using feature.name to get the name of the enum member
+            query = """
+            INSERT INTO feature_toggles (feature_name, is_enabled)
+            VALUES (%s, TRUE)
+            ON DUPLICATE KEY UPDATE feature_name = VALUES(feature_name)
+            """
+            cursor.execute(query, (feature.name,))
 
         self.connection.commit()
+
 
