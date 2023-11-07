@@ -26,7 +26,7 @@ class TenantPortalTest(PortalTestBase):
         self.assert_text_present("Feature Toggles")
 
     def verify_registration_successful(self):
-        self.assert_text_present("Tenant ABC Corp registered successfully")
+        self.assert_text_present(f"Tenant {TENANT_NAME} registered successfully")
 
     def tenant_registration(self):
         self.delay()

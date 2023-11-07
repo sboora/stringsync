@@ -1,7 +1,7 @@
 import time
 
 from PortalTestBase import PortalTestBase
-from config import STUDENTS, JOIN_CODE, TRACK_NAME, RECORDING_PATH
+from config import STUDENTS, SCHOOL, TRACK_NAME, RECORDING_PATH
 
 
 class StudentPortalTest(PortalTestBase):
@@ -55,7 +55,7 @@ class StudentPortalTest(PortalTestBase):
         self.delay()
         self.find_input_and_type("input[aria-label='Confirm Password']", self.password)
         self.delay()
-        self.find_input_and_type("input[aria-label='Join Code']", JOIN_CODE)
+        self.find_input_and_type("input[aria-label='Join Code']", SCHOOL['join_code'])
         time.sleep(3)
         self.click_button("button:contains('Submit')")
         time.sleep(1)

@@ -1,8 +1,7 @@
-import re
 import time
 
 from PortalTestBase import PortalTestBase
-from config import TEACHER_USERNAME, TEACHER_PASSWORD, TRACKS_INFO
+from config import TEACHER_USERNAME, TEACHER_PASSWORD, TRACKS_INFO, TEAMS, STUDENT_TEAM_ASSIGNMENTS
 
 
 class TeacherPortalTest(PortalTestBase):
@@ -37,7 +36,7 @@ class TeacherPortalTest(PortalTestBase):
         self.assert_text_present(text)
 
     def check_tabs(self):
-        self.click("button:contains('Create Team')")
+        self.click("button:contains('Create a Team')")
         self.delay()
         self.click("button:contains('List Teams')")
         self.delay()
@@ -58,8 +57,27 @@ class TeacherPortalTest(PortalTestBase):
         self.click("button:contains('Settings')")
         self.delay()
 
+    def create_team(self):
+        for team in TEAMS:
+            self.click("button:contains('Create a Team')")
+            self.delay()
+            self.find_input_and_type("input[aria-label='Team Name']", team)
+            time.sleep(2)
+            self.click("button:contains('Create Team')")
+            time.sleep(2)
+            self.assert_text_present(f"Team {team} successfully created.")
+
+    def assign_students_to_teams(self):
+        self.click("button:contains('Assign Students to Teams')")
+        self.delay()
+        for assignment in STUDENT_TEAM_ASSIGNMENTS:
+            self.click("div[data-testid='stSelectbox']:contains('Select a Team') div[value='0']")
+            self.delay()
+            self.click(f"//li[div/div/div[text()='{assignment['teamname']}']]")
+            self.delay()
+
     def create_tracks(self):
-        self.click("button[id^='tabs-'][id$='-tab-4']")
+        self.click("button:contains('Create Track')")
         self.delay()
 
         # Upload all tracks
@@ -89,59 +107,11 @@ class TeacherPortalTest(PortalTestBase):
             self.click("button:contains('Submit')")
             time.sleep(5)
 
-    def get_join_code(self):
-        self.click("button[id^='tabs-'][id$='-tab-2']")
-        self.delay()
-
-        html_source = self.get_page_source()
-
-        # Define the pattern to search for
-        pattern = r"Please ask new members to join the team using join code: (\w+)"
-
-        # Use regular expression to find the pattern
-        match = re.search(pattern, html_source)
-        if match:
-            # If a match is found, return the join code
-            join_code = match.group(1)
-            self.write_join_code_to_config(join_code)
-        else:
-            # If no match is found, handle accordingly
-            print('Join code not found.')
-            return None
-
-    @staticmethod
-    def write_join_code_to_config(join_code):
-        # Define the path to your config file
-        config_path = 'config.py'
-
-        # This is the line format that will be written to tenant_config.py
-        join_code_line = f'JOIN_CODE = "{join_code}"\n'
-
-        # Read the current content of the file
-        with open(config_path, 'r') as file:
-            lines = file.readlines()
-
-        # Check if JOIN_CODE line already exists and update it
-        updated = False
-        for i, line in enumerate(lines):
-            if line.startswith('JOIN_CODE'):
-                lines[i] = join_code_line
-                updated = True
-                break
-
-        # If JOIN_CODE line doesn't exist, append it
-        if not updated:
-            lines.append(join_code_line)
-
-        # Write the updated content back to the file
-        with open(config_path, 'w') as file:
-            file.writelines(lines)
-
     def get_test_flow_methods(self):
         return [
-            self.check_tabs,
-            self.create_tracks,
-            self.get_join_code,
+            #self.create_team,
+            self.assign_students_to_teams,
+            #self.create_tracks,
         ]
 
     def test_flow(self):

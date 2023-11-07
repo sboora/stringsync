@@ -6,7 +6,7 @@ from seleniumbase import BaseCase
 
 
 class PortalTestBase(BaseCase):
-    sleep_timer = 1
+    sleep_timer = 0.5
 
     def open_login_page(self, url):
         self.open(url)
@@ -75,3 +75,33 @@ class PortalTestBase(BaseCase):
 
     def delay(self):
         self.sleep(self.sleep_timer)
+
+    @staticmethod
+    def write_join_code_to_config(join_code):
+        # Define the path to your config file
+        config_path = 'config.py'
+
+        # Read the current content of the file
+        with open(config_path, 'r') as file:
+            lines = file.readlines()
+
+        # Check if SCHOOL dictionary exists and modify the join_code within it
+        school_dict_started = False
+        updated = False
+        for i, line in enumerate(lines):
+            if 'SCHOOL = {' in line:
+                school_dict_started = True
+            elif school_dict_started and "'join_code':" in line:
+                # This is the line format that will replace the current join_code line
+                lines[i] = f"    'join_code': '{join_code}',\n"
+                updated = True
+            elif school_dict_started and '}' in line:  # End of SCHOOL dictionary
+                if not updated:
+                    # Insert join_code before the closing brace of the SCHOOL dictionary
+                    lines.insert(i, f"    'join_code': '{join_code}',\n")
+                break
+
+        # Write the updated content back to the file
+        with open(config_path, 'w') as file:
+            file.writelines(lines)
+
