@@ -29,7 +29,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
-            ("👥 Create Team", self.create_team),
+            ("👥 Create a Team", self.create_team),
             ("👥 List Teams", self.list_teams),
             ("👩‍🎓 Students", self.list_students),
             ("🔀 Assign Students to Teams", self.assign_students_to_team),
@@ -65,20 +65,17 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def create_team(self):
-        group_name = st.text_input("Create a new Team:")
-        st.button("Create Team", type='primary', key="create_team")
-        if 'create_team' not in st.session_state:
-            st.session_state.create_team = False
-
-        if st.session_state.create_team:
-            if group_name:
-                success, message = self.user_repo.create_user_group(group_name, self.get_org_id())
-                if success:
-                    st.success(message)
+        with st.form(key='create_team_form', clear_on_submit=True):
+            group_name = st.text_input("Team Name")
+            if st.form_submit_button("Create Team", type='primary'):
+                if group_name:
+                    success, message = self.user_repo.create_user_group(group_name, self.get_org_id())
+                    if success:
+                        st.success(message)
+                    else:
+                        st.error(message)
                 else:
-                    st.error(message)
-            else:
-                st.warning("Team name cannot be empty.")
+                    st.warning("Team name cannot be empty.")
 
     def list_teams(self):
         # Fetch all groups
@@ -128,16 +125,16 @@ class TeacherPortal(BasePortal, ABC):
 
     def assign_students_to_team(self):
         groups = self.user_repo.get_all_groups()
-        group_options = ["--Select a group--"] + [group['group_name'] for group in groups]
+        if not groups:
+            st.info("Please create a team to get started.")
+            return
+
+        group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
         group_ids = [None] + [group['group_id'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
         students = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
-
-        if not groups:
-            st.info("Please create a team to get started.")
-            return
 
         if not students:
             st.info(f"Please ask new members to join the team using join code: {st.session_state['join_code']}")
@@ -151,7 +148,10 @@ class TeacherPortal(BasePortal, ABC):
             st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
             with st.container():
                 current_group_id = self.user_repo.get_group_by_user_id(student['id'])['group_id']
-                current_group_index = group_ids.index(current_group_id)
+                if current_group_id is None:
+                    current_group_index = 0
+                else:
+                    current_group_index = group_ids.index(current_group_id)
 
                 col1, col2, col3 = st.columns([1, 1, 1])
                 with col1:
@@ -169,7 +169,7 @@ class TeacherPortal(BasePortal, ABC):
                         "Select a Team", group_options, index=current_group_index, key=student['id'],
                     )
 
-                    if selected_group != "--Select a group--":
+                    if selected_group != "--Select a Team--":
                         selected_group_id = group_name_to_id[selected_group]
                         if selected_group_id != current_group_id:
                             self.user_repo.assign_user_to_group(student['id'], selected_group_id)
