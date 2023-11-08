@@ -587,21 +587,18 @@ class StudentPortal(BasePortal, ABC):
                     with st.expander(f"{resource_type}s"):
                         # Use columns to display each resource in a row
                         for resource in resources_list:
-                            col1, col2, col3 = st.columns([2, 3, 3])
+                            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
                             with col1:
                                 st.markdown(f"**{resource['title']}**")
                             with col2:
                                 st.write(resource['description'])
                             with col3:
+                                if resource['type'] == 'PDF':
+                                    # Provide a link to view the PDF
+                                    st.markdown(f"[View]({resource['file_url']})", unsafe_allow_html=True)
+                            with col4:
                                 # Display the appropriate content based on the resource type
-                                if resource['type'] == 'Link':
-                                    st.markdown(f"[Link]({resource['link']})")
-                                elif resource['type'] == 'Video':
-                                    st.video(resource['file_url'])
-                                elif resource['type'] == 'Audio':
-                                    st.audio(resource['file_url'])
-                                elif resource['type'] == 'PDF':
-                                    # Assume `download_blob_by_url` returns the data as bytes
+                                if resource['type'] == 'PDF':
                                     data = self.storage_repo.download_blob_by_url(resource['file_url'])
                                     st.download_button(
                                         label="Download",
@@ -609,8 +606,14 @@ class StudentPortal(BasePortal, ABC):
                                         file_name=f"{resource['title']}.pdf",
                                         mime='application/pdf',
                                         key=f"download_{resource['id']}",
-                                        type='primary'
+                                        type="primary"
                                     )
+                                elif resource['type'] == 'Link':
+                                    st.markdown(f"[Link]({resource['link']})", unsafe_allow_html=True)
+                                elif resource['type'] == 'Video':
+                                    st.video(resource['file_url'])
+                                elif resource['type'] == 'Audio':
+                                    st.audio(resource['file_url'])
         else:
             st.info("No resources found.")
 
@@ -692,12 +695,21 @@ class StudentPortal(BasePortal, ABC):
         df['date'] = pd.to_datetime(df['date'])
 
         # Determine the start date for the last 4 weeks
-        last_4_weeks_start_date = pd.Timestamp.today() - pd.DateOffset(weeks=4)
+        last_4_weeks_start_date = (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize()
 
         # Filter merged_df for only the last 4 weeks
         merged_df = df[df['date'] >= last_4_weeks_start_date].copy()
 
-        # Convert the minutes back to integers
+        # Ensure all days of the week are represented
+        all_days = pd.date_range(start=last_4_weeks_start_date, end=pd.Timestamp.today().normalize(), freq='D')
+
+        # Reindex the DataFrame to include all days
+        merged_df = merged_df.set_index('date').reindex(all_days).fillna({'total_minutes': 0}).reset_index()
+
+        # The reset_index call might have changed the 'date' column name to 'index', so rename it back to 'date'
+        merged_df.rename(columns={'index': 'date'}, inplace=True)
+
+        # Now you can safely convert the minutes back to integers without affecting other data
         merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
 
         # Create a pivot table to get the matrix format
@@ -706,14 +718,10 @@ class StudentPortal(BasePortal, ABC):
 
         # Use the Plotly Figure Factory to create the annotated heatmap
         z = pivot_table.values
-        x = ['Week ' + str(week) for week in pivot_table.columns]
+        x = ['Week ' + str(int(week)) for week in pivot_table.columns]
         y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
         fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
-        fig.update_layout(
-            xaxis_fixedrange=True,
-            yaxis_fixedrange=True
-        )
         fig.update_layout(
             title='',
             xaxis_title='Week',

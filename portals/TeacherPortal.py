@@ -185,8 +185,7 @@ class TeacherPortal(BasePortal, ABC):
             resource_description = st.text_area("Description", key='resource_description')
             resource_file = st.file_uploader("Upload Resource", type=['pdf', 'mp3', 'mp4'], key='resource_file')
             resource_type = st.selectbox("Type", ["PDF", "Audio", "Video", "Link"], key='resource_type')
-            resource_link = st.text_input("Resource Link (if applicable)",
-                                          key='resource_link') if resource_type == "Link" else None
+            resource_link = st.text_input("Resource Link (if applicable)", key='resource_link')
             submit_button = st.form_submit_button("Upload Resource")
 
             if submit_button:
