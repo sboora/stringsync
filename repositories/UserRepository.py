@@ -185,12 +185,16 @@ class UserRepository:
         ]
         return groups
 
-    def get_users_by_group(self, group_id):
+    def get_users_by_org_id_group_and_type(self, org_id, group_id, user_type):
         cursor = self.connection.cursor()
-        get_users_query = """SELECT id, username FROM users WHERE group_id = %s;"""
-        cursor.execute(get_users_query, (group_id,))
+        get_users_query = """SELECT u.id, u.name, u.username, u.email, g.name AS group_name 
+                             FROM users u
+                             LEFT JOIN user_groups g ON u.group_id = g.id
+                             WHERE u.org_id = %s AND u.group_id = %s AND u.user_type = %s;"""
+        cursor.execute(get_users_query, (org_id, group_id, user_type))
         result = cursor.fetchall()
-        users = [{'user_id': row[0], 'username': row[1]} for row in result]
+        users = [{'id': row[0], 'name': row[1], 'username': row[2],
+                  'email': row[3], 'group_name': row[4]} for row in result]
         return users
 
     def get_admin_users_by_org_id(self, org_id):
@@ -211,8 +215,8 @@ class UserRepository:
         result = cursor.fetchall()
 
         # Create a list of dictionaries to hold the user data
-        users = [{'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3], 'group_name': row[4]} for row in
-                 result]
+        users = [{'id': row[0], 'name': row[1], 'username': row[2],
+                  'email': row[3], 'group_name': row[4]} for row in result]
         return users
 
     def assign_user_to_org(self, user_id, org_id):

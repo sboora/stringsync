@@ -180,25 +180,35 @@ class RecordingRepository:
 
     def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
         cursor = self.connection.cursor()
-        query = "SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks, " \
-                "user_id FROM recordings WHERE remarks IS NULL OR remarks = '' "
-        filters = []
+        query = """
+            SELECT r.id, r.blob_name, r.blob_url, r.timestamp, r.duration,
+                   r.track_id, r.score, r.analysis, r.remarks, r.user_id
+            FROM recordings r
+        """
+        filters = ["r.remarks IS NULL OR r.remarks = ''"]
 
+        # Join with users table if group_id is not None
         if group_id is not None:
-            filters.append(f"group_id = {group_id}")
+            query += """
+                JOIN users u ON r.user_id = u.id
+            """
+            filters.append("u.group_id = %s")
 
         if user_id is not None:
-            filters.append(f"user_id = {user_id}")
+            filters.append("r.user_id = %s")
 
         if track_id is not None:
-            filters.append(f"track_id = {track_id}")
+            filters.append("r.track_id = %s")
 
         if filters:
-            query += " AND " + " AND ".join(filters)
+            query += " WHERE " + " AND ".join(filters)
 
-        query += " ORDER BY timestamp DESC"
+        query += " ORDER BY r.timestamp DESC"
 
-        cursor.execute(query)
+        # Creating a tuple of parameters to pass to execute to prevent SQL injection
+        params = tuple(filter(None, [group_id, user_id, track_id]))
+
+        cursor.execute(query, params)
         result = cursor.fetchall()
         self.connection.commit()
         recordings = []
