@@ -531,7 +531,7 @@ class BasePortal(ABC):
         user_id = self.get_user_id()  # Get the current user ID
 
         # Fetch time series data for the current user
-        time_series_data = self.user_session_repo.get_time_series_data(user_id)
+        time_series_data = self.user_session_repo.get_recording_duration_by_date(user_id)
 
         if not time_series_data:
             st.info("No session data available.")

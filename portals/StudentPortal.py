@@ -1,11 +1,8 @@
 import datetime
-import time
 from abc import ABC
-from functools import cache
-
+import plotly.express as px
 import pandas as pd
 import hashlib
-
 import requests
 import streamlit as st
 import os
@@ -281,8 +278,16 @@ class StudentPortal(BasePortal, ABC):
 
     def progress_dashboard(self):
         st.write("")
-        self.display_tracks()
+        tracks = self.display_tracks()
         st.write("")
+        # Display the line graphs for duration, tracks, and average scores
+        self.show_line_graph()
+        st.write("")
+        self.show_practice_logs_line_graph()
+        # bar graph for average score comparison
+        self.show_score_comparison(tracks)
+        # bar graph for attempts comparison
+        self.show_attempt_comparison(tracks)
 
     def display_tracks(self):
         tracks = self.get_tracks()
@@ -300,34 +305,166 @@ class StudentPortal(BasePortal, ABC):
             }
             self.build_row(row_data=row_data, column_widths=column_widths)
 
+        return tracks
+
     def show_line_graph(self):
         user_id = self.get_user_id()
-        time_series_data = self.recording_repo.get_time_series_data(user_id)
-        if not time_series_data:
+        recording_duration_data = self.recording_repo.get_recording_duration_by_date(user_id)
+        if not recording_duration_data:
             st.info("No data available.")
             return
 
-        formatted_dates = [point['date'].strftime('%m/%d') for point in time_series_data]
-        total_durations = [max(0, int(point['total_duration'])) / 60 for point in time_series_data if
-                           point['total_duration'] is not None]
-        total_tracks = [int(point['total_tracks']) for point in time_series_data]
+        # Create a DataFrame from time_series_data
+        df = pd.DataFrame(recording_duration_data)
 
-        # Create a DataFrame for Total Duration
-        df_duration = pd.DataFrame({
-            'Date': formatted_dates,
-            'Total Duration (minutes)': total_durations
-        })
+        # Convert 'date' to datetime and ensure it's the index
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', inplace=True)
 
-        # Create a DataFrame for Total Tracks
-        df_tracks = pd.DataFrame({
-            'Date': formatted_dates,
-            'Total Tracks': total_tracks
-        })
+        # Determine the full range of dates from the available data
+        full_date_range_start = df.index.min()
+        full_date_range_end = df.index.max()
 
-        # Display the charts side by side
+        # Determine the range of dates for plotting
+        plot_start_date = min(full_date_range_start, (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize())
+
+        # Create a date range that includes every day from the earliest data or the last 4 weeks to the latest data
+        all_days = pd.date_range(start=plot_start_date, end=full_date_range_end, freq='D')
+
+        # Reindex the DataFrame to include all days, filling missing values with 0
+        df = df.reindex(all_days).fillna(0).reset_index()
+        df.rename(columns={'index': 'date'}, inplace=True)
+
+        # Plotting the line graph for Total Duration
+        fig_duration = px.line(
+            df,
+            x='date',
+            y='total_duration',
+            title='Total Recording Duration Over Time',
+            labels={'date': 'Date', 'total_duration': 'Total Duration (minutes)'}
+        )
+        fig_duration.update_yaxes(range=[0, max(60, df['total_duration'].max())])
+
+        # Plotting the line graph for Total Tracks
+        fig_tracks = px.line(
+            df,
+            x='date',
+            y='total_tracks',
+            title='Total Tracks Practiced Over Time',
+            labels={'date': 'Date', 'total_tracks': 'Total Tracks'}
+        )
+        fig_tracks.update_yaxes(range=[0, df['total_tracks'].max()])
+
+        # Display the charts side by side using Streamlit columns
         col1, col2 = st.columns(2)
-        col1.line_chart(df_duration.set_index('Date'))
-        col2.line_chart(df_tracks.set_index('Date'))
+        with col1:
+            st.plotly_chart(fig_duration)
+        with col2:
+            st.plotly_chart(fig_tracks)
+
+    def show_practice_logs_line_graph(self):
+        user_id = self.get_user_id()
+        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
+
+        if not practice_data:
+            st.info("No data available for the line graph.")
+            return
+
+        df = pd.DataFrame(practice_data)
+        df['date'] = pd.to_datetime(df['date'])
+
+        # Determine the full range of dates in the dataset
+        full_date_range_start = df['date'].min()
+        full_date_range_end = df['date'].max()
+
+        # Determine the start date for plotting which is the earlier of the two: the start date of your data or 4
+        # weeks ago
+        plot_start_date = min(full_date_range_start, (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize())
+
+        # Create a date range that includes every day from the start of your data or the last 4 weeks to today
+        all_days = pd.date_range(start=plot_start_date, end=pd.Timestamp.today().normalize(), freq='D')
+
+        # Reindex the DataFrame to include all days, filling missing values with 0 for 'total_minutes'
+        df.set_index('date', inplace=True)
+        df = df.reindex(all_days).fillna(0).reset_index()
+        df.rename(columns={'index': 'date'}, inplace=True)
+        df['total_minutes'] = df['total_minutes'].astype(int)
+
+        # Plotting the line graph for total practice minutes
+        fig_line = px.line(
+            df,
+            x='date',
+            y='total_minutes',
+            title='Daily Practice Minutes Over the Last 4 Weeks',
+            labels={'date': 'Date', 'total_minutes': 'Total Minutes'}
+        )
+
+        # Set the y-axis to start from 0
+        fig_line.update_yaxes(range=[0, max(60, df['total_minutes'].max())])
+
+        # Adding the line graph to the Streamlit app
+        st.plotly_chart(fig_line, use_column_width=True)
+
+    @staticmethod
+    def show_score_comparison(tracks):
+        # Flatten the track details for easier DataFrame creation
+        flattened_tracks = [
+            {
+                'Track Name': track_detail['track']['name'],
+                'Number of Recordings': track_detail['num_recordings'],
+                'Average Score': track_detail['avg_score'],
+                'Min Score': track_detail['min_score'],
+                'Max Score': track_detail['max_score']
+            }
+            for track_detail in tracks
+        ]
+
+        # Create a DataFrame for the track statistics
+        df_track_stats = pd.DataFrame(flattened_tracks)
+        print(df_track_stats)
+        df_track_stats.sort_values('Average Score', ascending=False, inplace=True)
+
+        # Visualize with a bar chart
+        fig = px.bar(
+            df_track_stats,
+            x='Track Name',  # Use the 'Track Name' for x-axis
+            y='Average Score',
+            color='Average Score',
+            labels={'Track Name': 'Track', 'Average Score': 'Average Score'},
+            title='Average Score per Track Comparison'
+        )
+        st.plotly_chart(fig)
+
+    @staticmethod
+    def show_attempt_comparison(tracks):
+        # Ensure the track details are flattened for DataFrame creation
+        flattened_tracks = [
+            {
+                'Track Name': track_detail['track']['name'],
+                'Number of Recordings': track_detail['num_recordings'],
+                'Average Score': float(track_detail['avg_score']),  # Ensure numeric type for scores
+                'Min Score': float(track_detail['min_score']),  # Convert to float if necessary
+                'Max Score': float(track_detail['max_score'])
+            }
+            for track_detail in tracks
+        ]
+
+        # Create a DataFrame for the track statistics
+        df_track_stats = pd.DataFrame(flattened_tracks)
+
+        # Sort by 'Number of Recordings' for attempt comparison
+        df_track_stats.sort_values('Number of Recordings', ascending=False, inplace=True)
+
+        # Visualize with a bar chart comparing attempts
+        fig = px.bar(
+            df_track_stats,
+            x='Track Name',
+            y='Number of Recordings',
+            color='Number of Recordings',
+            labels={'Track Name': 'Track', 'Number of Recordings': 'Attempts'},
+            title='Attempt Comparison per Track'
+        )
+        st.plotly_chart(fig)
 
     def get_tracks(self):
         # Fetch all tracks and track statistics for this user

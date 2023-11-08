@@ -11,6 +11,7 @@ import streamlit as st
 import pandas as pd
 
 from enums.UserType import UserType
+import plotly.figure_factory as ff
 
 
 class TeacherPortal(BasePortal, ABC):
@@ -37,8 +38,9 @@ class TeacherPortal(BasePortal, ABC):
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
             ("🎵 Remove Track", self.remove_track),
-            ("🎵 Recordings", self.list_recordings),
+            #("🎵 Recordings", self.list_recordings),
             ("📥 Submissions", self.submissions),
+            ("⏲️ Practice Log", self.practice_logs),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -106,9 +108,8 @@ class TeacherPortal(BasePortal, ABC):
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
 
         if not students:
-            # Display an informational message if no students are found.
             st.info(f"Please ask new members to join the team using join code: {st.session_state['join_code']}")
-            return  # Exit the function early since there are no students to list.
+            return
 
         column_widths = [20, 20, 20, 20, 20]
         self.build_header(column_names=["Name", "Username", "Email", "Team", "Join Code"],
@@ -578,6 +579,86 @@ class TeacherPortal(BasePortal, ABC):
                                                              submission['id'],
                                                              TrackBadges(selected_badge))
             st.rerun()
+
+    def practice_logs(self):
+        users = self.user_repo.get_users_by_org_id_and_type(
+            self.get_org_id(), UserType.STUDENT.value)
+
+        user_options = {user['username']: user['id'] for user in users}
+        options = ['--Select a student--'] + list(user_options.keys())
+        selected_username = st.selectbox(key=f"user_select", label="Select a student to view their practice logs:",
+                                         options=options)
+        selected_user_id = None
+        if selected_username != '--Select a student--':
+            selected_user_id = user_options[selected_username]
+        else:
+            return
+
+        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(
+            selected_user_id)
+
+        # Check if practice_data is empty
+        if not practice_data:
+            return
+
+        df = pd.DataFrame(practice_data)
+        df['date'] = pd.to_datetime(df['date'])
+
+        # Determine the start date for the last 4 weeks
+        last_4_weeks_start_date = (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize()
+
+        # Filter merged_df for only the last 4 weeks
+        merged_df = df[df['date'] >= last_4_weeks_start_date].copy()
+
+        # Ensure all days of the week are represented
+        all_days = pd.date_range(start=last_4_weeks_start_date, end=pd.Timestamp.today().normalize(), freq='D')
+
+        # Reindex the DataFrame to include all days
+        merged_df = merged_df.set_index('date').reindex(all_days).fillna({'total_minutes': 0}).reset_index()
+
+        # The reset_index call might have changed the 'date' column name to 'index', so rename it back to 'date'
+        merged_df.rename(columns={'index': 'date'}, inplace=True)
+
+        # Now you can safely convert the minutes back to integers without affecting other data
+        merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
+
+        # Create a pivot table to get the matrix format
+        pivot_table = merged_df.pivot_table(values='total_minutes', index=merged_df['date'].dt.dayofweek,
+                                            columns=merged_df['date'].dt.isocalendar().week, fill_value=0)
+
+        # Use the Plotly Figure Factory to create the annotated heatmap
+        z = pivot_table.values
+        x = ['Week ' + str(int(week)) for week in pivot_table.columns]
+        y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+        fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
+        fig.update_layout(
+            title='',
+            xaxis_title='Week',
+            yaxis_title='Day'
+        )
+
+        # Adjust the shape coordinates to encapsulate the entire chart including labels
+        fig.update_layout(
+            height=600,
+            width=1400,
+            shapes=[
+                dict(
+                    type="rect",
+                    xref="paper",
+                    yref="paper",
+                    x0=-0.2,  # left side
+                    y0=-0.0,  # bottom
+                    x1=1.0,  # right side
+                    y1=1.2,  # top
+                    line=dict(
+                        color="#EAEDED",
+                        width=0,
+                    ),
+                )
+            ]
+        )
+        st.plotly_chart(fig, use_column_width=True, config={'displayModeBar': False, 'displaylogo': False})
 
     @staticmethod
     def calculate_file_hash(audio_data):
