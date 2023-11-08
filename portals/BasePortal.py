@@ -7,7 +7,7 @@ import streamlit as st
 
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
-from enums.Settings import Settings, Portal, SettingType
+from enums.Settings import Settings, SettingType
 from enums.UserType import UserType
 from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
@@ -24,6 +24,7 @@ from repositories.UserPracticeLogRepository import UserPracticeLogRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
 from repositories.UserSessionRepository import UserSessionRepository
+from repositories.ResourceRepository import ResourceRepository
 
 
 class BasePortal(ABC):
@@ -42,6 +43,7 @@ class BasePortal(ABC):
         self.feature_repo = None
         self.raga_repo = None
         self.user_practice_log_repo = None
+        self.resource_repo = None
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
@@ -60,6 +62,7 @@ class BasePortal(ABC):
         self.track_repo = TrackRepository(self.get_connection())
         self.recording_repo = RecordingRepository(self.get_connection())
         self.portal_repo = PortalRepository(self.get_connection())
+        self.resource_repo = ResourceRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
 
     @abstractmethod
@@ -728,6 +731,7 @@ class BasePortal(ABC):
         self.feature_repo = None
         self.raga_repo = None
         self.user_practice_log_repo = None
+        self.resource_repo = None
         self.close_connection()
         self.database_manager = None
 

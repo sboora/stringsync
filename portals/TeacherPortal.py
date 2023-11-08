@@ -33,6 +33,7 @@ class TeacherPortal(BasePortal, ABC):
             ("👥 List Teams", self.list_teams),
             ("👩‍🎓 Students", self.list_students),
             ("🔀 Assign Students to Teams", self.assign_students_to_team),
+            ("📚 Resources", self.manage_resources),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
             ("🎵 Remove Track", self.remove_track),
@@ -174,6 +175,91 @@ class TeacherPortal(BasePortal, ABC):
                         if selected_group_id != current_group_id:
                             self.user_repo.assign_user_to_group(student['id'], selected_group_id)
                             st.rerun()
+
+    def manage_resources(self):
+        st.header("Resources Management")
+
+        # Part for uploading new resources
+        with st.form("resource_upload"):
+            resource_title = st.text_input("Title", key='resource_title')
+            resource_description = st.text_area("Description", key='resource_description')
+            resource_file = st.file_uploader("Upload Resource", type=['pdf', 'mp3', 'mp4'], key='resource_file')
+            resource_type = st.selectbox("Type", ["PDF", "Audio", "Video", "Link"], key='resource_type')
+            resource_link = st.text_input("Resource Link (if applicable)",
+                                          key='resource_link') if resource_type == "Link" else None
+            submit_button = st.form_submit_button("Upload Resource")
+
+            if submit_button:
+                self.handle_resource_upload(
+                    title=resource_title,
+                    description=resource_description,
+                    file=resource_file,
+                    rtype=resource_type,
+                    link=resource_link
+                )
+
+        # Part for listing existing resources
+        self.list_resources()
+
+    def handle_resource_upload(self, title, description, file, rtype, link):
+        if rtype != "Link" and not file:
+            st.error("Please upload a file.")
+            return
+
+        if rtype == "Link" and not link:
+            st.error("Please provide a resource link.")
+            return
+
+        if title:
+            if rtype == "Link":
+                # Save the link to the database
+                self.resource_repo.add_resource(self.get_user_id(), title, description, rtype, None, link)
+                st.success("Resource link added successfully!")
+            else:
+                # Save the file to storage and get the URL
+                file_url = self.storage_repo.upload_blob(file.getvalue(), f"{title}_{file.name}")
+                # Save the file information to the database
+                self.resource_repo.add_resource(self.get_user_id(), title, description, rtype, file_url, None)
+                st.success("File uploaded successfully!")
+        else:
+            st.error("Title is required.")
+
+    def list_resources(self):
+        # Fetch resources from the DB
+        resources = self.resource_repo.list_resources()
+        if resources:
+            for resource in resources:
+                with st.expander(f"{resource['title']}"):
+                    st.write(resource['description'])
+                    if resource['type'] == "Link":
+                        st.markdown(f"[Resource Link]({resource['link']})")
+                    else:
+                        data = self.storage_repo.download_blob_by_url(resource['file_url'])
+                        st.download_button(
+                            label="Download",
+                            data=data,
+                            file_name=resource['title'],
+                            mime='application/octet-stream'
+                        )
+                    if st.button(f"Delete {resource['title']}", key=f"delete_{resource['id']}"):
+                        self.delete_resource(resource['id'])
+        else:
+            st.info("No resources found. Upload a resource to get started.")
+
+    def delete_resource(self, resource_id):
+        # Delete resource from the database and storage
+        resource = self.resource_repo.get_resource_by_id(resource_id)
+        if resource:
+            if resource['file_url']:
+                # Delete the file from storage
+                self.storage_repo.delete_blob(resource['file_url'])
+            # Delete the resource from the database
+            self.resource_repo.delete_resource(resource_id)
+            st.success("Resource deleted successfully!")
+            # Refresh the page to show the updated list
+            st.experimental_rerun()
+        else:
+            st.error("Resource not found.")
 
     def create_track(self):
         with st.form(key='create_track_form', clear_on_submit=True):
@@ -345,9 +431,11 @@ class TeacherPortal(BasePortal, ABC):
         selected_group_id = None
         if selected_group_name != '--Select a team--':
             selected_group_id = group_options[selected_group_name]
-            users = self.user_repo.get_users_by_group(selected_group_id)
+            users = self.user_repo.get_users_by_org_id_group_and_type(
+                self.get_org_id(), selected_group_id, UserType.STUDENT.value)
         else:
-            users = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
+            users = self.user_repo.get_users_by_org_id_and_type(
+                self.get_org_id(), UserType.STUDENT.value)
 
         user_options = {user['username']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
@@ -375,20 +463,14 @@ class TeacherPortal(BasePortal, ABC):
 
         return selected_group_id, selected_username, selected_user_id, selected_track_id, track_path
 
-    @staticmethod
-    def display_track_files(track_file):
-        """
-        Display the teacher's track files.
-
-        Parameters:
-            track_file (str): The path to the track file.
-        """
-        if track_file is None:
+    def display_track_files(self, url):
+        if url is None:
             return
 
         st.write("")
         st.write("")
-        st.audio(track_file, format='core/m4a')
+        audio_data = self.storage_repo.download_blob_by_url(url)
+        st.audio(audio_data, format='core/m4a')
 
     def list_recordings(self):
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
@@ -405,15 +487,18 @@ class TeacherPortal(BasePortal, ABC):
         df = pd.DataFrame(recordings)
 
         # Create a table header
-        header_html = self.build_header()
+        header_html = self.build_header(
+            column_names=["Recording", "Score", "System Analysis", "Remarks", "Timestamp"],
+            column_widths=[20, 20, 20, 20, 20]
+        )
         st.markdown(header_html, unsafe_allow_html=True)
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([3.5, 1, 3, 3, 2])
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
 
             if recording['blob_url']:
-                filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
+                filename = self.storage_repo.download_blob_by_url(recording['blob_url'])
                 col1.audio(filename, format='core/m4a')
             else:
                 col1.write("No core data available.")
@@ -442,48 +527,56 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         # Fetch and sort recordings
-        recordings = self.recording_repo.get_unremarked_recordings(group_id, user_id, track_id)
+        recordings = self.portal_repo.get_unremarked_recordings(group_id, user_id, track_id)
         if not recordings:
             st.info("No submissions found.")
             return
 
         df = pd.DataFrame(recordings)
 
-        self.build_header(column_names=["Track", "Score", "System Analysis", "Remarks", "Badges"],
-                          column_widths=[20, 20, 20, 20, 20])
+        self.build_header(column_names=["Track", "Recording", "Score", "System Analysis", "Remarks", "Badges"],
+                          column_widths=[16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
         # Display each recording
         for index, recording in df.iterrows():
             self.display_submission_row(recording)
 
-    def display_submission_row(self, recording):
-        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+    def display_submission_row(self, submission):
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
 
         col1.write("")
-        if recording['blob_url']:
-            filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
+        if submission['track_path']:
+            filename = self.storage_repo.download_blob_by_url(submission['track_path'])
             col1.audio(filename, format='core/m4a')
         else:
             col1.write("No core data available.")
 
-        score = col2.text_input("", key=f"score_{recording['id']}", value=recording['score'])
-        if score:
-            self.recording_repo.update_score(recording["id"], score)
+        col2.write("")
+        if submission['blob_url']:
+            filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
+            col2.audio(filename, format='core/m4a')
+        else:
+            col2.write("No core data available.")
 
-        col3.write("", style={"fontSize": "5px"})
-        col3.markdown(
-            f"<div style='padding-top:14px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
+        score = col3.text_input("", key=f"score_{submission['id']}", value=submission['score'])
+        if score:
+            self.recording_repo.update_score(submission["id"], score)
+
+        col4.write("", style={"fontSize": "5px"})
+        col4.markdown(
+            f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
 
-        remarks = col4.text_input("", key=f"remarks_{recording['id']}")
+        remarks = col5.text_input("", key=f"remarks_{submission['id']}")
 
         badge_options = [badge.value for badge in TrackBadges]
-        selected_badge = col5.selectbox("", ['--Select a badge--', 'N/A'] + badge_options, key=f"badge_{recording['id']}")
+        selected_badge = col6.selectbox("", ['--Select a badge--', 'N/A'] + badge_options,
+                                        key=f"badge_{submission['id']}")
 
         if remarks and selected_badge != '--Select a badge--':
-            self.recording_repo.update_remarks(recording["id"], remarks)
+            self.recording_repo.update_remarks(submission["id"], remarks)
             if selected_badge != 'N/A':
-                self.user_achievement_repo.award_track_badge(recording['user_id'],
-                                                             recording['id'],
+                self.user_achievement_repo.award_track_badge(submission['user_id'],
+                                                             submission['id'],
                                                              TrackBadges(selected_badge))
             st.rerun()
 

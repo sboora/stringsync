@@ -14,6 +14,7 @@ from streamlit_lottie import st_lottie
 
 from core.BadgeAwardProcessor import BadgeAwardProcessor
 from enums.ActivityType import ActivityType
+from enums.Badges import UserBadges, TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal, Settings
 from notations.NotationBuilder import NotationBuilder
@@ -44,6 +45,7 @@ class StudentPortal(BasePortal, ABC):
             ("📥 Submissions", self.submissions),
             ("⏲️ Practice Log", self.practice_log),
             ("🏆 Badges", self.badges),
+            ("📚 Resources", self.resources),
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SETTINGS) else None,
@@ -113,6 +115,7 @@ class StudentPortal(BasePortal, ABC):
         # Download and save the audio files to temporary locations
         track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
         load_recordings = False
+        badge_awarded = False
         col1, col2, col3 = st.columns([5, 5, 5])
         with col1:
             self.display_track_files(track_audio_path)
@@ -133,11 +136,15 @@ class StudentPortal(BasePortal, ABC):
                                                      ActivityType.UPLOAD_RECORDING,
                                                      additional_params)
                 self.user_session_repo.update_last_activity_time(self.get_session_id())
+                badge_awarded = self.badge_awarder.award_badge(
+                    self.get_org_id(), self.get_user_id(), track['id'], TrackBadges.FIRST_NOTE)
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(
                     track_audio_path, recording_name, track_notes, track['offset'])
                 self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
+        if badge_awarded:
+            self.show_animations()
 
         if load_recordings:
             self.recordings(track['id'])
@@ -226,7 +233,7 @@ class StudentPortal(BasePortal, ABC):
             return
         column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
         self.build_header(
-            column_names=["Tack Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
+            column_names=["Track Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
             column_widths=column_widths)
 
         # Display submissions
@@ -556,6 +563,56 @@ class StudentPortal(BasePortal, ABC):
 
                 Start by listening to a track and making your first recording today!
             """)
+
+    def resources(self):
+        # Fetch resources from the DB
+        resources = self.resource_repo.list_resources()
+
+        # Organize resources by type
+        resources_by_type = {
+            'PDF': [],
+            'Audio': [],
+            'Video': [],
+            'Link': []
+        }
+
+        for resource in resources:
+            resources_by_type[resource['type']].append(resource)
+
+        # Check if there are any resources
+        if resources:
+            # Display resources by type in separate expanders
+            for resource_type, resources_list in resources_by_type.items():
+                if resources_list:  # Check if there are any resources of this type
+                    with st.expander(f"{resource_type}s"):
+                        # Use columns to display each resource in a row
+                        for resource in resources_list:
+                            col1, col2, col3 = st.columns([2, 3, 3])
+                            with col1:
+                                st.markdown(f"**{resource['title']}**")
+                            with col2:
+                                st.write(resource['description'])
+                            with col3:
+                                # Display the appropriate content based on the resource type
+                                if resource['type'] == 'Link':
+                                    st.markdown(f"[Link]({resource['link']})")
+                                elif resource['type'] == 'Video':
+                                    st.video(resource['file_url'])
+                                elif resource['type'] == 'Audio':
+                                    st.audio(resource['file_url'])
+                                elif resource['type'] == 'PDF':
+                                    # Assume `download_blob_by_url` returns the data as bytes
+                                    data = self.storage_repo.download_blob_by_url(resource['file_url'])
+                                    st.download_button(
+                                        label="Download",
+                                        data=data,
+                                        file_name=f"{resource['title']}.pdf",
+                                        mime='application/pdf',
+                                        key=f"download_{resource['id']}",
+                                        type='primary'
+                                    )
+        else:
+            st.info("No resources found.")
 
     def practice_log(self):
         st.markdown("<h2 style='text-align: center; font-weight: bold; color: #769AA0; font-size: 24px;'>🎵 Practice "
