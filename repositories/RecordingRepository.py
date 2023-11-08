@@ -178,7 +178,7 @@ class RecordingRepository:
         cursor.execute(update_query, (remarks, recording_id))
         self.connection.commit()
 
-    def get_time_series_data(self, user_id):
+    def get_recording_duration_by_date(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
             SELECT DATE(timestamp) as date, 
@@ -196,36 +196,24 @@ class RecordingRepository:
         if not result:
             return []
 
-        # Determine the earliest recording date and the last day of the current month
-        start_date = result[0]['date']
-        end_date = datetime(datetime.now().year, datetime.now().month + 1, 1).date() - timedelta(days=1)
+        return result
 
-        # Initialize an empty list to hold the time series data
-        all_days_data = []
+    def get_average_scores_over_time(self, user_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+            SELECT DATE(timestamp) as date, AVG(score) as avg_score
+            FROM recordings 
+            WHERE user_id = %s AND score IS NOT NULL
+            GROUP BY DATE(timestamp) 
+            ORDER BY DATE(timestamp) ASC;
+        """
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
 
-        # Iterate through the days from the earliest recording to the end of the current month
-        current_date = start_date
-        while current_date <= end_date:
+        # Convert None values to a default value if necessary, e.g., 0
+        for day in result:
+            if day['avg_score'] is None:
+                day['avg_score'] = 0
 
-            # Check if there is data for the current day in the query result
-            day_data = next((item for item in result if item['date'] == current_date), None)
+        return result
 
-            if day_data:
-                # Update the last known total_duration and total_tracks
-                last_total_duration = day_data['total_duration']
-                last_total_tracks = day_data['total_tracks']
-            else:
-                # Reset both total_duration and total_tracks to 0 for days without data
-                last_total_duration = 0
-                last_total_tracks = 0
-
-            # Append the data for the current day to the list
-            all_days_data.append({
-                'date': current_date,
-                'total_duration': last_total_duration,
-                'total_tracks': last_total_tracks
-            })
-
-            # Move to the next day
-            current_date += timedelta(days=1)
-        return all_days_data
