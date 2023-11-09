@@ -48,14 +48,12 @@ class PracticeDashboardBuilder:
         y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
         fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
-        fig.update_layout(
-            title='',
-            xaxis_title='Week',
-            yaxis_title='Day'
-        )
 
         # Adjust the shape coordinates to encapsulate the entire chart including labels
         fig.update_layout(
+            title='',
+            xaxis_title='Week',
+            yaxis_title='Day',
             shapes=[
                 dict(
                     type="rect",

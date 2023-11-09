@@ -25,6 +25,9 @@ class ProgressDashboardBuilder:
 
     def progress_dashboard(self, user_id):
         tracks = self.get_tracks(user_id)
+        if len(tracks) == 0:
+            st.info("No data available.")
+
         # Display stats by track
         self.display_tracks(tracks)
         # Display the line graphs for duration, tracks, and average scores
@@ -78,7 +81,6 @@ class ProgressDashboardBuilder:
     def show_track_count_and_duration_trends(self, user_id):
         recording_duration_data = self.recording_repo.get_recording_duration_by_date(user_id)
         if not recording_duration_data:
-            st.info("No data available.")
             return
 
         # Create a DataFrame from time_series_data
@@ -132,7 +134,6 @@ class ProgressDashboardBuilder:
         practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
 
         if not practice_data:
-            st.info("No data available for the line graph.")
             return
 
         df = pd.DataFrame(practice_data)
@@ -207,8 +208,8 @@ class ProgressDashboardBuilder:
             {
                 'Track Name': track_detail['track']['name'],
                 'Number of Recordings': track_detail['num_recordings'],
-                'Average Score': float(track_detail['avg_score']),  # Ensure numeric type for scores
-                'Min Score': float(track_detail['min_score']),  # Convert to float if necessary
+                'Average Score': float(track_detail['avg_score']),
+                'Min Score': float(track_detail['min_score']),
                 'Max Score': float(track_detail['max_score'])
             }
             for track_detail in tracks

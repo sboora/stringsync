@@ -1,7 +1,7 @@
 import os
 
 from enums import Badges
-from enums.Badges import UserBadges
+from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
@@ -31,8 +31,12 @@ class BadgeAwarder:
 
         return badge_awarded
 
-    def award_badge(self, org_id, user_id, track_id, badge: Badges):
-        badge_awarded, _ = self.user_achievement_repo.award_track_badge(user_id, track_id, badge)
+    def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges):
+        badge_awarded, _ = self.user_achievement_repo.award_track_badge(user_id, recording_id, badge)
+        return badge_awarded
+
+    def award_user_badge(self, org_id, user_id, badge: UserBadges):
+        badge_awarded, _ = self.user_achievement_repo.award_user_badge(user_id, badge)
         return badge_awarded
 
     def get_badge(self, badge_name):
