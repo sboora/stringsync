@@ -37,7 +37,7 @@ class AdminPortalTest(PortalTestBase):
         self.find_input_and_type("input[aria-label='Description']", SCHOOL['description'])
         self.delay()
         self.click_button("button:contains('Register School')")
-        time.sleep(3)
+        self.delay(5)
         self.get_join_code(SCHOOL['name'])
 
     def get_join_code(self, school):
@@ -71,7 +71,7 @@ class AdminPortalTest(PortalTestBase):
         self.find_input_and_type("input[aria-label='Password']", TUTOR['password'])
         self.delay()
         self.click("button:contains('Register Tutor')")
-        self.delay()
+        self.delay(5)
         self.verify_registration_successful(
             f"User {TUTOR['username']} with email {TUTOR['email']} registered successfully as teacher.")
         self.delay()

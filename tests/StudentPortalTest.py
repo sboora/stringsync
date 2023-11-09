@@ -1,7 +1,7 @@
 import time
 
 from PortalTestBase import PortalTestBase
-from config import STUDENTS, SCHOOL, TRACK_NAME, RECORDING_PATH
+from config import STUDENTS, SCHOOL, RECORDINGS
 
 
 class StudentPortalTest(PortalTestBase):
@@ -24,15 +24,20 @@ class StudentPortalTest(PortalTestBase):
         self.assert_text_present(text)
 
     def record(self):
-        self.click("div[data-testid='stSelectbox']:contains('Select a Track') div[value='0']")
-        self.delay()
-        self.click(f"//li[div/div/div[text()='{TRACK_NAME}']]")
-        self.delay()
-        self.choose_file('section[aria-label="Choose an audio file"] input[type="file"]', RECORDING_PATH)
-        time.sleep(2)
-        # Submit the recording
-        self.click("button:contains('Upload')")
-        time.sleep(5)
+        value = 0
+        for recording in RECORDINGS:
+            self.click(f"div[data-testid='stSelectbox']:contains('Select a Track') div[value='{value}']")
+            self.click(f"//li[div/div/div[text()='{recording['track_name']}']]")
+            self.delay(5)
+            self.choose_file('section[aria-label="Choose an audio file"] input[type="file"]', recording['recording_path'])
+            self.delay(3)
+            # Submit the recording
+            self.click("button:contains('Upload')")
+            self.delay(7)
+            if recording['track_name'] == 'Lesson 1':
+                value = 1
+            elif recording['track_name'] == 'Lesson 2':
+                value = 2
 
     def submissions(self):
         self.click("button[id^='tabs-'][id$='-tab-1']")
@@ -42,9 +47,9 @@ class StudentPortalTest(PortalTestBase):
 
     def register_student(self):
         self.open_login_page(self.get_url())
-        time.sleep(3)
+        self.delay(3)
         self.click_button("button:contains('Register')")
-        time.sleep(3)
+        self.delay(3)
         self.find_input_and_type("input[aria-label='Name']", self.user)
         self.delay()
         self.find_input_and_type("input[aria-label='Email']", self.email)
@@ -56,9 +61,9 @@ class StudentPortalTest(PortalTestBase):
         self.find_input_and_type("input[aria-label='Confirm Password']", self.password)
         self.delay()
         self.find_input_and_type("input[aria-label='Join Code']", SCHOOL['join_code'])
-        time.sleep(3)
+        self.delay(3)
         self.click_button("button:contains('Submit')")
-        time.sleep(1)
+        self.delay(1)
         self.verify_registration_successful(f"User {self.username} with email {self.email} registered successfully as "
                                             f"student.")
 

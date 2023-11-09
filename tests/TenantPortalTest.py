@@ -39,7 +39,7 @@ class TenantPortalTest(PortalTestBase):
         self.find_input_and_type("input[aria-label='Email']", TENANT_EMAIL)
         self.delay()
         self.click_button('[data-testid="baseButton-primaryFormSubmit"]')
-        time.sleep(3)
+        self.delay(5)
         self.verify_registration_successful()
 
     def get_test_flow_methods(self):

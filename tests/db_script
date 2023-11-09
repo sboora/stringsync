@@ -1,0 +1,17 @@
+delete from user_sessions where user_id in (select id from users where org_id in (select id from organizations where tenant_id in (select id from tenants where name = 'ABCD Corp')));
+delete from user_activities where user_id in (select id from users where org_id in (select id from organizations where tenant_id in (select id from tenants where name = 'ABCD Corp')));
+delete from users where org_id in (select id from organizations where is_root is False and tenant_id in (select id from tenants where name = 'ABCD Corp'));
+delete from users where username = 'abcdviolinteacher';
+delete from organizations where is_root is False and tenant_id in (select id from tenants where name = 'ABCD Corp');
+delete from tenants where name = 'ABCD Corp';
+
+delete from user_sessions;
+delete from user_activities;
+delete from user_achievements;
+delete from user_practice_logs;
+delete from users;
+delete from user_groups;
+delete from tracks;
+delete from recordings;
+delete from organizations;
+delete from tenants;

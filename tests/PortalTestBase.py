@@ -41,9 +41,9 @@ class PortalTestBase(BaseCase):
         self.find_input_and_type("input[aria-label='Username']", username)
         self.delay()
         self.find_input_and_type("input[aria-label='Password']", password)
-        self.sleep(2)
+        self.delay(2)
         self.click_button("button:contains('Login')")
-        self.delay()
+        self.delay(5)
         self.verify_login_successful()
         self.delay()
 
@@ -73,8 +73,11 @@ class PortalTestBase(BaseCase):
     def get_password(self):
         return ""
 
-    def delay(self):
-        self.sleep(self.sleep_timer)
+    def delay(self, sleep=0):
+        if sleep > 0:
+            self.sleep(sleep)
+        else:
+            self.sleep(self.sleep_timer)
 
     @staticmethod
     def write_join_code_to_config(join_code):
