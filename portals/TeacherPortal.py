@@ -3,9 +3,11 @@ import os
 from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
+from core.BadgeAwarder import BadgeAwarder
 from core.ListBuilder import ListBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
+from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
@@ -20,11 +22,16 @@ class TeacherPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
+        self.badge_awarder = BadgeAwarder(
+            self.settings_repo, self.recording_repo,
+            self.user_achievement_repo, self.user_practice_log_repo, self.storage_repo)
         self.practice_dashboard_builder = PracticeDashboardBuilder(
             self.user_practice_log_repo)
         self.progress_dashboard_builder = ProgressDashboardBuilder(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo)
+        self.team_dashboard_builder = TeamDashboardBuilder(
+            self.portal_repo, self.user_achievement_repo, self.badge_awarder)
 
     def get_portal(self):
         return Portal.TEACHER
@@ -38,7 +45,7 @@ class TeacherPortal(BasePortal, ABC):
     def get_tab_dict(self):
         tabs = [
             ("👥 Create a Team", self.create_team),
-            ("👥 List Teams", self.team_dashboard),
+            ("👥 List Teams", self.teams),
             ("👩‍🎓 Students", self.list_students),
             ("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
@@ -48,8 +55,8 @@ class TeacherPortal(BasePortal, ABC):
             ("🎵 Recordings", self.list_recordings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_RECORDINGS) else None,
             ("📥 Submissions", self.submissions),
-            ("⏲️ Practice Log", self.practice_dashboard),
             ("📊 Progress Dashboard", self.progress_dashboard),
+            ("Team Dashboard", self.team_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -89,7 +96,7 @@ class TeacherPortal(BasePortal, ABC):
                 else:
                     st.warning("Team name cannot be empty.")
 
-    def team_dashboard(self):
+    def teams(self):
         # Fetch all groups
         groups = self.user_repo.get_all_groups()
 
@@ -225,7 +232,7 @@ class TeacherPortal(BasePortal, ABC):
                 st.success("Resource link added successfully!")
             else:
                 # Save the file to storage and get the URL
-                file_url = self.storage_repo.upload_blob(file.getvalue(), f"{title}_{file.name}")
+                file_url = self.upload_resource_to_storage(file.getvalue(), f"{title}_{file.name}")
                 # Save the file information to the database
                 self.resource_repo.add_resource(self.get_user_id(), title, description, rtype, file_url, None)
                 st.success("File uploaded successfully!")
@@ -299,9 +306,9 @@ class TeacherPortal(BasePortal, ABC):
                     if self.track_repo.is_duplicate(track_hash):
                         st.error("You have already uploaded this track.")
                         return
-                    track_url = self.upload_to_storage(track_file, track_data)
+                    track_url = self.upload_track_to_storage(track_file, track_data)
                     ref_track_data = ref_track_file.getbuffer()
-                    ref_track_url = self.upload_to_storage(ref_track_file, ref_track_data)
+                    ref_track_url = self.upload_track_to_storage(ref_track_file, ref_track_data)
                     self.storage_repo.download_blob(track_url, track_file.name)
                     self.storage_repo.download_blob(ref_track_url, ref_track_file.name)
                     offset = self.audio_processor.compare_audio(track_file.name, ref_track_file.name)
@@ -377,8 +384,12 @@ class TeacherPortal(BasePortal, ABC):
             return False
         return True
 
-    def upload_to_storage(self, file, data):
+    def upload_track_to_storage(self, file, data):
         blob_path = f'{self.get_tracks_bucket()}/{file.name}'
+        return self.storage_repo.upload_blob(data, blob_path)
+
+    def upload_resource_to_storage(self, file, data):
+        blob_path = f'{self.get_resources_bucket()}/{file.name}'
         return self.storage_repo.upload_blob(data, blob_path)
 
     def remove_track(self):
@@ -588,23 +599,6 @@ class TeacherPortal(BasePortal, ABC):
                                                              TrackBadges(selected_badge))
             st.rerun()
 
-    def practice_dashboard(self):
-        users = self.user_repo.get_users_by_org_id_and_type(
-            self.get_org_id(), UserType.STUDENT.value)
-
-        user_options = {user['username']: user['id'] for user in users}
-        options = ['--Select a student--'] + list(user_options.keys())
-        selected_username = st.selectbox(key=f"user_select_practice_dashboard",
-                                         label="Select a student to view their practice logs:",
-                                         options=options)
-        selected_user_id = None
-        if selected_username != '--Select a student--':
-            selected_user_id = user_options[selected_username]
-        else:
-            return
-
-        self.practice_dashboard_builder.practice_dashboard(selected_user_id)
-
     def progress_dashboard(self):
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
@@ -612,8 +606,12 @@ class TeacherPortal(BasePortal, ABC):
         user_options = {user['username']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
         selected_username = st.selectbox(key=f"user_select_progress_dashboard",
-                                         label="Select a student to view their practice logs:",
+                                         label="Select a student to view their progress report:",
                                          options=options)
+
+        divider = "<hr style='height:5px; margin-top: 10px; border-width:3px; background: lightblue;'>"
+        st.markdown(f"{divider}", unsafe_allow_html=True)
+
         selected_user_id = None
         if selected_username != '--Select a student--':
             selected_user_id = user_options[selected_username]
@@ -621,6 +619,24 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         self.progress_dashboard_builder.progress_dashboard(selected_user_id)
+        st.markdown("<h1 style='font-size: 20px;'>Practice Logs</h1>", unsafe_allow_html=True)
+        self.practice_dashboard_builder.practice_dashboard(selected_user_id)
+
+    def team_dashboard(self):
+        groups = self.user_repo.get_all_groups()
+        if not groups:
+            st.info("Please create a team to get started.")
+            return
+
+        group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
+        group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
+
+        selected_group = st.selectbox(
+            "Select a Team", group_options, key="team_dashboard_group_selector")
+
+        if selected_group != "--Select a Team--":
+            selected_group_id = group_name_to_id[selected_group]
+            self.team_dashboard_builder.team_dashboard(selected_group_id)
 
     @staticmethod
     def calculate_file_hash(audio_data):

@@ -2,7 +2,6 @@ import datetime
 from abc import ABC
 import pandas as pd
 import hashlib
-import requests
 import streamlit as st
 import os
 import json
@@ -15,7 +14,7 @@ from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.ResourceDashboardBuilder import ResourceDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
-from enums.Badges import TrackBadges
+from enums.Badges import TrackBadges, UserBadges
 from enums.Features import Features
 from enums.Settings import Portal, Settings
 from notations.NotationBuilder import NotationBuilder
@@ -147,8 +146,8 @@ class StudentPortal(BasePortal, ABC):
                                                      ActivityType.UPLOAD_RECORDING,
                                                      additional_params)
                 self.user_session_repo.update_last_activity_time(self.get_session_id())
-                badge_awarded = self.badge_awarder.award_badge(
-                    self.get_org_id(), self.get_user_id(), track['id'], TrackBadges.FIRST_NOTE)
+                badge_awarded = self.badge_awarder.award_user_badge(
+                    self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE)
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(

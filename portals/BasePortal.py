@@ -755,6 +755,9 @@ class BasePortal(ABC):
     def get_tracks_bucket(self):
         return f'{self.get_org_dir_bucket()}/tracks'
 
+    def get_resources_bucket(self):
+        return f'{self.get_org_dir_bucket()}/resources'
+
     def get_recordings_bucket(self):
         return f'{self.get_org_dir_bucket()}/recordings'
 
