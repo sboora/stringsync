@@ -21,13 +21,25 @@ class UserAchievementRepository:
 
     def award_user_badge(self, user_id, badge: UserBadges):
         cursor = self.connection.cursor()
-        # Check for existing badge awarded today
-        cursor.execute(
-            "SELECT COUNT(*) FROM user_achievements "
-            "WHERE user_id = %s AND badge = %s AND DATE(timestamp) = CURDATE()",
-            (user_id, badge.value)
-        )
+
+        # Check for existing 'FIRST_NOTE' badge
+        if badge == UserBadges.FIRST_NOTE:
+            cursor.execute(
+                "SELECT COUNT(*) FROM user_achievements "
+                "WHERE user_id = %s AND badge = %s",
+                (user_id, badge.value)
+            )
+        else:
+            # Check for other badges awarded today
+            cursor.execute(
+                "SELECT COUNT(*) FROM user_achievements "
+                "WHERE user_id = %s AND badge = %s AND DATE(timestamp) = CURDATE()",
+                (user_id, badge.value)
+            )
+
         existing_badges = cursor.fetchone()
+
+        # If no existing 'FIRST_NOTE' badge or other badges not awarded today
         if existing_badges[0] == 0:
             # Award the new badge
             cursor.execute(
@@ -35,9 +47,9 @@ class UserAchievementRepository:
                 (user_id, badge.value)
             )
             self.connection.commit()
-            return True, f"Awarded {badge.value} to user with ID {user_id}"
+            return True, f"Awarded {badge.name} to user with ID {user_id}"
         else:
-            return False, f"User with ID {user_id} already has the {badge.value} badge for today"
+            return False, f"User with ID {user_id} already has the {badge.name} badge"
 
     def award_track_badge(self, user_id, recording_id, badge: TrackBadges):
         cursor = self.connection.cursor()

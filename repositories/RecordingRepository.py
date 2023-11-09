@@ -1,6 +1,8 @@
 import pymysql.cursors
 from datetime import datetime, timedelta
 
+import pytz
+
 
 class RecordingRepository:
     def __init__(self, connection):
@@ -53,83 +55,40 @@ class RecordingRepository:
         return result[0] == 1
 
     def get_recordings_by_user_id_and_track_id(self, user_id, track_id):
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks 
                    FROM recordings 
                    WHERE user_id = %s AND track_id = %s 
                    ORDER BY timestamp DESC;"""
         cursor.execute(query, (user_id, track_id))
-        result = cursor.fetchall()
-
-        # Convert the result to a list of dictionaries for better readability
-        recordings = []
-        for row in result:
-            recording = {
-                'id': row[0],
-                'blob_name': row[1],
-                'blob_url': row[2],
-                'timestamp': row[3],
-                'duration': row[4],
-                'track_id': row[5],
-                'score': row[6],
-                'analysis': row[7],
-                'remarks': row[8]
-            }
-            recordings.append(recording)
-
+        recordings = cursor.fetchall()
         return recordings
 
     def get_all_recordings_by_user(self, user_id):
-        cursor = self.connection.cursor()
-        get_recordings_query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks FROM recordings
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        get_recordings_query = """SELECT id, blob_name, blob_url, timestamp, duration, 
+                                  track_id, score, analysis, remarks 
+                                  FROM recordings
                                   WHERE user_id = %s
                                   ORDER BY timestamp DESC;"""
         cursor.execute(get_recordings_query, (user_id,))
-        result = cursor.fetchall()
-
-        # Convert the result to a list of dictionaries for better readability
-        recordings = []
-        for row in result:
-            recording = {
-                'id': row[0],  # New field
-                'blob_name': row[1],
-                'blob_url': row[2],
-                'timestamp': row[3],
-                'duration': row[4],
-                'track_id': row[5],
-                'score': row[6],
-                'analysis': row[7],  # New field
-                'remarks': row[8]  # New field
-            }
-            recordings.append(recording)
-
+        recordings = cursor.fetchall()
         return recordings
 
     def get_track_statistics_by_user(self, user_id):
-        cursor = self.connection.cursor()
-
-        # Query to get the number of recordings, max, min, and avg score for each track for a given user
-        query = """SELECT track_id, COUNT(*), MAX(score), MIN(score), AVG(score) 
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """SELECT track_id, 
+                          COALESCE(COUNT(*), 0) AS num_recordings, 
+                          COALESCE(MAX(score), 0) AS max_score, 
+                          COALESCE(MIN(score), 0) AS min_score, 
+                          COALESCE(AVG(score), 0) as avg_score
                    FROM recordings 
                    WHERE user_id = %s 
                    GROUP BY track_id;"""
 
         cursor.execute(query, (user_id,))
-        result = cursor.fetchall()
-
-        # Convert the result to a list of dictionaries for better readability
-        track_statistics = []
-        for row in result:
-            stats = {
-                'track_id': row[0],
-                'num_recordings': row[1],
-                'max_score': row[2],
-                'min_score': row[3],
-                'avg_score': row[4]
-            }
-            track_statistics.append(stats)
-
-        return track_statistics
+        results = cursor.fetchall()
+        return results
 
     def get_unique_tracks_by_user(self, user_id):
         cursor = self.connection.cursor()
