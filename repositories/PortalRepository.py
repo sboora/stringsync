@@ -174,6 +174,51 @@ class PortalRepository:
         result = cursor.fetchall()
         return [{'track_id': row['track_id'], 'badges': row['badges'].split(',')} for row in result]
 
+    def fetch_team_dashboard_data(self, group_id, time_frame):
+        cursor = self.connection.cursor()
+
+        query = """
+        SELECT u.id AS user_id,
+               u.name AS student_name,
+               COUNT(DISTINCT r.track_id) AS unique_tracks,
+               COUNT(r.id) AS total_recordings,
+               COUNT(DISTINCT a.id) AS badges_earned,
+               SUM(r.duration) AS total_practice_minutes,
+               SUM(r.score) AS total_score
+        FROM users u
+        LEFT JOIN recordings r ON u.id = r.user_id
+        LEFT JOIN user_achievements a ON u.id = a.user_id
+        WHERE u.group_id = %s AND u.user_type = 'student'
+        """
+
+        # Add a GROUP BY clause based on the time frame
+        if time_frame == 'week':
+            query += "AND r.timestamp >= CURDATE() - INTERVAL 7 DAY "
+            query += "GROUP BY u.id, YEARWEEK(r.timestamp) "
+        elif time_frame == 'month':
+            query += "AND r.timestamp >= CURDATE() - INTERVAL 1 MONTH "
+            query += "GROUP BY u.id, EXTRACT(YEAR_MONTH FROM r.timestamp) "
+
+        # Execute the query
+        cursor.execute(query, (group_id,))
+        results = cursor.fetchall()
+
+        # Build the dashboard data structure
+        dashboard_data = [
+            {
+                'user_id': row[0],
+                'teammate': row[1],
+                'unique_tracks': row[2],
+                'recordings': row[3],
+                'badges_earned': row[4],
+                'practice_minutes': row[5] if row[5] is not None else 0,
+                'score': row[6] if row[6] is not None else 0
+            }
+            for row in results
+        ]
+
+        return dashboard_data
+
 
 
 

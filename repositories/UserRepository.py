@@ -145,18 +145,19 @@ class UserRepository:
 
     def authenticate_user(self, username, password):
         cursor = self.connection.cursor()
-        find_user_query = """SELECT id, org_id, password, is_enabled FROM users WHERE username = %s;"""
+        find_user_query = """SELECT id, org_id, password, is_enabled, group_id
+                             FROM users WHERE username = %s;"""
         cursor.execute(find_user_query, (username,))
         result = cursor.fetchone()
 
         if result:
-            user_id, org_id, stored_hashed_password, is_enabled = result
+            user_id, org_id, stored_hashed_password, is_enabled, group_id = result
             if is_enabled and bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
-                return True, user_id, org_id
+                return True, user_id, org_id, group_id
             else:
-                return False, -1, -1
+                return False, -1, -1, -1
         else:
-            return False, -1, -1
+            return False, -1, -1, -1
 
     def get_all_users(self):
         cursor = self.connection.cursor()

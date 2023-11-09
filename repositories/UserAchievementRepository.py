@@ -62,7 +62,8 @@ class UserAchievementRepository:
 
     def get_user_badges(self, user_id):
         cursor = self.connection.cursor()
-        cursor.execute("SELECT DISTINCT badge FROM user_achievements WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT DISTINCT badge FROM user_achievements "
+                       "WHERE user_id = %s", (user_id,))
         badges = cursor.fetchall()
         return [badge[0] for badge in badges]
 
