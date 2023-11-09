@@ -3,6 +3,9 @@ import os
 from abc import ABC
 
 from core.AudioProcessor import AudioProcessor
+from core.ListBuilder import ListBuilder
+from core.PracticeDashboardBuilder import PracticeDashboardBuilder
+from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
@@ -11,13 +14,17 @@ import streamlit as st
 import pandas as pd
 
 from enums.UserType import UserType
-import plotly.figure_factory as ff
 
 
 class TeacherPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
+        self.practice_dashboard_builder = PracticeDashboardBuilder(
+            self.user_practice_log_repo)
+        self.progress_dashboard_builder = ProgressDashboardBuilder(
+            self.settings_repo, self.recording_repo, self.user_achievement_repo,
+            self.user_practice_log_repo, self.track_repo)
 
     def get_portal(self):
         return Portal.TEACHER
@@ -31,16 +38,18 @@ class TeacherPortal(BasePortal, ABC):
     def get_tab_dict(self):
         tabs = [
             ("👥 Create a Team", self.create_team),
-            ("👥 List Teams", self.list_teams),
+            ("👥 List Teams", self.team_dashboard),
             ("👩‍🎓 Students", self.list_students),
-            ("🔀 Assign Students to Teams", self.assign_students_to_team),
-            ("📚 Resources", self.manage_resources),
+            ("🔀 Team Assignments", self.team_assignments),
+            ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
             ("🎵 Remove Track", self.remove_track),
-            #("🎵 Recordings", self.list_recordings),
+            ("🎵 Recordings", self.list_recordings) if self.is_feature_enabled(
+                Features.TEACHER_PORTAL_RECORDINGS) else None,
             ("📥 Submissions", self.submissions),
-            ("⏲️ Practice Log", self.practice_logs),
+            ("⏲️ Practice Log", self.practice_dashboard),
+            ("📊 Progress Dashboard", self.progress_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -80,7 +89,7 @@ class TeacherPortal(BasePortal, ABC):
                 else:
                     st.warning("Team name cannot be empty.")
 
-    def list_teams(self):
+    def team_dashboard(self):
         # Fetch all groups
         groups = self.user_repo.get_all_groups()
 
@@ -90,10 +99,9 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         # Define the column widths for three columns
-        column_widths = [33, 33, 33]  # Adjust column widths as necessary
-
-        # Display the table header with an added 'Member Count' column
-        self.build_header(column_names=["Team ID", "Team Name", "Member Count"], column_widths=column_widths)
+        column_widths = [33, 33, 33]
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(column_names=["Team ID", "Team Name", "Member Count"])
 
         # Display each team and its member count in a row
         for group in groups:
@@ -102,7 +110,7 @@ class TeacherPortal(BasePortal, ABC):
                 "Team Name": group['group_name'],
                 "Member Count": group['member_count']  # Assumes 'member_count' is being returned by get_all_groups
             }
-            self.build_row(row_data=row_data, column_widths=column_widths)
+            list_builder.build_row(row_data=row_data)
 
     def list_students(self):
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
@@ -112,8 +120,8 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         column_widths = [20, 20, 20, 20, 20]
-        self.build_header(column_names=["Name", "Username", "Email", "Team", "Join Code"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(column_names=["Name", "Username", "Email", "Team", "Join Code"])
 
         for student_detail in students:
             row_data = {
@@ -123,9 +131,9 @@ class TeacherPortal(BasePortal, ABC):
                 "Team": student_detail['group_name'] if 'group_name' in student_detail else 'N/A',
                 "Join Code": st.session_state['join_code']
             }
-            self.build_row(row_data=row_data, column_widths=column_widths)
+            list_builder.build_row(row_data=row_data)
 
-    def assign_students_to_team(self):
+    def team_assignments(self):
         groups = self.user_repo.get_all_groups()
         if not groups:
             st.info("Please create a team to get started.")
@@ -143,8 +151,8 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         # Column headers
-        self.build_header(column_names=["Name", "Email", "Team"],
-                          column_widths=[33.33, 33.33, 33.33])
+        list_builder = ListBuilder(column_widths=[33.33, 33.33, 33.33])
+        list_builder.build_header(column_names=["Name", "Email", "Team"])
 
         for student in students:
             st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
@@ -177,7 +185,7 @@ class TeacherPortal(BasePortal, ABC):
                             self.user_repo.assign_user_to_group(student['id'], selected_group_id)
                             st.rerun()
 
-    def manage_resources(self):
+    def resource_management(self):
         st.header("Resources Management")
 
         # Part for uploading new resources
@@ -319,13 +327,11 @@ class TeacherPortal(BasePortal, ABC):
             st.info("No tracks found. Create a track to get started.")
             return
 
-        column_widths = [20, 20, 20, 20, 20]
-        self.build_header(column_names=["Audio", "Track Name", "Ragam", "Level", "Description"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths=[20, 20, 20, 20, 20])
+        list_builder.build_header(
+            column_names=["Track Name", "Audio", "Ragam", "Level", "Description"])
 
         for track_detail in tracks:
-            blob_url = track_detail['track_path']
-            audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
             col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
             row_data = {
                 "Track Name": track_detail['track_name'],
@@ -334,12 +340,15 @@ class TeacherPortal(BasePortal, ABC):
                 "Description": track_detail['description']
             }
             col1.write("")
-            col1.audio(audio_file_path, format='core/m4a')
-
-            col2.write("")
-            col2.markdown(
+            col1.markdown(
                 f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Track Name']}</div>",
                 unsafe_allow_html=True)
+
+            col2.write("")
+            blob_url = track_detail['track_path']
+            audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
+            col2.audio(audio_file_path, format='core/m4a')
+
             col3.write("")
             col3.markdown(
                 f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Ragam']}</div>",
@@ -487,10 +496,9 @@ class TeacherPortal(BasePortal, ABC):
         df = pd.DataFrame(recordings)
 
         # Create a table header
-        header_html = self.build_header(
-            column_names=["Recording", "Score", "System Analysis", "Remarks", "Timestamp"],
-            column_widths=[20, 20, 20, 20, 20]
-        )
+        list_builder = ListBuilder(column_widths=[20, 20, 20, 20, 20])
+        header_html = list_builder.build_header(
+            column_names=["Recording", "Score", "System Analysis", "Remarks", "Timestamp"])
         st.markdown(header_html, unsafe_allow_html=True)
 
         # Loop through each recording and create a table row
@@ -533,9 +541,9 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         df = pd.DataFrame(recordings)
-
-        self.build_header(column_names=["Track", "Recording", "Score", "System Analysis", "Remarks", "Badges"],
-                          column_widths=[16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
+        list_builder = ListBuilder(column_widths=[16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
+        list_builder.build_header(
+            column_names=["Track", "Recording", "Score", "System Analysis", "Remarks", "Badges"])
         # Display each recording
         for index, recording in df.iterrows():
             self.display_submission_row(recording)
@@ -580,13 +588,14 @@ class TeacherPortal(BasePortal, ABC):
                                                              TrackBadges(selected_badge))
             st.rerun()
 
-    def practice_logs(self):
+    def practice_dashboard(self):
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
 
         user_options = {user['username']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
-        selected_username = st.selectbox(key=f"user_select", label="Select a student to view their practice logs:",
+        selected_username = st.selectbox(key=f"user_select_practice_dashboard",
+                                         label="Select a student to view their practice logs:",
                                          options=options)
         selected_user_id = None
         if selected_username != '--Select a student--':
@@ -594,71 +603,24 @@ class TeacherPortal(BasePortal, ABC):
         else:
             return
 
-        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(
-            selected_user_id)
+        self.practice_dashboard_builder.practice_dashboard(selected_user_id)
 
-        # Check if practice_data is empty
-        if not practice_data:
+    def progress_dashboard(self):
+        users = self.user_repo.get_users_by_org_id_and_type(
+            self.get_org_id(), UserType.STUDENT.value)
+
+        user_options = {user['username']: user['id'] for user in users}
+        options = ['--Select a student--'] + list(user_options.keys())
+        selected_username = st.selectbox(key=f"user_select_progress_dashboard",
+                                         label="Select a student to view their practice logs:",
+                                         options=options)
+        selected_user_id = None
+        if selected_username != '--Select a student--':
+            selected_user_id = user_options[selected_username]
+        else:
             return
 
-        df = pd.DataFrame(practice_data)
-        df['date'] = pd.to_datetime(df['date'])
-
-        # Determine the start date for the last 4 weeks
-        last_4_weeks_start_date = (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize()
-
-        # Filter merged_df for only the last 4 weeks
-        merged_df = df[df['date'] >= last_4_weeks_start_date].copy()
-
-        # Ensure all days of the week are represented
-        all_days = pd.date_range(start=last_4_weeks_start_date, end=pd.Timestamp.today().normalize(), freq='D')
-
-        # Reindex the DataFrame to include all days
-        merged_df = merged_df.set_index('date').reindex(all_days).fillna({'total_minutes': 0}).reset_index()
-
-        # The reset_index call might have changed the 'date' column name to 'index', so rename it back to 'date'
-        merged_df.rename(columns={'index': 'date'}, inplace=True)
-
-        # Now you can safely convert the minutes back to integers without affecting other data
-        merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
-
-        # Create a pivot table to get the matrix format
-        pivot_table = merged_df.pivot_table(values='total_minutes', index=merged_df['date'].dt.dayofweek,
-                                            columns=merged_df['date'].dt.isocalendar().week, fill_value=0)
-
-        # Use the Plotly Figure Factory to create the annotated heatmap
-        z = pivot_table.values
-        x = ['Week ' + str(int(week)) for week in pivot_table.columns]
-        y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-        fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
-        fig.update_layout(
-            title='',
-            xaxis_title='Week',
-            yaxis_title='Day'
-        )
-
-        # Adjust the shape coordinates to encapsulate the entire chart including labels
-        fig.update_layout(
-            height=600,
-            width=1400,
-            shapes=[
-                dict(
-                    type="rect",
-                    xref="paper",
-                    yref="paper",
-                    x0=-0.2,  # left side
-                    y0=-0.0,  # bottom
-                    x1=1.0,  # right side
-                    y1=1.2,  # top
-                    line=dict(
-                        color="#EAEDED",
-                        width=0,
-                    ),
-                )
-            ]
-        )
-        st.plotly_chart(fig, use_column_width=True, config={'displayModeBar': False, 'displaylogo': False})
+        self.progress_dashboard_builder.progress_dashboard(selected_user_id)
 
     @staticmethod
     def calculate_file_hash(audio_data):

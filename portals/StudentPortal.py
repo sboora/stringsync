@@ -1,6 +1,5 @@
 import datetime
 from abc import ABC
-import plotly.express as px
 import pandas as pd
 import hashlib
 import requests
@@ -9,23 +8,37 @@ import os
 import json
 from streamlit_lottie import st_lottie
 
-from core.BadgeAwardProcessor import BadgeAwardProcessor
+from core.BadgeAwarder import BadgeAwarder
+from core.ListBuilder import ListBuilder
+from core.PracticeDashboardBuilder import PracticeDashboardBuilder
+from core.ProgressDashboardBuilder import ProgressDashboardBuilder
+from core.ResourceDashboardBuilder import ResourceDashboardBuilder
+from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
-from enums.Badges import UserBadges, TrackBadges
+from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal, Settings
 from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
-import plotly.figure_factory as ff
 
 
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
         self.audio_processor = AudioProcessor()
-        self.badge_awarder = BadgeAwardProcessor(
-            self.settings_repo, self.recording_repo, self.user_achievement_repo, self.user_practice_log_repo)
+        self.badge_awarder = BadgeAwarder(
+            self.settings_repo, self.recording_repo,
+            self.user_achievement_repo, self.user_practice_log_repo, self.storage_repo)
+        self.progress_dashboard_builder = ProgressDashboardBuilder(
+            self.settings_repo, self.recording_repo, self.user_achievement_repo,
+            self.user_practice_log_repo, self.track_repo)
+        self.resource_dashboard_builder = ResourceDashboardBuilder(
+            self.resource_repo, self.storage_repo)
+        self.practice_dashboard_builder = PracticeDashboardBuilder(
+            self.user_practice_log_repo)
+        self.team_dashboard_builder = TeamDashboardBuilder(
+            self.portal_repo, self.user_achievement_repo, self.badge_awarder)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -41,9 +54,10 @@ class StudentPortal(BasePortal, ABC):
             ("🎤 Record", self.record),
             ("📥 Submissions", self.submissions),
             ("⏲️ Practice Log", self.practice_log),
-            ("🏆 Badges", self.badges),
-            ("📚 Resources", self.resources),
+            ("🏆 Badges", self.badges_dashboard),
+            ("📚 Resources", self.resources_dashboard),
             ("📊 Progress Dashboard", self.progress_dashboard),
+            ("👥 Team Dashboard", self.team_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -172,8 +186,9 @@ class StudentPortal(BasePortal, ABC):
         # Create a DataFrame to hold the recording data
         df = pd.DataFrame(recordings)
         column_widths = [20, 20, 20, 20, 20]
-        self.build_header(column_names=["Track", "Remarks", "Score", "Analysis", "Time"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(
+            column_names=["Track", "Remarks", "Score", "Analysis", "Time"])
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
@@ -229,9 +244,9 @@ class StudentPortal(BasePortal, ABC):
             st.info("No submissions found.")
             return
         column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
-        self.build_header(
-            column_names=["Track Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"],
-            column_widths=column_widths)
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(
+            column_names=["Track Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"])
 
         # Display submissions
         for submission in submissions:
@@ -277,216 +292,10 @@ class StudentPortal(BasePortal, ABC):
         pass
 
     def progress_dashboard(self):
-        st.write("")
-        tracks = self.display_tracks()
-        st.write("")
-        # Display the line graphs for duration, tracks, and average scores
-        self.show_line_graph()
-        st.write("")
-        self.show_practice_logs_line_graph()
-        # bar graph for average score comparison
-        self.show_score_comparison(tracks)
-        # bar graph for attempts comparison
-        self.show_attempt_comparison(tracks)
+        self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
 
-    def display_tracks(self):
-        tracks = self.get_tracks()
-        column_widths = [20, 20, 20, 20, 20]
-        self.build_header(
-            column_names=["Track", "Number of Recordings", "Average Score", "Min Score", "Max Score"],
-            column_widths=column_widths)
-        for track_detail in tracks:
-            row_data = {
-                "Track": track_detail['track']['name'],
-                "Number of Recordings": track_detail['num_recordings'],
-                "Average Score": track_detail['avg_score'],
-                "Min Score": track_detail['min_score'],
-                "Max Score": track_detail['max_score']
-            }
-            self.build_row(row_data=row_data, column_widths=column_widths)
-
-        return tracks
-
-    def show_line_graph(self):
-        user_id = self.get_user_id()
-        recording_duration_data = self.recording_repo.get_recording_duration_by_date(user_id)
-        if not recording_duration_data:
-            st.info("No data available.")
-            return
-
-        # Create a DataFrame from time_series_data
-        df = pd.DataFrame(recording_duration_data)
-
-        # Convert 'date' to datetime and ensure it's the index
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
-
-        # Determine the full range of dates from the available data
-        full_date_range_start = df.index.min()
-        full_date_range_end = df.index.max()
-
-        # Determine the range of dates for plotting
-        plot_start_date = min(full_date_range_start, (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize())
-
-        # Create a date range that includes every day from the earliest data or the last 4 weeks to the latest data
-        all_days = pd.date_range(start=plot_start_date, end=full_date_range_end, freq='D')
-
-        # Reindex the DataFrame to include all days, filling missing values with 0
-        df = df.reindex(all_days).fillna(0).reset_index()
-        df.rename(columns={'index': 'date'}, inplace=True)
-
-        # Plotting the line graph for Total Duration
-        fig_duration = px.line(
-            df,
-            x='date',
-            y='total_duration',
-            title='Total Recording Duration Over Time',
-            labels={'date': 'Date', 'total_duration': 'Total Duration (minutes)'}
-        )
-        fig_duration.update_yaxes(range=[0, max(60, df['total_duration'].max())])
-
-        # Plotting the line graph for Total Tracks
-        fig_tracks = px.line(
-            df,
-            x='date',
-            y='total_tracks',
-            title='Total Tracks Practiced Over Time',
-            labels={'date': 'Date', 'total_tracks': 'Total Tracks'}
-        )
-        fig_tracks.update_yaxes(range=[0, df['total_tracks'].max()])
-
-        # Display the charts side by side using Streamlit columns
-        col1, col2 = st.columns(2)
-        with col1:
-            st.plotly_chart(fig_duration)
-        with col2:
-            st.plotly_chart(fig_tracks)
-
-    def show_practice_logs_line_graph(self):
-        user_id = self.get_user_id()
-        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
-
-        if not practice_data:
-            st.info("No data available for the line graph.")
-            return
-
-        df = pd.DataFrame(practice_data)
-        df['date'] = pd.to_datetime(df['date'])
-
-        # Determine the full range of dates in the dataset
-        full_date_range_start = df['date'].min()
-        full_date_range_end = df['date'].max()
-
-        # Determine the start date for plotting which is the earlier of the two: the start date of your data or 4
-        # weeks ago
-        plot_start_date = min(full_date_range_start, (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize())
-
-        # Create a date range that includes every day from the start of your data or the last 4 weeks to today
-        all_days = pd.date_range(start=plot_start_date, end=pd.Timestamp.today().normalize(), freq='D')
-
-        # Reindex the DataFrame to include all days, filling missing values with 0 for 'total_minutes'
-        df.set_index('date', inplace=True)
-        df = df.reindex(all_days).fillna(0).reset_index()
-        df.rename(columns={'index': 'date'}, inplace=True)
-        df['total_minutes'] = df['total_minutes'].astype(int)
-
-        # Plotting the line graph for total practice minutes
-        fig_line = px.line(
-            df,
-            x='date',
-            y='total_minutes',
-            title='Daily Practice Minutes Over the Last 4 Weeks',
-            labels={'date': 'Date', 'total_minutes': 'Total Minutes'}
-        )
-
-        # Set the y-axis to start from 0
-        fig_line.update_yaxes(range=[0, max(60, df['total_minutes'].max())])
-
-        # Adding the line graph to the Streamlit app
-        st.plotly_chart(fig_line, use_column_width=True)
-
-    @staticmethod
-    def show_score_comparison(tracks):
-        # Flatten the track details for easier DataFrame creation
-        flattened_tracks = [
-            {
-                'Track Name': track_detail['track']['name'],
-                'Number of Recordings': track_detail['num_recordings'],
-                'Average Score': track_detail['avg_score'],
-                'Min Score': track_detail['min_score'],
-                'Max Score': track_detail['max_score']
-            }
-            for track_detail in tracks
-        ]
-
-        # Create a DataFrame for the track statistics
-        df_track_stats = pd.DataFrame(flattened_tracks)
-        print(df_track_stats)
-        df_track_stats.sort_values('Average Score', ascending=False, inplace=True)
-
-        # Visualize with a bar chart
-        fig = px.bar(
-            df_track_stats,
-            x='Track Name',  # Use the 'Track Name' for x-axis
-            y='Average Score',
-            color='Average Score',
-            labels={'Track Name': 'Track', 'Average Score': 'Average Score'},
-            title='Average Score per Track Comparison'
-        )
-        st.plotly_chart(fig)
-
-    @staticmethod
-    def show_attempt_comparison(tracks):
-        # Ensure the track details are flattened for DataFrame creation
-        flattened_tracks = [
-            {
-                'Track Name': track_detail['track']['name'],
-                'Number of Recordings': track_detail['num_recordings'],
-                'Average Score': float(track_detail['avg_score']),  # Ensure numeric type for scores
-                'Min Score': float(track_detail['min_score']),  # Convert to float if necessary
-                'Max Score': float(track_detail['max_score'])
-            }
-            for track_detail in tracks
-        ]
-
-        # Create a DataFrame for the track statistics
-        df_track_stats = pd.DataFrame(flattened_tracks)
-
-        # Sort by 'Number of Recordings' for attempt comparison
-        df_track_stats.sort_values('Number of Recordings', ascending=False, inplace=True)
-
-        # Visualize with a bar chart comparing attempts
-        fig = px.bar(
-            df_track_stats,
-            x='Track Name',
-            y='Number of Recordings',
-            color='Number of Recordings',
-            labels={'Track Name': 'Track', 'Number of Recordings': 'Attempts'},
-            title='Attempt Comparison per Track'
-        )
-        st.plotly_chart(fig)
-
-    def get_tracks(self):
-        # Fetch all tracks and track statistics for this user
-        tracks = self.track_repo.get_all_tracks()
-        track_statistics = self.recording_repo.get_track_statistics_by_user(self.get_user_id())
-
-        # Create a dictionary for quick lookup of statistics by track_id
-        stats_dict = {stat['track_id']: stat for stat in track_statistics}
-
-        # Build track details list using list comprehension
-        track_details = [
-            {
-                'track': track,
-                'num_recordings': stats_dict.get(track['id'], {}).get('num_recordings', 0),
-                'avg_score': stats_dict.get(track['id'], {}).get('avg_score', 0),
-                'min_score': stats_dict.get(track['id'], {}).get('min_score', 0),
-                'max_score': stats_dict.get(track['id'], {}).get('max_score', 0)
-            }
-            for track in tracks
-        ]
-
-        return track_details
+    def team_dashboard(self):
+        self.team_dashboard_builder.team_dashboard(self.get_group_id())
 
     def filter_tracks(self):
         ragas = self.raga_repo.get_all_ragas()
@@ -672,21 +481,13 @@ class StudentPortal(BasePortal, ABC):
         else:
             return "Excellent! You've mastered this track!"
 
-    @staticmethod
-    def load_lottie_url(url: str):
-        r = requests.get(url)
-        if r.status_code != 200:
-            return None
-        return r.json()
-
-    def badges(self):
+    def badges_dashboard(self):
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
         if badges:  # If there are badges
             cols = st.columns(5)
-
             for i, badge in enumerate(badges):
-                with cols[i % 5]:  # Loop through columns
+                with cols[i % 5]:
                     # Display the badge icon from the badge folder
                     st.image(self.get_badge(badge), width=200)
         else:  # If there are no badges
@@ -701,58 +502,8 @@ class StudentPortal(BasePortal, ABC):
                 Start by listening to a track and making your first recording today!
             """)
 
-    def resources(self):
-        # Fetch resources from the DB
-        resources = self.resource_repo.list_resources()
-
-        # Organize resources by type
-        resources_by_type = {
-            'PDF': [],
-            'Audio': [],
-            'Video': [],
-            'Link': []
-        }
-
-        for resource in resources:
-            resources_by_type[resource['type']].append(resource)
-
-        # Check if there are any resources
-        if resources:
-            # Display resources by type in separate expanders
-            for resource_type, resources_list in resources_by_type.items():
-                if resources_list:  # Check if there are any resources of this type
-                    with st.expander(f"{resource_type}s"):
-                        # Use columns to display each resource in a row
-                        for resource in resources_list:
-                            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
-                            with col1:
-                                st.markdown(f"**{resource['title']}**")
-                            with col2:
-                                st.write(resource['description'])
-                            with col3:
-                                if resource['type'] == 'PDF':
-                                    # Provide a link to view the PDF
-                                    st.markdown(f"[View]({resource['file_url']})", unsafe_allow_html=True)
-                            with col4:
-                                # Display the appropriate content based on the resource type
-                                if resource['type'] == 'PDF':
-                                    data = self.storage_repo.download_blob_by_url(resource['file_url'])
-                                    st.download_button(
-                                        label="Download",
-                                        data=data,
-                                        file_name=f"{resource['title']}.pdf",
-                                        mime='application/pdf',
-                                        key=f"download_{resource['id']}",
-                                        type="primary"
-                                    )
-                                elif resource['type'] == 'Link':
-                                    st.markdown(f"[Link]({resource['link']})", unsafe_allow_html=True)
-                                elif resource['type'] == 'Video':
-                                    st.video(resource['file_url'])
-                                elif resource['type'] == 'Audio':
-                                    st.audio(resource['file_url'])
-        else:
-            st.info("No resources found.")
+    def resources_dashboard(self):
+        self.resource_dashboard_builder.resources_dashboard()
 
     def practice_log(self):
         st.markdown("<h2 style='text-align: center; font-weight: bold; color: #769AA0; font-size: 24px;'>🎵 Practice "
@@ -806,7 +557,7 @@ class StudentPortal(BasePortal, ABC):
                     st.session_state.form_submitted = True
 
         with cols[1]:
-            self.show_calendar()
+            self.practice_dashboard_builder.practice_dashboard(self.get_user_id())
 
         if badge_awarded:
             st.session_state.badge_awarded_in_last_run = True
@@ -819,71 +570,6 @@ class StudentPortal(BasePortal, ABC):
         if st.session_state.badge_awarded_in_last_run:
             self.show_animations()
             st.session_state.badge_awarded_in_last_run = False
-
-    def show_calendar(self):
-        user_id = self.get_user_id()
-        practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
-
-        # Check if practice_data is empty
-        if not practice_data:
-            return
-
-        df = pd.DataFrame(practice_data)
-        df['date'] = pd.to_datetime(df['date'])
-
-        # Determine the start date for the last 4 weeks
-        last_4_weeks_start_date = (pd.Timestamp.today() - pd.DateOffset(weeks=4)).normalize()
-
-        # Filter merged_df for only the last 4 weeks
-        merged_df = df[df['date'] >= last_4_weeks_start_date].copy()
-
-        # Ensure all days of the week are represented
-        all_days = pd.date_range(start=last_4_weeks_start_date, end=pd.Timestamp.today().normalize(), freq='D')
-
-        # Reindex the DataFrame to include all days
-        merged_df = merged_df.set_index('date').reindex(all_days).fillna({'total_minutes': 0}).reset_index()
-
-        # The reset_index call might have changed the 'date' column name to 'index', so rename it back to 'date'
-        merged_df.rename(columns={'index': 'date'}, inplace=True)
-
-        # Now you can safely convert the minutes back to integers without affecting other data
-        merged_df['total_minutes'] = merged_df['total_minutes'].astype(int)
-
-        # Create a pivot table to get the matrix format
-        pivot_table = merged_df.pivot_table(values='total_minutes', index=merged_df['date'].dt.dayofweek,
-                                            columns=merged_df['date'].dt.isocalendar().week, fill_value=0)
-
-        # Use the Plotly Figure Factory to create the annotated heatmap
-        z = pivot_table.values
-        x = ['Week ' + str(int(week)) for week in pivot_table.columns]
-        y = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-        fig = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z, colorscale='Blues')
-        fig.update_layout(
-            title='',
-            xaxis_title='Week',
-            yaxis_title='Day'
-        )
-
-        # Adjust the shape coordinates to encapsulate the entire chart including labels
-        fig.update_layout(
-            shapes=[
-                dict(
-                    type="rect",
-                    xref="paper",
-                    yref="paper",
-                    x0=-0.07,  # left side
-                    y0=-0.0,  # bottom
-                    x1=1.0,  # right side
-                    y1=1.12,  # top
-                    line=dict(
-                        color="#EAEDED",
-                        width=2,
-                    ),
-                )
-            ]
-        )
-        st.plotly_chart(fig, use_column_width=True, config={'displayModeBar': False, 'displaylogo': False})
 
     @staticmethod
     def ordinal(n):

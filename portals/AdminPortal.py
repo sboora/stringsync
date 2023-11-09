@@ -2,6 +2,7 @@ from abc import ABC
 
 import streamlit as st
 
+from core.ListBuilder import ListBuilder
 from enums.ActivityType import ActivityType
 from enums.Features import Features
 from enums.Settings import Portal
@@ -148,50 +149,49 @@ class AdminPortal(BasePortal, ABC):
         schools = self.org_repo.get_organizations_by_tenant_id(self.get_tenant_id())
 
         # Create the header for the table
-        column_widths = [33.33, 33.33, 33.33]
-        self.build_header(column_names=["Organization Name", "Organization Description", "Join Code"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths=[33.33, 33.33, 33.33])
+        list_builder.build_header(
+            column_names=["Organization Name", "Organization Description", "Join Code"])
 
         # Loop through each school and create a table row
         for school in schools:
-            self.build_row(row_data={
+            list_builder.build_row(row_data={
                 "Organization Name": school['name'],
                 "Organization Description": school['description'],
                 "Join Code": school['join_code']
-            }, column_widths=column_widths)
+            })
 
     def list_tutors(self):
         # Fetch and display the list of tutors linked to this org group
         tutors = self.portal_repo.get_users_by_tenant_id_and_type(self.get_tenant_id(), UserType.TEACHER.value)
 
         # Create the header for the table
-        column_widths = [33.33, 33.33, 33.33]
-        self.build_header(column_names=["Name", "Username", "Email"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths=[33.33, 33.33, 33.33])
+        list_builder.build_header(column_names=["Name", "Username", "Email"])
 
         # Loop through each tutor and create a table row
         for tutor in tutors:
-            self.build_row(row_data={
+            list_builder.build_row(row_data={
                 "Name": tutor['name'],
                 "Username": tutor['username'],
                 "Email": tutor['email']
-            }, column_widths=column_widths)
+            })
 
     def list_tutor_assignments(self):
         # Fetch and display the list of tutor assignments
         tutor_assignments = self.portal_repo.list_tutor_assignments(self.get_tenant_id())
 
         # Create the header for the table
-        column_widths = [25, 25, 25, 25]
-        self.build_header(column_names=["Tutor Name", "Tutor Username", "School Name", "School Description"],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths=[25, 25, 25, 25])
+        list_builder.build_header(
+            column_names=["Tutor Name", "Tutor Username", "School Name", "School Description"])
 
         # Loop through each tutor assignment and create a table row
         for assignment in tutor_assignments:
-            self.build_row(row_data={
+            list_builder.build_row(row_data={
                 "Tutor Name": assignment['tutor_name'],
                 "Tutor Username": assignment['tutor_username'],
                 "School Name": assignment['school_name'],
                 "School Description": assignment['school_description']
-            }, column_widths=column_widths)
+            })
 

@@ -1,5 +1,6 @@
 from abc import ABC
 
+from core.ListBuilder import ListBuilder
 from enums.Features import Features
 from enums.Settings import Portal
 from enums.UserType import UserType
@@ -67,7 +68,7 @@ class TenantPortal(BasePortal, ABC):
                     st.error(org_message)
                     return
 
-                username = f"{tenant_id}admin"
+                username = f"{name.replace(' ', '').lower()}-admin"
                 password = os.environ["ADMIN_PASSWORD"]
 
                 user_success, user_message, user_id = self.user_repo.register_user(
@@ -88,8 +89,8 @@ class TenantPortal(BasePortal, ABC):
     def list_tenants(self):
         tenants = self.tenant_repo.get_all_tenants()
         column_names = ["Name", "Id", "Root Organization", "Admin"]
-        column_widths = [25, 25, 25, 25]
-        self.build_header(column_names=column_names, column_widths=column_widths)
+        list_builder = ListBuilder(column_widths = [25, 25, 25, 25])
+        list_builder.build_header(column_names=column_names)
 
         for tenant in tenants:
             tenant_name = tenant.get('name', 'Not Found')
@@ -107,7 +108,7 @@ class TenantPortal(BasePortal, ABC):
                 "Root Organization": root_org_name,
                 "Admin": admin_username
             }
-            self.build_row(row_data=row_data, column_widths=column_widths)
+            list_builder.build_row(row_data=row_data)
 
     def feature_toggles(self):
         features = self.feature_repo.get_all_features()

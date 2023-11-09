@@ -5,6 +5,7 @@ import time
 from abc import ABC, abstractmethod
 import streamlit as st
 
+from core.ListBuilder import ListBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, SettingType
@@ -225,9 +226,9 @@ class BasePortal(ABC):
             if not username or not password:
                 st.error("Both username and password are required.")
                 return
-            success, user_id, org_id = self.user_repo.authenticate_user(username, password)
+            success, user_id, org_id, group_id = self.user_repo.authenticate_user(username, password)
             if success:
-                self.set_session_state(user_id, org_id, username)
+                self.set_session_state(user_id, org_id, username, group_id)
                 st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
                 self.user_activity_repo.log_activity(user_id, self.get_session_id(), ActivityType.LOG_IN)
                 st.rerun()
@@ -246,10 +247,10 @@ class BasePortal(ABC):
             col1, col2, col3 = st.columns([2.5, 4, 32])
             if col1.button("Login", type="primary"):
                 if username and password:
-                    is_authenticated, user_id, org_id = \
+                    is_authenticated, user_id, org_id, group_id = \
                         self.user_repo.authenticate_user(username, password)
                     if is_authenticated:
-                        self.set_session_state(user_id, org_id, username)
+                        self.set_session_state(user_id, org_id, username, group_id)
                         st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
                         self.user_activity_repo.log_activity(
                             user_id, self.get_session_id(), ActivityType.LOG_IN)
@@ -414,11 +415,12 @@ class BasePortal(ABC):
             is_enabled = feature.get('is_enabled', False)
             st.session_state['feature_toggles'][feature_name] = is_enabled
 
-    def set_session_state(self, user_id, org_id, username):
+    def set_session_state(self, user_id, org_id, username, group_id):
         st.session_state['user_logged_in'] = True
         st.session_state['user_id'] = user_id
         st.session_state['org_id'] = org_id
         st.session_state['username'] = username
+        st.session_state['group_id'] = group_id
         success, organization = self.org_repo.get_organization_by_id(org_id)
         if success:
             st.session_state['join_code'] = organization['join_code']
@@ -508,8 +510,9 @@ class BasePortal(ABC):
 
         # Build the header for the user activities listing
         column_widths = [33.33, 33.33, 33.33]
-        self.build_header(column_names=['Activity Type', 'Timestamp', 'Additional Information'],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(
+            column_names=['Activity Type', 'Timestamp', 'Additional Information'])
 
         # Build rows for the user activities listing
         for activity in user_activities_data:
@@ -521,11 +524,11 @@ class BasePortal(ABC):
             else:
                 additional_params_str = 'No additional information available'
 
-            self.build_row(row_data={
+            list_builder.build_row(row_data={
                 'Activity Type': activity_type,
                 'Timestamp': timestamp,
                 'Additional Parameters': additional_params_str
-            }, column_widths=column_widths)
+            })
 
     def sessions(self):
         user_id = self.get_user_id()  # Get the current user ID
@@ -562,8 +565,9 @@ class BasePortal(ABC):
 
         # Build the header for the session listing
         column_widths = [33.33, 33.33, 33.33]
-        self.build_header(column_names=['Open Session Time', 'Close Session Time', 'Duration (minutes)'],
-                          column_widths=column_widths)
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(
+            column_names=['Open Session Time', 'Close Session Time', 'Duration (minutes)'])
 
         # Build rows for the session listing
         for session in session_details:
@@ -572,9 +576,9 @@ class BasePortal(ABC):
                 'close_session_time'] else 'N/A'
             # Convert the session duration from seconds to minutes
             duration_minutes = session['session_duration'] / 60
-            self.build_row(row_data={'Open Session Time': open_time, 'Close Session Time': close_time,
-                            'Duration (minutes)': f'{duration_minutes:.2f}'},
-                           column_widths=column_widths)
+            list_builder.build_row(
+                row_data={'Open Session Time': open_time, 'Close Session Time': close_time,
+                          'Duration (minutes)': f'{duration_minutes:.2f}'})
 
     def settings(self):
         settings = self.settings_repo.get_all_settings_by_portal(self.get_portal())
@@ -676,32 +680,6 @@ class BasePortal(ABC):
 
         return button, form_data
 
-    @staticmethod
-    def build_header(column_names, column_widths):
-        header_html = "<div style='background-color:#5CB5D2;padding:5px;border-radius:3px;border:1px solid black;'>"
-
-        for column_name, width in zip(column_names, column_widths):
-            header_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
-            header_html += f"<p style='color:black;margin:0;font-size:15px;font-weight:bold;'>{column_name}</p>"
-            header_html += "</div>"
-
-        header_html += "</div>"
-        st.markdown(header_html, unsafe_allow_html=True)
-
-    @staticmethod
-    def build_row(row_data, column_widths):
-        num_columns = len(row_data)
-
-        row_html = "<div style='padding:5px;border-radius:3px;border:1px solid black;'>"
-
-        for (column_name, value), width in zip(row_data.items(), column_widths):
-            row_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
-            row_html += f"<p style='color:black;margin:0;font-size:14px;'>{value}</p>"
-            row_html += "</div>"
-
-        row_html += "</div>"
-        st.markdown(row_html, unsafe_allow_html=True)
-
     def download_to_temp_file_by_url(self, blob_url):
         """Download a blob to a temporary file and return the file's path."""
         blob_data = self.storage_repo.download_blob_by_url(blob_url)
@@ -750,6 +728,10 @@ class BasePortal(ABC):
     @staticmethod
     def get_user_id():
         return st.session_state['user_id']
+
+    @staticmethod
+    def get_group_id():
+        return st.session_state['group_id']
 
     @staticmethod
     def get_session_id():
