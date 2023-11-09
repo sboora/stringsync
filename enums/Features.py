@@ -13,3 +13,4 @@ class Features(Enum):
     ADMIN_PORTAL_SETTINGS = "Admin Portal Settings"
     TEACHER_PORTAL_SETTINGS = "Teacher Portal Settings"
     STUDENT_PORTAL_SETTINGS = "Student Portal Settings"
+    TEACHER_PORTAL_RECORDINGS = "Teacher Portal Recordings"
