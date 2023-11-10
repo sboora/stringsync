@@ -1,21 +1,32 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 class UserBadges(Enum):
-    FIRST_NOTE = "First Note"
-    RISING_STAR = "Rising Star"
-    ROCKSTAR = "Rockstar"
-    TWO_DAY_STREAK = "2 day streak"
-    THREE_DAY_STREAK = "3 day streak"
-    FIVE_DAY_STREAK = "5 day streak"
-    SEVEN_DAY_STREAK = "7 day streak"
-    TEN_DAY_STREAK = "10 day streak"
-    WEEKLY_MAX_PRACTICE_MINUTES = "Practice Champ"
-    WEEKLY_MAX_RECORDING_MINUTES = "Sound Sorcerer"
-    WEEKLY_MAX_RECORDINGS = "Recording Kingpin"
-    WEEKLY_MAX_SCORER = "Melody Master"
-    WEEKLY_MAX_TRACK_RECORDER = "Track Titan"
-    WEEKLY_MAX_BADGE_EARNER = "Badge Baron"
+    FIRST_NOTE = ("First Note", 1)
+    RISING_STAR = ("Rising Star", 3)
+    ROCKSTAR = ("Rockstar", 5)
+    TWO_DAY_STREAK = ("2 day streak", 2)
+    THREE_DAY_STREAK = ("3 day streak", 3)
+    FIVE_DAY_STREAK = ("5 day streak", 5)
+    SEVEN_DAY_STREAK = ("7 day streak", 7)
+    TEN_DAY_STREAK = ("10 day streak", 10)
+    WEEKLY_MAX_PRACTICE_MINUTES = ("Practice Champ", 60)
+    MONTHLY_MAX_PRACTICE_MINUTES = ("Monthly Star", 180)
+    WEEKLY_MAX_RECORDING_MINUTES = ("Sound Sorcerer", 10)
+    MONTHLY_MAX_RECORDING_MINUTES = ("Mic Champ", 30)
+    WEEKLY_MAX_RECORDINGS = ("Recording Kingpin", 5)
+    WEEKLY_MAX_SCORER = ("Melody Master", 40)
+    WEEKLY_MAX_TRACK_RECORDER = ("Track Titan", 3)
+    WEEKLY_MAX_BADGE_EARNER = ("Badge Baron", 1)
+
+    def __init__(self, description, threshold):
+        self._value_ = description
+        self.description = description
+        self.threshold = threshold
+
+    @property
+    def value(self):
+        return self._value_
 
 
 class TrackBadges(Enum):
