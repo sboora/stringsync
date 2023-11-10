@@ -10,7 +10,12 @@ class UserBadges(Enum):
     FIVE_DAY_STREAK = "5 day streak"
     SEVEN_DAY_STREAK = "7 day streak"
     TEN_DAY_STREAK = "10 day streak"
-    WEEKLY_PRACTICE_CHAMP = "Weekly Practice Champ"
+    WEEKLY_MAX_PRACTICE_MINUTES = "Practice Champ"
+    WEEKLY_MAX_RECORDING_MINUTES = "Sound Sorcerer"
+    WEEKLY_MAX_RECORDINGS = "Recording Kingpin"
+    WEEKLY_MAX_SCORER = "Melody Master"
+    WEEKLY_MAX_TRACK_RECORDER = "Track Titan"
+    WEEKLY_MAX_BADGE_EARNER = "Badge Baron"
 
 
 class TrackBadges(Enum):
