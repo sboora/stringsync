@@ -60,7 +60,7 @@ class TeamDashboardBuilder:
                     unsafe_allow_html=True)
                 col3.write("")
                 col3.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['unique_tracks']}</div>",
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['recordings']}</div>",
                     unsafe_allow_html=True)
                 col4.write("")
                 col4.markdown(
@@ -91,7 +91,6 @@ class TeamDashboardBuilder:
     def show_last_week_winners(self, group_id):
         # Get the winners from the repository
         winners = self.portal_repo.get_weekly_winners(group_id)
-        print(winners)
 
         # Create a divider line
         divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: lightblue;'>"
@@ -99,7 +98,7 @@ class TeamDashboardBuilder:
         # Check if there are any winners
         if winners:
             st.markdown(
-                f"<div style='padding-top:5px;color:#5CB5D2;font-size:20px;'><b>Congratulations</b> "
+                f"<div style='padding-top:5px;color:#BD410B;font-size:20px;'><b>Congratulations</b> "
                 f"to all the <b>Weekly Badge Winners!!!</b>",
                 unsafe_allow_html=True)
             st.write("")
@@ -117,15 +116,45 @@ class TeamDashboardBuilder:
 
                 winners_by_badge[badge].append(student_name)
 
+            # Create 3 columns with equal width
+            col1, col2, col3 = st.columns(3)
+
+            # Keep track of the number of badges processed
+            badge_count = 0
+
             # Iterate through badges and display the winners
             for badge, student_names in winners_by_badge.items():
-                with st.container():
-                    col1, col2 = st.columns([1, 2])
-                    col1.image(self.badge_awarder.get_badge(badge), width=100)
-                    col2.write("")
-                    col2.markdown(
-                        f"<div style='padding-top:5px;color:black;font-size:18px;'><b>Winners:</b> {', '.join(student_names)}</div>",
+                # Decide in which column to place the badge based on the count
+                if badge_count % 6 < 3:
+                    if badge_count % 3 == 0:
+                        col = col1
+                    elif badge_count % 3 == 1:
+                        col = col2
+                    else:
+                        col = col3
+                else:
+                    if badge_count % 3 == 0:
+                        col = col1
+                    elif badge_count % 3 == 1:
+                        col = col2
+                    else:
+                        col = col3
+
+                # Using the chosen column, display the badge and the winners
+                with col:
+                    if badge_count % 6 >= 3:
+                        col.write("")
+
+                    col.image(self.badge_awarder.get_badge(badge), width=200)
+
+                    # Add congratulatory emojis next to each winner's name
+                    winners_with_emojis = [f"{name} 🎉" for name in student_names]
+                    col.markdown(
+                        f"<div style='padding-top:5px;color:black;font-size:18px;'><b>Winners:</b> {', '.join(winners_with_emojis)}</div>",
                         unsafe_allow_html=True)
+
+                # Increment the badge count
+                badge_count += 1
 
             st.write("")
             st.markdown(f"{divider}", unsafe_allow_html=True)

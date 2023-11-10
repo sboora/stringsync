@@ -2,6 +2,7 @@ import os
 import datetime
 
 from enums.Badges import UserBadges, TrackBadges
+from enums.TimeFrame import TimeFrame
 from repositories.PortalRepository import PortalRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
@@ -33,19 +34,31 @@ class BadgeAwarder:
 
         return badge_awarded
 
-    def auto_award_weekly_badge(self, group_id):
-        # Retrieve practice log data for all users within the date range
-        weekly_stats = self.portal_repo.get_weekly_stats(group_id)
+    def auto_award_weekly_badges(self, group_id):
+        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_WEEK)
 
+    def auto_award_monthly_badges(self, group_id):
+        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_MONTH)
+
+    def auto_award_yearly_badges(self, group_id):
+        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_YEAR)
+
+    def auto_award_badges(self, group_id, timeframe=TimeFrame.PREVIOUS_WEEK):
+        # Retrieve weekly stats for all users in the group within the date range
+        stats = self.portal_repo.get_group_stats(group_id, timeframe)
         # No data for the previous week
-        if len(weekly_stats) == 0:
+        if len(stats) == 0:
             return False
 
-        for stat in weekly_stats:
-            # Award the weekly badges to the students
-            print(stat)
-            self.user_achievement_repo.award_weekly_user_badge(
-                stat['student_id'], stat['category'])
+        # Iterate through each stat and check if the threshold is met
+        for stat in stats:
+            # Check if the category from stat is a valid badge and has a threshold
+            badge_category = stat['category']
+            if badge_category and stat['value'] >= badge_category.threshold:
+                # Award the weekly badges to the students if they meet the threshold
+                self.user_achievement_repo.award_weekly_user_badge(
+                    stat['student_id'], badge_category)
+        return True
 
     def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges):
         badge_awarded, _ = self.user_achievement_repo.award_track_badge(user_id, recording_id, badge)
