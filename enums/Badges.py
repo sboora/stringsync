@@ -10,6 +10,7 @@ class UserBadges(Enum):
     FIVE_DAY_STREAK = "5 day streak"
     SEVEN_DAY_STREAK = "7 day streak"
     TEN_DAY_STREAK = "10 day streak"
+    WEEKLY_PRACTICE_CHAMP = "Weekly Practice Champ"
 
 
 class TrackBadges(Enum):
