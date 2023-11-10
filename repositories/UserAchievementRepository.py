@@ -25,31 +25,31 @@ class UserAchievementRepository:
     def award_weekly_user_badge(self, user_id, badge: UserBadges):
         cursor = self.connection.cursor()
 
-        # Calculate the start and end dates for the current week
+        # Calculate the start and end dates for the previous week
         today = datetime.datetime.now().date()
-        start_of_week = today - datetime.timedelta(days=today.weekday())  # Monday
-        end_of_week = today + datetime.timedelta(days=6 - today.weekday())  # Sunday
+        end_of_last_week = today - datetime.timedelta(days=today.weekday() + 1)  # Last Sunday
+        start_of_last_week = end_of_last_week - datetime.timedelta(days=6)  # Previous Monday
 
-        # Check for other weekly badges awarded for the current week
+        # Check for other weekly badges awarded for the previous week
         cursor.execute(
             "SELECT COUNT(*) FROM user_achievements "
             "WHERE user_id = %s AND badge = %s AND DATE(timestamp) BETWEEN %s AND %s",
-            (user_id, badge.value, start_of_week, end_of_week)
+            (user_id, badge.value, start_of_last_week, end_of_last_week)
         )
 
         existing_badges = cursor.fetchone()
 
-        # If no existing badges for the current week
+        # If no existing badges for the previous week
         if existing_badges[0] == 0:
-            # Award the new badge
+            # Award the new badge with the timestamp of the end of the last week
             cursor.execute(
-                "INSERT INTO user_achievements (user_id, badge) VALUES (%s, %s)",
-                (user_id, badge.value)
+                "INSERT INTO user_achievements (user_id, badge, timestamp) VALUES (%s, %s, %s)",
+                (user_id, badge.value, end_of_last_week)
             )
             self.connection.commit()
-            return True, f"Awarded {badge.name} to user with ID {user_id}"
+            return True, f"Awarded {badge.name} to user with ID {user_id} for the week ending {end_of_last_week}"
         else:
-            return False, f"User with ID {user_id} already has the {badge.name} badge for this week"
+            return False, f"User with ID {user_id} already has the {badge.name} badge for the previous week"
 
     def award_user_badge(self, user_id, badge: UserBadges):
         cursor = self.connection.cursor()

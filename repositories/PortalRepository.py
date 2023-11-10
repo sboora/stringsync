@@ -186,41 +186,77 @@ class PortalRepository:
         cursor = self.connection.cursor()
 
         start_date, end_date = time_frame.get_date_range()
-        query = """
+        print(start_date, end_date)
+
+        # Query to fetch recordings data
+        recordings_query = """
         SELECT u.id AS user_id,
-               u.name AS student_name,
+               u.name AS teammate,
                COALESCE(COUNT(DISTINCT r.track_id), 0) AS unique_tracks,
-               COALESCE(COUNT(r.id), 0) AS total_recordings,
-               COALESCE(COUNT(DISTINCT ua.id), 0) AS badges_earned,
-               COALESCE(SUM(r.duration), 0) AS recording_minutes, 
-               COALESCE(SUM(p.minutes), 0) AS practice_minutes, 
-               COALESCE(SUM(r.score), 0) AS total_score 
+               COALESCE(COUNT(r.id), 0) AS recordings,
+               COALESCE(ROUND(SUM(r.duration) / 60, 2), 0) AS recording_minutes,
+               COALESCE(SUM(r.score), 0) AS score
         FROM users u
         LEFT JOIN recordings r ON u.id = r.user_id AND (r.timestamp BETWEEN %s AND %s)
-        LEFT JOIN user_achievements ua ON u.id = ua.user_id AND (ua.timestamp BETWEEN %s AND %s)
+        WHERE u.group_id = %s AND u.user_type = 'student'
+        GROUP BY u.id
+        """
+
+        # Query to fetch practice log data
+        practice_logs_query = """
+        SELECT u.id AS user_id, COALESCE(SUM(p.minutes), 0) AS practice_minutes
+        FROM users u
         LEFT JOIN user_practice_logs p ON u.id = p.user_id AND (p.timestamp BETWEEN %s AND %s)
         WHERE u.group_id = %s AND u.user_type = 'student'
         GROUP BY u.id
         """
 
-        cursor.execute(query, (start_date, end_date, start_date,
-                               end_date, start_date, end_date, group_id))
-        results = cursor.fetchall()
+        # Query to fetch achievements data
+        achievements_query = """
+        SELECT u.id AS user_id, COALESCE(COUNT(ua.id), 0) AS badges_earned
+        FROM users u
+        LEFT JOIN user_achievements ua ON u.id = ua.user_id AND (ua.timestamp BETWEEN %s AND %s)
+        WHERE u.group_id = %s AND u.user_type = 'student'
+        GROUP BY u.id
+        """
 
-        # Build the dashboard data structure
-        dashboard_data = [
-            {
-                'user_id': row[0],
-                'teammate': row[1],
-                'unique_tracks': row[2],
-                'recordings': row[3],
-                'badges_earned': row[4],
-                'recording_minutes': row[5],
-                'practice_minutes': row[6],
-                'score': row[7]
-            }
-            for row in results
-        ]
+        # Execute recordings query
+        cursor.execute(recordings_query, (start_date, end_date, group_id))
+        recordings_results = cursor.fetchall()
+
+        # Execute practice logs query
+        cursor.execute(practice_logs_query, (start_date, end_date, group_id))
+        practice_logs_results = cursor.fetchall()
+
+        # Execute achievements query
+        cursor.execute(achievements_query, (start_date, end_date, group_id))
+        achievements_results = cursor.fetchall()
+
+        # Create a dictionary to store aggregated results by user_id
+        aggregated_data = {}
+
+        # Aggregate recordings data
+        for row in recordings_results:
+            user_id = row[0]
+            if user_id not in aggregated_data:
+                aggregated_data[user_id] = {'user_id': user_id, 'teammate': row[1]}
+            aggregated_data[user_id]['unique_tracks'] = row[2]
+            aggregated_data[user_id]['recordings'] = row[3]
+            aggregated_data[user_id]['recording_minutes'] = row[4]
+            aggregated_data[user_id]['score'] = row[5]
+
+        # Aggregate practice logs data
+        for row in practice_logs_results:
+            user_id = row[0]
+            aggregated_data[user_id]['practice_minutes'] = row[1]
+
+        # Aggregate achievements data
+        for row in achievements_results:
+            user_id = row[0]
+            aggregated_data[user_id]['badges_earned'] = row[1]
+
+        # Convert aggregated data to a list of dictionaries
+        dashboard_data = list(aggregated_data.values())
 
         return dashboard_data
 
@@ -228,9 +264,7 @@ class PortalRepository:
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
 
         # Calculate the start and end dates for the current week
-        today = datetime.datetime.now().date()
-        start_of_week = today - datetime.timedelta(days=today.weekday())  # Monday
-        end_of_week = today + datetime.timedelta(days=6 - today.weekday())  # Sunday
+        start_of_week, end_of_week = TimeFrame.PREVIOUS_WEEK.get_date_range()
 
         # Query to get the student name and the weekly badge they won
         cursor.execute(
@@ -247,8 +281,8 @@ class PortalRepository:
 
         return winners
 
-    def get_weekly_stats(self, group_id):
-        dashboard_data = self.fetch_team_dashboard_data(group_id, TimeFrame.PREVIOUS_WEEK)
+    def get_group_stats(self, group_id, timeframe=TimeFrame.PREVIOUS_WEEK):
+        dashboard_data = self.fetch_team_dashboard_data(group_id, timeframe)
 
         # Initialize a dictionary to store the maximum value for each category
         max_values = {
