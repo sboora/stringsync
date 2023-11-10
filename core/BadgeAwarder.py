@@ -34,24 +34,18 @@ class BadgeAwarder:
         return badge_awarded
 
     def auto_award_weekly_badge(self, group_id):
-        # Determine the date range for the previous week
-        today = datetime.datetime.today()
-        end_date = today - datetime.timedelta(days=today.weekday())
-        start_date = end_date - datetime.timedelta(days=6)
-
         # Retrieve practice log data for all users within the date range
-        max_practitioner = self.portal_repo.get_max_practitioner(
-            group_id, start_date, end_date)
+        weekly_stats = self.portal_repo.get_weekly_stats(group_id)
 
-        # No practice data for the previous week
-        if not max_practitioner:
+        # No data for the previous week
+        if len(weekly_stats) == 0:
             return False
 
-        # Award the weekly badge to the user with the maximum practice log minutes
-        badge_awarded = self.user_achievement_repo.award_weekly_user_badge(
-            max_practitioner['user_id'], UserBadges.WEEKLY_PRACTICE_CHAMP)
-
-        return badge_awarded
+        for stat in weekly_stats:
+            # Award the weekly badges to the students
+            print(stat)
+            self.user_achievement_repo.award_weekly_user_badge(
+                stat['student_id'], stat['category'])
 
     def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges):
         badge_awarded, _ = self.user_achievement_repo.award_track_badge(user_id, recording_id, badge)
