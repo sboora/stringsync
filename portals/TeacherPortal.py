@@ -24,7 +24,8 @@ class TeacherPortal(BasePortal, ABC):
         self.audio_processor = AudioProcessor()
         self.badge_awarder = BadgeAwarder(
             self.settings_repo, self.recording_repo,
-            self.user_achievement_repo, self.user_practice_log_repo, self.storage_repo)
+            self.user_achievement_repo, self.user_practice_log_repo,
+            self.portal_repo, self.storage_repo)
         self.practice_dashboard_builder = PracticeDashboardBuilder(
             self.user_practice_log_repo)
         self.progress_dashboard_builder = ProgressDashboardBuilder(
@@ -624,6 +625,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def team_dashboard(self):
         groups = self.user_repo.get_all_groups()
+
         if not groups:
             st.info("Please create a team to get started.")
             return
@@ -631,12 +633,26 @@ class TeacherPortal(BasePortal, ABC):
         group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        selected_group = st.selectbox(
-            "Select a Team", group_options, key="team_dashboard_group_selector")
+        col1, col2, col3 = st.columns([1, 0.5, 3])
+
+        with col1:
+            selected_group = st.selectbox(
+                "Select a Team", group_options, key="team_dashboard_group_selector")
+
+        with col3:
+            st.write("")
+            st.write("")
+            if selected_group != "--Select a Team--":
+                selected_group_id = group_name_to_id[selected_group]
+                if st.button("Award Weekly Badges", type='primary'):
+                    self.award_weekly_badges(selected_group_id)
 
         if selected_group != "--Select a Team--":
-            selected_group_id = group_name_to_id[selected_group]
+            # Show dashboard
             self.team_dashboard_builder.team_dashboard(selected_group_id)
+
+    def award_weekly_badges(self, group_id):
+        self.badge_awarder.auto_award_weekly_badge(group_id)
 
     @staticmethod
     def calculate_file_hash(audio_data):

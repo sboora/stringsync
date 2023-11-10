@@ -28,7 +28,8 @@ class StudentPortal(BasePortal, ABC):
         self.audio_processor = AudioProcessor()
         self.badge_awarder = BadgeAwarder(
             self.settings_repo, self.recording_repo,
-            self.user_achievement_repo, self.user_practice_log_repo, self.storage_repo)
+            self.user_achievement_repo, self.user_practice_log_repo,
+            self.portal_repo, self.storage_repo)
         self.progress_dashboard_builder = ProgressDashboardBuilder(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo)
