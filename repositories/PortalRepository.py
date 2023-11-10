@@ -1,3 +1,10 @@
+import datetime
+
+import pymysql.cursors
+
+from enums.TimeFrame import TimeFrame
+
+
 class PortalRepository:
     def __init__(self, connection):
         self.connection = connection
@@ -174,33 +181,29 @@ class PortalRepository:
         result = cursor.fetchall()
         return [{'track_id': row['track_id'], 'badges': row['badges'].split(',')} for row in result]
 
-    def fetch_team_dashboard_data(self, group_id, time_frame):
+    def fetch_team_dashboard_data(self, group_id, time_frame: TimeFrame):
         cursor = self.connection.cursor()
 
+        start_date, end_date = time_frame.get_date_range()
         query = """
         SELECT u.id AS user_id,
                u.name AS student_name,
-               COUNT(DISTINCT r.track_id) AS unique_tracks,
-               COUNT(r.id) AS total_recordings,
-               COUNT(DISTINCT a.id) AS badges_earned,
-               SUM(r.duration) AS total_practice_minutes,
-               SUM(r.score) AS total_score
+               COALESCE(COUNT(DISTINCT r.track_id), 0) AS unique_tracks,
+               COALESCE(COUNT(r.id), 0) AS total_recordings,
+               COALESCE(COUNT(DISTINCT ua.id), 0) AS badges_earned,
+               COALESCE(SUM(r.duration), 0) AS recording_minutes, 
+               COALESCE(SUM(p.minutes), 0) AS practice_minutes, 
+               COALESCE(SUM(r.score), 0) AS total_score 
         FROM users u
-        LEFT JOIN recordings r ON u.id = r.user_id
-        LEFT JOIN user_achievements a ON u.id = a.user_id
+        LEFT JOIN recordings r ON u.id = r.user_id AND (r.timestamp BETWEEN %s AND %s)
+        LEFT JOIN user_achievements ua ON u.id = ua.user_id AND (ua.timestamp BETWEEN %s AND %s)
+        LEFT JOIN user_practice_logs p ON u.id = p.user_id AND (p.timestamp BETWEEN %s AND %s)
         WHERE u.group_id = %s AND u.user_type = 'student'
+        GROUP BY u.id
         """
 
-        # Add a GROUP BY clause based on the time frame
-        if time_frame == 'week':
-            query += "AND r.timestamp >= CURDATE() - INTERVAL 7 DAY "
-            query += "GROUP BY u.id, YEARWEEK(r.timestamp) "
-        elif time_frame == 'month':
-            query += "AND r.timestamp >= CURDATE() - INTERVAL 1 MONTH "
-            query += "GROUP BY u.id, EXTRACT(YEAR_MONTH FROM r.timestamp) "
-
-        # Execute the query
-        cursor.execute(query, (group_id,))
+        cursor.execute(query, (start_date, end_date, start_date,
+                               end_date, start_date, end_date, group_id))
         results = cursor.fetchall()
 
         # Build the dashboard data structure
@@ -211,17 +214,40 @@ class PortalRepository:
                 'unique_tracks': row[2],
                 'recordings': row[3],
                 'badges_earned': row[4],
-                'practice_minutes': row[5] if row[5] is not None else 0,
-                'score': row[6] if row[6] is not None else 0
+                'recording_minutes': row[5],
+                'practice_minutes': row[6],
+                'score': row[7]
             }
             for row in results
         ]
 
         return dashboard_data
 
+    def get_max_practitioner(self, group_id, start_date, end_date):
+        cursor = self.connection.cursor()
 
+        query = """
+        SELECT u.id AS user_id, 
+               u.name AS student_name,
+               COALESCE(SUM(p.minutes), 0) AS total_practice_minutes
+        FROM users u
+        LEFT JOIN user_practice_logs p ON u.id = p.user_id AND (p.timestamp BETWEEN %s AND %s)
+        WHERE u.group_id = %s AND u.user_type = 'student'
+        GROUP BY u.id, u.name
+        ORDER BY total_practice_minutes DESC
+        LIMIT 1;
+        """
 
+        cursor.execute(query, (start_date, end_date, group_id))
+        result = cursor.fetchone()
 
-
-
+        if result:
+            max_practitioner = {
+                'user_id': result[0],
+                'student_name': result[1],
+                'total_practice_minutes': result[2]
+            }
+            return max_practitioner
+        else:
+            return None
 
