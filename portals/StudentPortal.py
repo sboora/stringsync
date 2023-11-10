@@ -489,7 +489,7 @@ class StudentPortal(BasePortal, ABC):
             for i, badge in enumerate(badges):
                 with cols[i % 5]:
                     # Display the badge icon from the badge folder
-                    st.image(self.get_badge(badge), width=200)
+                    st.image(self.get_badge(badge), width=225)
         else:  # If there are no badges
             st.markdown("### No Badges Yet 🎖️")
             st.markdown("""
@@ -501,6 +501,44 @@ class StudentPortal(BasePortal, ABC):
 
                 Start by listening to a track and making your first recording today!
             """)
+
+        st.write("")
+        divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: brown;'>"
+        st.markdown(f"{divider}", unsafe_allow_html=True)
+        st.markdown("""
+            <h2 style='text-align: center; color: #7B2A07; font-size: 24px;'>
+                🌟 Discover the Treasure Trove of Badges! 🌟
+            </h2>
+            <p style='text-align: center; color: #99360B; font-size: 18px;'>
+                🚀 Embark on an epic adventure and collect them all! 🚀
+            </p>
+            """, unsafe_allow_html=True)
+
+        # Display all badges in columns
+        badges_info = {
+            "First Note": "Celebrate your start by uploading your first recording.",
+            "2 Day Streak": "Keep the rhythm! Practice for 2 consecutive days.",
+            "3 Day Streak": "Harmonize your week with a 3-day practice streak.",
+            "5 Day Streak": "Show your dedication with a streak of practicing for 5 days.",
+            "7 Day Streak": "Demonstrate your commitment with a full week of practice.",
+            "10 Day Streak": "Set the bar high with a 10-day practice streak.",
+            "Practice Champ": "Top the charts with the most practice minutes in a week, starting at a minimum of 75 "
+                              "minutes.",
+            "Sound Sorcerer": "Cast a spell by recording the most minutes in a week, with a starting spell of 10 "
+                              "minutes.",
+            "Recording Kingpin": "Rule the studio by making the most recordings in a week, starting at 5 recordings.",
+            "Melody Master": "Hit the high score by earning the most points in a week, with a minimum of 40 points.",
+            "Track Titan": "Be prolific! Record on the most number of different tracks in a week, starting at 3.",
+            "Badge Baron": "Be the ultimate achiever by earning the highest variety of badges."
+        }
+
+        # Create columns for badges
+        cols = st.columns(3)
+        for index, (badge_name, badge_criteria) in enumerate(badges_info.items()):
+            with cols[index % 3]:
+                st.markdown(f"### {badge_name}")
+                st.markdown(f"_{badge_criteria}_")
+                st.image(self.get_badge(badge_name), width=225)
 
     def resources_dashboard(self):
         self.resource_dashboard_builder.resources_dashboard()

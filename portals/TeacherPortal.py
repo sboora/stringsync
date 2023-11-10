@@ -633,7 +633,7 @@ class TeacherPortal(BasePortal, ABC):
         group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        col1, col2, col3 = st.columns([1, 0.5, 3])
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
 
         with col1:
             selected_group = st.selectbox(
@@ -645,14 +645,30 @@ class TeacherPortal(BasePortal, ABC):
             if selected_group != "--Select a Team--":
                 selected_group_id = group_name_to_id[selected_group]
                 if st.button("Award Weekly Badges", type='primary'):
-                    self.award_weekly_badges(selected_group_id)
+                    self.badge_awarder.auto_award_weekly_badges(selected_group_id)
+
+        with col4:
+            st.write("")
+            st.write("")
+            if selected_group != "--Select a Team--":
+                selected_group_id = group_name_to_id[selected_group]
+                if st.button("Award Monthly Badges", type='primary'):
+                    self.badge_awarder.auto_award_monthly_badges(selected_group_id)
+
+        with col5:
+            st.write("")
+            st.write("")
+            if selected_group != "--Select a Team--":
+                selected_group_id = group_name_to_id[selected_group]
+                if st.button("Award Yearly Badges", type='primary'):
+                    self.badge_awarder.auto_award_yearly_badges(selected_group_id)
 
         if selected_group != "--Select a Team--":
             # Show dashboard
             self.team_dashboard_builder.team_dashboard(selected_group_id)
 
     def award_weekly_badges(self, group_id):
-        self.badge_awarder.auto_award_weekly_badge(group_id)
+        self.badge_awarder.auto_award_weekly_badges(group_id)
 
     @staticmethod
     def calculate_file_hash(audio_data):
