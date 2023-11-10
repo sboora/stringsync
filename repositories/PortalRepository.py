@@ -2,6 +2,7 @@ import datetime
 
 import pymysql.cursors
 
+from enums.Badges import UserBadges
 from enums.TimeFrame import TimeFrame
 
 
@@ -223,31 +224,127 @@ class PortalRepository:
 
         return dashboard_data
 
-    def get_max_practitioner(self, group_id, start_date, end_date):
-        cursor = self.connection.cursor()
+    def get_weekly_winners(self, group_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
 
-        query = """
-        SELECT u.id AS user_id, 
-               u.name AS student_name,
-               COALESCE(SUM(p.minutes), 0) AS total_practice_minutes
-        FROM users u
-        LEFT JOIN user_practice_logs p ON u.id = p.user_id AND (p.timestamp BETWEEN %s AND %s)
-        WHERE u.group_id = %s AND u.user_type = 'student'
-        GROUP BY u.id, u.name
-        ORDER BY total_practice_minutes DESC
-        LIMIT 1;
-        """
+        # Calculate the start and end dates for the current week
+        today = datetime.datetime.now().date()
+        start_of_week = today - datetime.timedelta(days=today.weekday())  # Monday
+        end_of_week = today + datetime.timedelta(days=6 - today.weekday())  # Sunday
 
-        cursor.execute(query, (start_date, end_date, group_id))
-        result = cursor.fetchone()
+        # Query to get the student name and the weekly badge they won
+        cursor.execute(
+            "SELECT u.name AS student_name, ua.badge AS weekly_badge "
+            "FROM users u "
+            "JOIN user_achievements ua ON u.id = ua.user_id "
+            "WHERE ua.badge IN ('Practice Champ', 'Badge Baron', 'Melody Master', "
+            "'Track Titan', 'Sound Sorcerer', 'Recording Kingpin') "
+            "AND DATE(ua.timestamp) BETWEEN %s AND %s",
+            (start_of_week, end_of_week)
+        )
 
-        if result:
-            max_practitioner = {
-                'user_id': result[0],
-                'student_name': result[1],
-                'total_practice_minutes': result[2]
-            }
-            return max_practitioner
-        else:
-            return None
+        winners = cursor.fetchall()
+
+        return winners
+
+    def get_weekly_stats(self, group_id):
+        dashboard_data = self.fetch_team_dashboard_data(group_id, TimeFrame.PREVIOUS_WEEK)
+
+        # Initialize a dictionary to store the maximum value for each category
+        max_values = {
+            UserBadges.WEEKLY_MAX_PRACTICE_MINUTES: {'value': 0, 'students': []},
+            UserBadges.WEEKLY_MAX_RECORDINGS: {'value': 0, 'students': []},
+            UserBadges.WEEKLY_MAX_BADGE_EARNER: {'value': 0, 'students': []},
+            UserBadges.WEEKLY_MAX_RECORDING_MINUTES: {'value': 0, 'students': []},
+            UserBadges.WEEKLY_MAX_TRACK_RECORDER: {'value': 0, 'students': []},
+            UserBadges.WEEKLY_MAX_SCORER: {'value': 0, 'students': []}
+        }
+
+        # Calculate statistics for each student and update the maximum value for each category
+        for data in dashboard_data:
+            student_id = data['user_id']
+            student_name = data['teammate']
+            practice_minutes = data['practice_minutes']
+            recordings = data['recordings']
+            badges_earned = data['badges_earned']
+            recording_minutes = data['recording_minutes']
+            unique_tracks = data['unique_tracks']
+            score = data['score']
+
+            # Check if the current value is greater than the maximum value for each category
+            if practice_minutes > max_values[UserBadges.WEEKLY_MAX_PRACTICE_MINUTES]['value']:
+                max_values[UserBadges.WEEKLY_MAX_PRACTICE_MINUTES] = {
+                    'value': practice_minutes,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif practice_minutes == max_values[UserBadges.WEEKLY_MAX_PRACTICE_MINUTES]['value'] \
+                    and practice_minutes > 0:
+                max_values[UserBadges.WEEKLY_MAX_PRACTICE_MINUTES]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+            if recordings > max_values[UserBadges.WEEKLY_MAX_RECORDINGS]['value']:
+                max_values[UserBadges.WEEKLY_MAX_RECORDINGS] = {
+                    'value': recordings,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif recordings == max_values[UserBadges.WEEKLY_MAX_RECORDINGS]['value'] \
+                    and recordings > 0:
+                max_values[UserBadges.WEEKLY_MAX_RECORDINGS]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+            if badges_earned > max_values[UserBadges.WEEKLY_MAX_BADGE_EARNER]['value']:
+                max_values[UserBadges.WEEKLY_MAX_BADGE_EARNER] = {
+                    'value': badges_earned,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif badges_earned == max_values[UserBadges.WEEKLY_MAX_BADGE_EARNER]['value'] \
+                    and badges_earned > 0:
+                max_values[UserBadges.WEEKLY_MAX_BADGE_EARNER]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+            if recording_minutes > max_values[UserBadges.WEEKLY_MAX_RECORDING_MINUTES]['value']:
+                max_values[UserBadges.WEEKLY_MAX_RECORDING_MINUTES] = {
+                    'value': recording_minutes,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif recording_minutes == max_values[UserBadges.WEEKLY_MAX_RECORDING_MINUTES]['value'] \
+                    and recording_minutes > 0:
+                max_values[UserBadges.WEEKLY_MAX_RECORDING_MINUTES]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+            if unique_tracks > max_values[UserBadges.WEEKLY_MAX_TRACK_RECORDER]['value']:
+                max_values[UserBadges.WEEKLY_MAX_TRACK_RECORDER] = {
+                    'value': unique_tracks,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif unique_tracks == max_values[UserBadges.WEEKLY_MAX_TRACK_RECORDER]['value'] \
+                    and unique_tracks > 0:
+                max_values[UserBadges.WEEKLY_MAX_TRACK_RECORDER]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+            if score > max_values[UserBadges.WEEKLY_MAX_SCORER]['value']:
+                max_values[UserBadges.WEEKLY_MAX_SCORER] = {
+                    'value': score,
+                    'students': [{'student_id': student_id, 'student_name': student_name}]
+                }
+            elif score == max_values[UserBadges.WEEKLY_MAX_SCORER]['value'] \
+                    and score > 0:
+                max_values[UserBadges.WEEKLY_MAX_SCORER]['students'].append(
+                    {'student_id': student_id, 'student_name': student_name})
+
+        # Prepare the list of winners and badges to be awarded
+        weekly_winners = []
+
+        for badge, data in max_values.items():
+            for student in data['students']:
+                weekly_winners.append({
+                    'student_id': student['student_id'],
+                    'student_name': student['student_name'],
+                    'category': badge,
+                    'value': data['value']
+                })
+
+        return weekly_winners
+
+
 
