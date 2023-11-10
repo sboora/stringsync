@@ -1,8 +1,8 @@
 import os
+import datetime
 
-from enums import Badges
 from enums.Badges import UserBadges, TrackBadges
-from enums.Settings import Settings
+from repositories.PortalRepository import PortalRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
@@ -15,11 +15,13 @@ class BadgeAwarder:
                  recording_repo: RecordingRepository,
                  user_achievement_repo: UserAchievementRepository,
                  practice_log_repo: UserPracticeLogRepository,
+                 portal_repo: PortalRepository,
                  storage_repo: StorageRepository):
         self.settings_repo = settings_repo
         self.recording_repo = recording_repo
         self.user_achievement_repo = user_achievement_repo
         self.practice_log_repo = practice_log_repo
+        self.portal_repo = portal_repo
         self.storage_repo = storage_repo
 
     def auto_award_badge(self, user_id, practice_date):
@@ -28,6 +30,26 @@ class BadgeAwarder:
         badge = self.practice_log_repo.get_streak(user_id, practice_date)
         if badge:
             badge_awarded, _ = self.user_achievement_repo.award_user_badge(user_id, badge)
+
+        return badge_awarded
+
+    def auto_award_weekly_badge(self, group_id):
+        # Determine the date range for the previous week
+        today = datetime.datetime.today()
+        end_date = today - datetime.timedelta(days=today.weekday())
+        start_date = end_date - datetime.timedelta(days=6)
+
+        # Retrieve practice log data for all users within the date range
+        max_practitioner = self.portal_repo.get_max_practitioner(
+            group_id, start_date, end_date)
+
+        # No practice data for the previous week
+        if not max_practitioner:
+            return False
+
+        # Award the weekly badge to the user with the maximum practice log minutes
+        badge_awarded = self.user_achievement_repo.award_weekly_user_badge(
+            max_practitioner['user_id'], UserBadges.WEEKLY_PRACTICE_CHAMP)
 
         return badge_awarded
 
