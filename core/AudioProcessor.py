@@ -107,3 +107,50 @@ class AudioProcessor:
                 filtered_notes.append(note)
             prev_note = note
         return list(dict.fromkeys(filtered_notes))
+
+    def generate_note_analysis(self, error_notes, missing_notes):
+        error_dict = self.group_notes_by_first_letter(error_notes)
+        missing_dict = self.group_notes_by_first_letter(missing_notes)
+
+        message = ""
+        error_count = 0
+        if error_dict == missing_dict:
+            message += "Your recording had all the notes that the track had.\n"
+        else:
+            msg, error_count = self.correlate_notes(error_dict, missing_dict)
+            message += msg
+        return message, error_count
+
+    @staticmethod
+    def group_notes_by_first_letter(notes):
+        note_dict = {}
+        for note in notes:
+            first_letter = note[0]
+            note_dict.setdefault(first_letter, []).append(note)
+        return note_dict
+
+    @staticmethod
+    def correlate_notes(error_dict, missing_dict):
+        message = ""
+        error_count = 0
+        for first_letter, error_note_list in error_dict.items():
+            if first_letter in missing_dict:
+                for error_note in error_note_list:
+                    message += f"Play {missing_dict[first_letter][0]} instead of {error_note}\n"
+                    error_count += 1
+            else:
+                for error_note in error_note_list:
+                    message += f"You played the note {error_note}, however that is not present in the track\n"
+                    error_count += 1
+
+        for first_letter, missing_note_list in missing_dict.items():
+            if first_letter not in error_dict:
+                for missing_note in missing_note_list:
+                    message += f"You missed playing the note {missing_note}\n"
+                    error_count += 1
+        return message, error_count
+
+    @staticmethod
+    def calculate_audio_duration(path):
+        y, sr = librosa.load(path)
+        return librosa.get_duration(y=y, sr=sr)
