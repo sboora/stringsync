@@ -104,9 +104,13 @@ class BasePortal(ABC):
         for badge in UserBadges:
             self._download_badge_if_not_exists(badge.value, local_badges_directory)
 
-        # Check and download badges from TrackBadges enum
-        for badge in TrackBadges:
-            self._download_badge_if_not_exists(badge.value, local_badges_directory)
+        # Create a set to store all badge values (user and track)
+        all_badges = set(badge.value for badge in UserBadges) | \
+                     set(badge.value for badge in TrackBadges)
+
+        # Now, iterate over all badges and download them if they don't exist
+        for badge_value in all_badges:
+            self._download_badge_if_not_exists(badge_value, local_badges_directory)
 
     def _download_badge_if_not_exists(self, badge_name, local_badges_directory):
         # Construct the local file path
