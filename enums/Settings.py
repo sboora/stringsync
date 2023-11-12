@@ -20,6 +20,7 @@ class Portal(Enum):
 class Settings(Enum):
     MIN_SCORE_FOR_EARNING_BADGES = ("Minimum Score For Earning Badges", Portal.TEACHER, SettingType.INTEGER)
     TAB_BACKGROUND_COLOR = ("Tab Background Color", Portal.TEACHER, SettingType.COLOR)
+    TAB_HEADING_FONT_COLOR = ("Tab Heading Font Color", Portal.TEACHER, SettingType.COLOR)
     MAX_ROW_COUNT_IN_LIST = ("Max Row Count In List", Portal.TEACHER, SettingType.INTEGER)
 
     @classmethod
