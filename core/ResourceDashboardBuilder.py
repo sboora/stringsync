@@ -31,16 +31,12 @@ class ResourceDashboardBuilder:
                     with st.expander(f"{resource_type}s"):
                         # Use columns to display each resource in a row
                         for resource in resources_list:
-                            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+                            col1, col2, col3 = st.columns([1, 1, 1])
                             with col1:
                                 st.markdown(f"**{resource['title']}**")
                             with col2:
                                 st.write(resource['description'])
                             with col3:
-                                if resource['type'] == 'PDF':
-                                    # Provide a link to view the PDF
-                                    st.markdown(f"[View]({resource['file_url']})", unsafe_allow_html=True)
-                            with col4:
                                 # Display the appropriate content based on the resource type
                                 if resource['type'] == 'PDF':
                                     data = self.storage_repo.download_blob_by_url(resource['file_url'])
@@ -50,7 +46,7 @@ class ResourceDashboardBuilder:
                                         file_name=f"{resource['title']}.pdf",
                                         mime='application/pdf',
                                         key=f"download_{resource['id']}",
-                                        type="primary"
+                                        type='primary'
                                     )
                                 elif resource['type'] == 'Link':
                                     st.markdown(f"[Link]({resource['link']})", unsafe_allow_html=True)
