@@ -16,6 +16,9 @@ class TeamDashboardBuilder:
         self.badge_awarder = badge_awarder
 
     def team_dashboard(self, group_id):
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "👥 Team Performance & Collaboration 👥</h2>", unsafe_allow_html=True)
+
         self.show_last_week_winners(group_id)
         st.write("")
         options = [time_frame for time_frame in TimeFrame]

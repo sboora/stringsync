@@ -9,8 +9,11 @@ class ResourceDashboardBuilder:
         self.resource_repo = resource_repo
         self.storage_repo = storage_repo
 
-    def resources_dashboard(self):
-        resources = self.resource_repo.list_resources()
+    def resources_dashboard(self, resource_ids=None):
+        if resource_ids is None:
+            resources = self.resource_repo.get_all_resources()
+        else:
+            resources = self.resource_repo.get_resources(resource_ids)
 
         # Organize resources by type
         resources_by_type = {

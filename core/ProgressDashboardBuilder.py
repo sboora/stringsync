@@ -24,6 +24,9 @@ class ProgressDashboardBuilder:
         self.track_repo = track_repo
 
     def progress_dashboard(self, user_id):
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
+
         tracks = self.get_tracks(user_id)
         if len(tracks) == 0:
             st.info("No data available.")
