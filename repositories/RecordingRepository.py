@@ -1,7 +1,4 @@
 import pymysql.cursors
-from datetime import datetime, timedelta
-
-import pytz
 
 
 class RecordingRepository:
@@ -175,4 +172,3 @@ class RecordingRepository:
                 day['avg_score'] = 0
 
         return result
-

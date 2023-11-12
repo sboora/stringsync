@@ -40,7 +40,15 @@ class ResourceRepository:
         resource = cursor.fetchone()
         return resource
 
-    def list_resources(self):
+    def get_resources(self, resource_ids):
+        # Ensure resource_ids is a list or tuple for the query placeholder generation
+        resource_ids_placeholder = ', '.join(['%s'] * len(resource_ids))
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            query = f"SELECT * FROM resources WHERE id IN ({resource_ids_placeholder});"
+            cursor.execute(query, resource_ids)
+            return cursor.fetchall()
+
+    def get_all_resources(self):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         list_resources_query = """SELECT * FROM resources;"""
         cursor.execute(list_resources_query)
