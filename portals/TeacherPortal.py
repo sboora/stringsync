@@ -233,7 +233,7 @@ class TeacherPortal(BasePortal, ABC):
                 st.success("Resource link added successfully!")
             else:
                 # Save the file to storage and get the URL
-                file_url = self.upload_resource_to_storage(file.getvalue(), f"{title}_{file.name}")
+                file_url = self.upload_resource_to_storage(file, file.getvalue())
                 # Save the file information to the database
                 self.resource_repo.add_resource(self.get_user_id(), title, description, rtype, file_url, None)
                 st.success("File uploaded successfully!")

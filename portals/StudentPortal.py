@@ -14,14 +14,11 @@ from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.ResourceDashboardBuilder import ResourceDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
-from enums.Badges import TrackBadges, UserBadges
+from enums.Badges import UserBadges
 from enums.Features import Features
 from enums.Settings import Portal, Settings
-from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
-
-from streamlit import config
 
 
 class StudentPortal(BasePortal, ABC):
@@ -163,12 +160,6 @@ class StudentPortal(BasePortal, ABC):
             self.recordings(track['id'])
         if is_success:
             os.remove(recording_name)
-
-    @staticmethod
-    def show_notations(track):
-        notation_builder = NotationBuilder(track, track['notation_path'])
-        track_notes = notation_builder.display_notation()
-        return track_notes
 
     @staticmethod
     def display_recordings_header():
