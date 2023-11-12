@@ -7,6 +7,7 @@ import os
 import json
 from streamlit_lottie import st_lottie
 
+from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
 from core.BadgeAwarder import BadgeAwarder
 from core.ListBuilder import ListBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
@@ -38,6 +39,9 @@ class StudentPortal(BasePortal, ABC):
             self.user_practice_log_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
             self.portal_repo, self.user_achievement_repo, self.badge_awarder)
+        self.assignment_dashboard_builder = AssignmentDashboardBuilder(
+            self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
+            self.resource_dashboard_builder)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -55,6 +59,7 @@ class StudentPortal(BasePortal, ABC):
             ("⏲️ Practice Log", self.practice_log),
             ("🏆 Badges", self.badges_dashboard),
             ("📚 Resources", self.resources_dashboard),
+            ("📝 Assignments", self.assignments_dashboard),
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("👥 Team Dashboard", self.team_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
@@ -116,6 +121,9 @@ class StudentPortal(BasePortal, ABC):
                       key="badge_awarded")
 
     def record(self):
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
+
         track = self.filter_tracks()
         if not track:
             return
@@ -225,8 +233,13 @@ class StudentPortal(BasePortal, ABC):
         return formatted_timestamp
 
     def submissions(self):
-        if not st.button("Load Submissions", type='primary'):
-            return
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([2.4, 2, 1])
+        with col2:
+            if not st.button("Load Submissions", key='load_submissions'):
+                return
 
         # Fetch submissions from the database
         limit = self.settings_repo.get_setting(
@@ -475,6 +488,9 @@ class StudentPortal(BasePortal, ABC):
             return "Excellent! You've mastered this track!"
 
     def badges_dashboard(self):
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
+
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
         if badges:  # If there are badges
@@ -534,11 +550,17 @@ class StudentPortal(BasePortal, ABC):
                 st.image(self.get_badge(badge_name), width=225)
 
     def resources_dashboard(self):
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
+
         self.resource_dashboard_builder.resources_dashboard()
 
+    def assignments_dashboard(self):
+        self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
+
     def practice_log(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #769AA0; font-size: 24px;'>🎵 Practice "
-                    "Tracker & Insights 🎵</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
+                    "🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
 
         # Initialize session state variables if they aren't already
         if 'form_submitted' not in st.session_state:

@@ -53,6 +53,7 @@ class TeacherPortal(BasePortal, ABC):
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
             ("🎵 Remove Track", self.remove_track),
+            ("📝 Assignments", self.assignment_management),
             ("🎵 Recordings", self.list_recordings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_RECORDINGS) else None,
             ("📥 Submissions", self.submissions),
@@ -217,6 +218,69 @@ class TeacherPortal(BasePortal, ABC):
         # Part for listing existing resources
         self.list_resources()
 
+    def assignment_management(self):
+        st.header("Assignment Management")
+
+        with st.form("assignment_creation"):
+            assignment_title = st.text_input("Assignment Title", key='assignment_title')
+            assignment_description = st.text_area("Assignment Description", key='assignment_description')
+            due_date = st.date_input("Due Date", key='due_date')
+
+            all_tracks = self.track_repo.get_all_tracks()
+            all_resources = self.resource_repo.get_all_resources()
+
+            track_options = {track['name']: track['id'] for track in all_tracks}
+            resource_options = {resource['title']: resource['id'] for resource in all_resources}
+
+            selected_track_ids = [track_options[track_name] for track_name in
+                                  st.multiselect("Select Tracks", list(track_options.keys()),
+                                                 key='selected_tracks')]
+            selected_resource_ids = [resource_options[resource_title] for resource_title in
+                                     st.multiselect("Select Resources", list(resource_options.keys()),
+                                                    key='selected_resources')]
+            # Fetch all teams
+            all_teams = self.user_repo.get_all_groups()
+            team_options = {team['group_name']: team['group_id'] for team in all_teams}
+            selected_team_ids = [team_options[team_name] for team_name in
+                                 st.multiselect("Select Teams", list(team_options.keys()),
+                                 key='selected_teams')]
+
+            # Fetch all individual users
+            all_users = self.user_repo.get_users_by_org_id_and_type(
+                self.get_org_id(), UserType.STUDENT.value)
+            user_options = {user['username']: user['id'] for user in all_users}
+            selected_user_ids = [user_options[username] for username in
+                                 st.multiselect("Select Individual Users", list(user_options.keys()),
+                                 key='selected_users')]
+
+            submit_button = st.form_submit_button("Create Assignment")
+
+            if submit_button:
+                assignment_id = self.assignment_repo.add_assignment(
+                    assignment_title, assignment_description, due_date
+                )
+
+                for track_id in selected_track_ids:
+                    self.assignment_repo.add_assignment_detail(assignment_id,
+                                                               track_id=track_id)
+                for resource_id in selected_resource_ids:
+                    self.assignment_repo.add_assignment_detail(assignment_id,
+                                                               resource_id=resource_id)
+
+                # Combine users from selected teams with individually selected users
+                print(selected_user_ids, selected_team_ids)
+                users_to_assign = set(selected_user_ids)
+                for team_id in selected_team_ids:
+                    team_members = self.user_repo.get_users_by_org_id_group_and_type(
+                        self.get_org_id(), team_id, UserType.STUDENT.value)
+                    users_to_assign.update(member['id'] for member in team_members)
+
+                # Deduplicate and assign the assignment to each user
+                print(users_to_assign)
+                self.assignment_repo.assign_to_users(assignment_id, list(users_to_assign))
+
+                st.success("Assignment created and assigned successfully!")
+
     def handle_resource_upload(self, title, description, file, rtype, link):
         if rtype != "Link" and not file:
             st.error("Please upload a file.")
@@ -242,7 +306,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_resources(self):
         # Fetch resources from the DB
-        resources = self.resource_repo.list_resources()
+        resources = self.resource_repo.get_all_resources()
         if resources:
             for resource in resources:
                 with st.expander(f"{resource['title']}"):

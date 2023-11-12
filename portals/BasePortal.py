@@ -9,6 +9,7 @@ from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, SettingType
 from enums.UserType import UserType
+from repositories.AssignmentRepository import AssignmentRepository
 from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
 from repositories.PortalRepository import PortalRepository
@@ -44,6 +45,7 @@ class BasePortal(ABC):
         self.raga_repo = None
         self.user_practice_log_repo = None
         self.resource_repo = None
+        self.assignment_repo = None
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
@@ -63,6 +65,7 @@ class BasePortal(ABC):
         self.recording_repo = RecordingRepository(self.get_connection())
         self.portal_repo = PortalRepository(self.get_connection())
         self.resource_repo = ResourceRepository(self.get_connection())
+        self.assignment_repo = AssignmentRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
 
     @abstractmethod
