@@ -23,9 +23,6 @@ class AssignmentDashboardBuilder:
         self.storage_repo = storage_repo
 
     def assignments_dashboard(self, user_id):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
-
         # Retrieve assignments for the specific user
         user_assignments = self.assignment_repo.get_assignments(user_id)
         # Loop through assignments and display them
@@ -78,6 +75,6 @@ class AssignmentDashboardBuilder:
             key=f"status_{assignment_detail_id}"
         )
 
-        if st.button("Update Status", key=f"update_{assignment_detail_id}"):
+        if st.button("Update Status", key=f"update_{assignment_detail_id}", type='primary'):
             self.assignment_repo.update_assignment_status_by_detail(user_id, assignment_detail_id, new_status)
             st.success(f"Status updated to {new_status}")
