@@ -49,6 +49,8 @@ class BasePortal(ABC):
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
+        self.tab_heading_font_color = None
+        self.limit = None
 
     def init_repositories(self):
         self.tenant_repo = TenantRepository(self.get_connection())
@@ -410,6 +412,7 @@ class BasePortal(ABC):
             st.session_state['last_selected_track'] = None
 
         self.load_all_feature_toggles_into_session()
+        self.load_settings()
 
     def load_all_feature_toggles_into_session(self):
         features = self.feature_repo.get_all_features()
@@ -420,6 +423,12 @@ class BasePortal(ABC):
             feature_name = feature.get('feature_name', 'Unknown')
             is_enabled = feature.get('is_enabled', False)
             st.session_state['feature_toggles'][feature_name] = is_enabled
+
+    def load_settings(self):
+        self.tab_heading_font_color = self.settings_repo.get_setting(
+            self.get_org_id(), Settings.TAB_HEADING_FONT_COLOR)
+        self.limit = self.settings_repo.get_setting(
+            self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
 
     def set_session_state(self, user_id, org_id, username, group_id):
         st.session_state['user_logged_in'] = True
@@ -699,6 +708,11 @@ class BasePortal(ABC):
         with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
             temp_file.write(blob_data)
             return temp_file.name
+
+    @staticmethod
+    def divider():
+        divider = "<hr style='height:2px; margin-top: 0; border-width:0; background: lightblue;'>"
+        st.markdown(f"{divider}", unsafe_allow_html=True)
 
     def clean_up(self):
         self.tenant_repo = None

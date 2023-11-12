@@ -17,7 +17,7 @@ from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges
 from enums.Features import Features
-from enums.Settings import Portal, Settings
+from enums.Settings import Portal
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
 
@@ -54,9 +54,9 @@ class StudentPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
-            ("🎤 Record", self.record),
-            ("📥 Submissions", self.submissions),
-            ("⏲️ Practice Log", self.practice_log),
+            ("🎤 Record", self.recording_dashboard),
+            ("📥 Submissions", self.submissions_dashboard),
+            ("⏲️ Practice Log", self.practice_dashboard),
             ("🏆 Badges", self.badges_dashboard),
             ("📚 Resources", self.resources_dashboard),
             ("📝 Assignments", self.assignments_dashboard),
@@ -120,10 +120,10 @@ class StudentPortal(BasePortal, ABC):
             st_lottie(lottie_json, speed=1, width=400, height=200, loop=True, quality='high',
                       key="badge_awarded")
 
-    def record(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
-
+    def recording_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
+        self.divider()
         track = self.filter_tracks()
         if not track:
             return
@@ -232,19 +232,17 @@ class StudentPortal(BasePortal, ABC):
             int(timestamp.strftime('%d'))) + timestamp.strftime(' %b, %Y')
         return formatted_timestamp
 
-    def submissions(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
-
+    def submissions_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
+        self.divider()
         col1, col2, col3 = st.columns([2.4, 2, 1])
         with col2:
             if not st.button("Load Submissions", key='load_submissions'):
                 return
 
         # Fetch submissions from the database
-        limit = self.settings_repo.get_setting(
-            self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
-        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id(), limit=limit)
+        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id(), limit=self.limit)
 
         if not submissions:
             st.info("No submissions found.")
@@ -298,9 +296,17 @@ class StudentPortal(BasePortal, ABC):
         pass
 
     def progress_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
+        self.divider()
+
         self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
 
     def team_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 👥 Team Performance & Collaboration 👥</h2>", unsafe_allow_html=True)
+        self.divider()
+
         self.team_dashboard_builder.team_dashboard(self.get_group_id())
 
     def filter_tracks(self):
@@ -488,9 +494,9 @@ class StudentPortal(BasePortal, ABC):
             return "Excellent! You've mastered this track!"
 
     def badges_dashboard(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
-
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
+        self.divider()
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
 
         if badges:  # If there are badges
@@ -512,13 +518,12 @@ class StudentPortal(BasePortal, ABC):
             """)
 
         st.write("")
-        divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: brown;'>"
-        st.markdown(f"{divider}", unsafe_allow_html=True)
-        st.markdown("""
-            <h2 style='text-align: center; color: #7B2A07; font-size: 24px;'>
+        self.divider()
+        st.markdown(f"""
+            <h2 style='text-align: center; color: {self.tab_heading_font_color}; font-size: 24px;'>
                 🌟 Discover the Treasure Trove of Badges! 🌟
             </h2>
-            <p style='text-align: center; color: #99360B; font-size: 18px;'>
+            <p style='text-align: center; color: {self.tab_heading_font_color}; font-size: 18px;'>
                 🚀 Embark on an epic adventure and collect them all! 🚀
             </p>
             """, unsafe_allow_html=True)
@@ -550,18 +555,21 @@ class StudentPortal(BasePortal, ABC):
                 st.image(self.get_badge(badge_name), width=225)
 
     def resources_dashboard(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
-
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
+        self.divider()
         self.resource_dashboard_builder.resources_dashboard()
 
     def assignments_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
+        self.divider()
         self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
 
-    def practice_log(self):
-        st.markdown("<h2 style='text-align: center; font-weight: bold; color: #43A5DC; font-size: 24px;'>"
-                    "🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
-
+    def practice_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
+        self.divider()
         # Initialize session state variables if they aren't already
         if 'form_submitted' not in st.session_state:
             st.session_state.form_submitted = False
