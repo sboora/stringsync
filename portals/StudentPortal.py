@@ -21,6 +21,8 @@ from notations.NotationBuilder import NotationBuilder
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
 
+from streamlit import config
+
 
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
@@ -590,8 +592,8 @@ class StudentPortal(BasePortal, ABC):
                         practice_datetime = datetime.datetime.combine(practice_date, practice_time)
                         self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
                         st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
-                        badge_awarded = self.badge_awarder.auto_award_badge(self.get_user_id(),
-                                                                            practice_date)
+                        badge_awarded = self.badge_awarder.auto_award_badge(
+                            self.get_user_id(), practice_date)
                     st.session_state.form_submitted = True
 
         with cols[1]:

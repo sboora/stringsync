@@ -597,7 +597,8 @@ class TeacherPortal(BasePortal, ABC):
             if selected_badge != 'N/A':
                 self.user_achievement_repo.award_track_badge(submission['user_id'],
                                                              submission['id'],
-                                                             TrackBadges(selected_badge))
+                                                             TrackBadges(selected_badge),
+                                                             submission['timestamp'])
             st.rerun()
 
     def progress_dashboard(self):

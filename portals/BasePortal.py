@@ -4,7 +4,6 @@ import tempfile
 import time
 from abc import ABC, abstractmethod
 import streamlit as st
-
 from core.ListBuilder import ListBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
