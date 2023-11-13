@@ -53,7 +53,6 @@ class UserAchievementRepository:
 
     def award_user_badge(self, user_id, badge: UserBadges, timestamp=datetime.datetime.now()):
         cursor = self.connection.cursor()
-        print(timestamp)
         # Check for existing 'FIRST_NOTE' badge
         if badge == UserBadges.FIRST_NOTE:
             cursor.execute(

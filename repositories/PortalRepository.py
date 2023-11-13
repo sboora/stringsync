@@ -186,7 +186,6 @@ class PortalRepository:
         cursor = self.connection.cursor()
 
         start_date, end_date = time_frame.get_date_range()
-        print(start_date, end_date)
 
         # Query to fetch recordings data
         recordings_query = """

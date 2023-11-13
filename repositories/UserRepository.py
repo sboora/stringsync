@@ -1,6 +1,8 @@
-import re
 import bcrypt
 import os
+
+import pymysql.cursors
+
 from enums.UserType import UserType
 
 
@@ -9,25 +11,43 @@ class UserRepository:
         self.connection = connection
         self.create_user_groups_table()
         self.create_users_table()
+        self.create_avatars_table()
         self.create_root_user()
+        self.create_avatars()
+
+    def create_avatars_table(self):
+        with self.connection.cursor() as cursor:
+            create_table_query = """
+                CREATE TABLE IF NOT EXISTS `avatars` (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE,
+                is_assigned BOOLEAN DEFAULT FALSE
+            ); """
+
+            cursor.execute(create_table_query)
+            self.connection.commit()
 
     def create_users_table(self):
-        cursor = self.connection.cursor()
-        create_table_query = """CREATE TABLE IF NOT EXISTS `users` (
-                                    id INT AUTO_INCREMENT PRIMARY KEY,
-                                    name VARCHAR(255) UNIQUE,
-                                    username VARCHAR(255) UNIQUE,
-                                    email VARCHAR(255) UNIQUE,
-                                    password VARCHAR(255),
-                                    is_enabled BOOLEAN DEFAULT TRUE,
-                                    user_type ENUM('admin', 'teacher', 'student') NOT NULL,
-                                    group_id INT,
-                                    org_id INT,  
-                                    FOREIGN KEY (group_id) REFERENCES `user_groups`(id),
-                                    FOREIGN KEY (org_id) REFERENCES `organizations`(id)  
-                                ); """
-        cursor.execute(create_table_query)
-        self.connection.commit()
+        with self.connection.cursor() as cursor:
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS `users` (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE,
+                username VARCHAR(255) UNIQUE,
+                email VARCHAR(255) UNIQUE,
+                password VARCHAR(255),
+                is_enabled BOOLEAN DEFAULT TRUE,
+                user_type ENUM('admin', 'teacher', 'student') NOT NULL,
+                group_id INT,
+                org_id INT,
+                avatar_id INT DEFAULT NULL,
+                FOREIGN KEY (group_id) REFERENCES `user_groups`(id),
+                FOREIGN KEY (org_id) REFERENCES `organizations`(id),
+                FOREIGN KEY (avatar_id) REFERENCES `avatars`(id)
+            );
+            """
+            cursor.execute(create_table_query)
+            self.connection.commit()
 
     def create_user_groups_table(self):
         cursor = self.connection.cursor()
@@ -62,7 +82,8 @@ class UserRepository:
         hashed_password = bcrypt.hashpw(root_password.encode('utf-8'), bcrypt.gensalt())
 
         # SQL query to insert the root user
-        insert_root_user_query = """INSERT INTO users (name, username, email, password, is_enabled, user_type, group_id, org_id) 
+        insert_root_user_query = """INSERT INTO users (name, username, email, password, 
+                                    is_enabled, user_type, group_id, org_id) 
                                     VALUES ('root', %s, 'kaaimd@gmail.com', %s, TRUE, 'admin', NULL, NULL);"""
 
         # Execute the query
@@ -120,22 +141,81 @@ class UserRepository:
             self.connection.rollback()  # Rollback the transaction in case of an error
             return False, f"Failed to create group '{group_name}'. Error: {str(e)}"
 
-    def register_user(self, name, username, email, password, org_id, user_type=UserType.STUDENT.value):
-        cursor = self.connection.cursor()
+    def register_user(self, name, username, email, password, org_id, user_type=UserType.STUDENT.value, avatar_id=None):
+        try:
+            with self.connection.cursor() as cursor:
+                # Check if the username or email already exists
+                cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+                existing_user = cursor.fetchone()
+                if existing_user:
+                    return False, "Username or email already exists.", None
 
-        # Check if the username or email already exists
-        cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
-        existing_user = cursor.fetchone()
-        if existing_user:
-            return False, "Username or email already exists.", None
+                # Hash the password
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        add_user_query = """INSERT INTO users (name, username, email, password, org_id, user_type)
-                                        VALUES (%s, %s, %s, %s, %s, %s);"""
-        cursor.execute(add_user_query, (name, username, email, hashed_password, org_id, user_type))
-        self.connection.commit()
-        user_id = cursor.lastrowid  # Get the user_id of the newly registered user
-        return True, f"User {username} with email {email} registered successfully as {user_type}.", user_id
+                # Begin a new transaction
+                self.connection.begin()
+
+                # Insert new user record with avatar_id
+                add_user_query = """
+                                INSERT INTO users (name, username, email, password, org_id, user_type, avatar_id)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s);
+                            """
+                cursor.execute(add_user_query, (name, username, email, hashed_password, org_id, user_type, avatar_id))
+
+                # Get the ID of the newly registered user
+                user_id = cursor.lastrowid
+
+                # If an avatar_id was provided, update the avatars table
+                if avatar_id is not None:
+                    cursor.execute("""
+                        UPDATE avatars
+                        SET is_assigned = TRUE
+                        WHERE id = %s;
+                    """, (avatar_id,))
+
+                # Commit the transaction
+                self.connection.commit()
+
+                return True, f"User {username} with email {email} registered successfully as {user_type}.", user_id
+        except Exception as e:
+            # If an error occurs, roll back the transaction
+            self.connection.rollback()
+            return False, f"Failed to register user due to error: {e}", None
+
+    def get_all_avatars(self):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("""
+                SELECT * FROM avatars;
+            """)
+            # Fetch all results
+            results = cursor.fetchall()
+            return results
+
+    def get_available_avatars(self):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Select avatars that are not yet assigned
+            cursor.execute("""
+                SELECT * FROM avatars
+                WHERE is_assigned IS FALSE;
+            """)
+            # Fetch all results
+            results = cursor.fetchall()
+            return results
+
+    def get_avatar(self, user_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Join users table with avatars table to get the avatar object
+            cursor.execute("""
+                SELECT av.*
+                FROM users AS u
+                JOIN avatars AS av ON u.avatar_id = av.id
+                WHERE u.id = %s;
+            """, (user_id,))
+            result = cursor.fetchone()
+
+            # Return the avatar object as a dictionary if available, else return None
+            return result if result else None
 
     def enable_disable_user(self, username, enable=True):
         cursor = self.connection.cursor()
@@ -239,3 +319,16 @@ class UserRepository:
 
             return False, f"Failed to assign user to organization. Error: {str(e)}"
 
+    def create_avatars(self):
+        # Query to insert a new avatar if it does not exist
+        insert_avatar_query = """
+                INSERT IGNORE INTO avatars (name, is_assigned)
+                VALUES (%s, %s);
+                """
+
+        # Insert 10 avatars into the table
+        for i in range(1, 12):  # Assuming you want to include 'avatar 11'
+            avatar_name = f"avatar {i}"
+            with self.connection.cursor() as cursor:
+                cursor.execute(insert_avatar_query, (avatar_name, False))
+            self.connection.commit()
