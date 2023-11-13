@@ -10,6 +10,7 @@ from streamlit_lottie import st_lottie
 from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
 from core.BadgeAwarder import BadgeAwarder
 from core.ListBuilder import ListBuilder
+from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.ResourceDashboardBuilder import ResourceDashboardBuilder
@@ -42,6 +43,8 @@ class StudentPortal(BasePortal, ABC):
         self.assignment_dashboard_builder = AssignmentDashboardBuilder(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
+        self.message_dashboard_builder = MessageDashboardBuilder(
+            self.message_repo, self.avatar_loader)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -62,6 +65,7 @@ class StudentPortal(BasePortal, ABC):
             ("📝 Assignments", self.assignments_dashboard),
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("👥 Team Dashboard", self.team_dashboard),
+            ("🔗 Team Connect", self.team_connect),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.STUDENT_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -308,6 +312,14 @@ class StudentPortal(BasePortal, ABC):
         self.divider()
 
         self.team_dashboard_builder.team_dashboard(self.get_group_id())
+
+    def team_connect(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
+        st.write("This is a space for team members to share messages and updates.")
+        self.divider()
+
+        self.message_dashboard_builder.message_dashboard(self.get_user_id(), self.get_group_id())
 
     def filter_tracks(self):
         ragas = self.raga_repo.get_all_ragas()

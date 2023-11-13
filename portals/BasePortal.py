@@ -4,6 +4,8 @@ import tempfile
 import time
 from abc import ABC, abstractmethod
 import streamlit as st
+
+from core.AvatarLoader import AvatarLoader
 from core.ListBuilder import ListBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
@@ -12,6 +14,7 @@ from enums.UserType import UserType
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.DatabaseManager import DatabaseManager
 from repositories.FeatureToggleRepository import FeatureToggleRepository
+from repositories.MessageRepository import MessageRepository
 from repositories.PortalRepository import PortalRepository
 from repositories.RagaRepository import RagaRepository
 from repositories.RecordingRepository import RecordingRepository
@@ -46,6 +49,8 @@ class BasePortal(ABC):
         self.user_practice_log_repo = None
         self.resource_repo = None
         self.assignment_repo = None
+        self.message_repo = None
+        self.avatar_loader = None
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
@@ -68,7 +73,9 @@ class BasePortal(ABC):
         self.portal_repo = PortalRepository(self.get_connection())
         self.resource_repo = ResourceRepository(self.get_connection())
         self.assignment_repo = AssignmentRepository(self.get_connection())
+        self.message_repo = MessageRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
+        self.avatar_loader = AvatarLoader(self.storage_repo, self.user_repo)
 
     @abstractmethod
     def get_portal(self):
@@ -83,9 +90,18 @@ class BasePortal(ABC):
     def start(self, register=False):
         self.init_session()
         self.cache_badges()
+        self.avatar_loader.cache_avatars()
         self.set_app_layout()
         self.show_app_title()
-        self.show_introduction()
+        if self.user_logged_in() and self.is_avatar_assigned():
+            left_column, right_column = st.columns([11, 1])
+            with left_column:
+                self.show_introduction()
+            with right_column:
+                st.image(self.show_avatar(), width=100)
+        else:
+            self.show_introduction()
+
         if not self.user_logged_in():
             if register:
                 self.register_and_login_user()
@@ -95,6 +111,9 @@ class BasePortal(ABC):
             self.build_tabs()
         self.show_copyright()
         self.clean_up()
+
+    def show_avatar(self):
+        return self.avatar_loader.get_avatar(st.session_state["avatar"])
 
     def cache_badges(self):
         # Directory where badges are stored locally
@@ -276,6 +295,26 @@ class BasePortal(ABC):
             reg_email, reg_name, reg_username, reg_password, confirm_password, join_code = \
                 self.show_user_registration_screen()
 
+            # Initialize a variable for selected avatar id
+            if 'selected_avatar_id' not in st.session_state:
+                st.session_state['selected_avatar_id'] = None
+
+            # Display avatars for selection
+            st.write("Choose an avatar")
+            avatar_columns = st.columns(10)
+            available_avatars = self.user_repo.get_available_avatars()
+
+            for index, avatar in enumerate(available_avatars):
+                with avatar_columns[index % 10]:
+                    # Display the avatar using the URL
+                    st.image(self.avatar_loader.get_avatar(
+                        avatar['name']), width=100, caption="")
+                    # Create a button for selecting an avatar
+                    if st.button(f"Select", key=f"avatar_{index}"):
+                        st.session_state['selected_avatar_id'] = avatar['id']
+                        # Provide feedback that an avatar has been selected
+                        st.success(f"Avatar selected")
+
             col1, col2, col3 = st.columns([3, 4, 40])
 
             if col1.button("Submit", type="primary"):
@@ -286,16 +325,21 @@ class BasePortal(ABC):
                     if validated:
                         org_found, org_id, message = self.org_repo.get_org_id_by_join_code(join_code)
                         if org_found:
-                            is_registered, message, user_id = self.user_repo.register_user(
-                                reg_name, reg_username, reg_email, reg_password, org_id, UserType.STUDENT.value)
-                            # Successful?
-                            if is_registered:
-                                st.success(message)
-                                st.session_state["show_register_section"] = False
-                                time.sleep(2)
-                                st.rerun()
+                            if st.session_state['selected_avatar_id']:
+                                is_registered, message, user_id = self.user_repo.register_user(
+                                    reg_name, reg_username, reg_email, reg_password, org_id,
+                                    UserType.STUDENT.value, st.session_state['selected_avatar_id']
+                                )
+                                # Successful?
+                                if is_registered:
+                                    st.success(message)
+                                    st.session_state["show_register_section"] = False
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
                             else:
-                                st.error(message)
+                                st.error("Please select an avatar.")
                         else:
                             st.error(message)
                     else:
@@ -440,6 +484,10 @@ class BasePortal(ABC):
         if success:
             st.session_state['join_code'] = organization['join_code']
             st.session_state['tenant_id'] = organization['tenant_id']
+        st.session_state["avatar"] = None
+        avatar = self.user_repo.get_avatar(user_id)
+        if avatar:
+            st.session_state["avatar"] = avatar["name"]
 
     @staticmethod
     def clear_session_state():
@@ -740,6 +788,10 @@ class BasePortal(ABC):
     @staticmethod
     def user_logged_in():
         return st.session_state['user_logged_in']
+
+    @staticmethod
+    def is_avatar_assigned():
+        return st.session_state["avatar"]
 
     @staticmethod
     def get_org_id():

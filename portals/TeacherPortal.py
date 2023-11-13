@@ -5,6 +5,7 @@ from abc import ABC
 from core.AudioProcessor import AudioProcessor
 from core.BadgeAwarder import BadgeAwarder
 from core.ListBuilder import ListBuilder
+from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
@@ -33,6 +34,8 @@ class TeacherPortal(BasePortal, ABC):
             self.user_practice_log_repo, self.track_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
             self.portal_repo, self.user_achievement_repo, self.badge_awarder)
+        self.message_dashboard_builder = MessageDashboardBuilder(
+            self.message_repo, self.avatar_loader)
 
     def get_portal(self):
         return Portal.TEACHER
@@ -58,7 +61,8 @@ class TeacherPortal(BasePortal, ABC):
                 Features.TEACHER_PORTAL_RECORDINGS) else None,
             ("📥 Submissions", self.submissions),
             ("📊 Progress Dashboard", self.progress_dashboard),
-            ("Team Dashboard", self.team_dashboard),
+            ("👥 Team Dashboard", self.team_dashboard),
+            ("🔗 Team Connect", self.team_connect),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -268,7 +272,6 @@ class TeacherPortal(BasePortal, ABC):
                                                                resource_id=resource_id)
 
                 # Combine users from selected teams with individually selected users
-                print(selected_user_ids, selected_team_ids)
                 users_to_assign = set(selected_user_ids)
                 for team_id in selected_team_ids:
                     team_members = self.user_repo.get_users_by_org_id_group_and_type(
@@ -276,7 +279,6 @@ class TeacherPortal(BasePortal, ABC):
                     users_to_assign.update(member['id'] for member in team_members)
 
                 # Deduplicate and assign the assignment to each user
-                print(users_to_assign)
                 self.assignment_repo.assign_to_users(assignment_id, list(users_to_assign))
 
                 st.success("Assignment created and assigned successfully!")
@@ -731,6 +733,28 @@ class TeacherPortal(BasePortal, ABC):
         if selected_group != "--Select a Team--":
             # Show dashboard
             self.team_dashboard_builder.team_dashboard(selected_group_id)
+
+    def team_connect(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
+        st.write("This is a space for team members to share messages and updates.")
+        self.divider()
+
+        # Fetch all groups
+        all_groups = self.user_repo.get_all_groups()
+        group_options = ["Select a Team"] + [group['group_name'] for group in all_groups]
+        group_ids = [None] + [group['group_id'] for group in all_groups]
+        group_name_to_id = {group['group_name']: group['group_id'] for group in all_groups}
+
+        # Dropdown to select a group
+        selected_group = st.selectbox("Choose a Team to Interact With:", group_options)
+
+        # Only show the message dashboard if a group is selected
+        if selected_group != "Select a Team":
+            selected_group_id = group_name_to_id[selected_group]
+            self.message_dashboard_builder.message_dashboard(self.get_user_id(), selected_group_id)
+        else:
+            st.warning("Please select a team to view and participate in the discussion forum.")
 
     def award_weekly_badges(self, group_id):
         self.badge_awarder.auto_award_weekly_badges(group_id)
