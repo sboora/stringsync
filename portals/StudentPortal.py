@@ -39,7 +39,7 @@ class StudentPortal(BasePortal, ABC):
         self.practice_dashboard_builder = PracticeDashboardBuilder(
             self.user_practice_log_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
-            self.portal_repo, self.user_achievement_repo, self.badge_awarder)
+            self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.assignment_dashboard_builder = AssignmentDashboardBuilder(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
@@ -146,7 +146,7 @@ class StudentPortal(BasePortal, ABC):
                 load_recordings = True
 
         with col2:
-            recording_name, recording_id, is_success = \
+            recording_name, recording_id, is_success, timestamp = \
                 self.handle_file_upload(self.get_user_id(), track['id'])
             if is_success:
                 additional_params = {
@@ -159,7 +159,7 @@ class StudentPortal(BasePortal, ABC):
                                                      additional_params)
                 self.user_session_repo.update_last_activity_time(self.get_session_id())
                 badge_awarded = self.badge_awarder.award_user_badge(
-                    self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE)
+                    self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE, timestamp)
         with col3:
             if is_success:
                 score, analysis = self.display_student_performance(
@@ -404,7 +404,7 @@ class StudentPortal(BasePortal, ABC):
             if uploaded:
                 if uploaded_student_file is None:
                     st.error("File is required.")
-                    return None, -1, False
+                    return None, -1, False, datetime.datetime.now()
 
                 # If the original date is provided, use it to create a datetime object,
                 # otherwise use the current date and time.
@@ -419,7 +419,7 @@ class StudentPortal(BasePortal, ABC):
                 # Check for duplicates
                 if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
                     st.error("You have already uploaded this recording.")
-                    return "", -1, False
+                    return "", -1, False, original_timestamp
 
                 # Upload the recording to storage repo and recording repo
                 recording_name, url, recording_id = self.add_recording(user_id,
@@ -428,8 +428,8 @@ class StudentPortal(BasePortal, ABC):
                                                                        original_timestamp,
                                                                        file_hash)
                 st.audio(recording_name, format='core/m4a')
-                return recording_name, recording_id, True
-        return None, -1, False
+                return recording_name, recording_id, True, original_timestamp
+        return None, -1, False, datetime.datetime.now()
 
     @staticmethod
     def calculate_file_hash(recording_data):

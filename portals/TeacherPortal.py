@@ -33,7 +33,7 @@ class TeacherPortal(BasePortal, ABC):
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
-            self.portal_repo, self.user_achievement_repo, self.badge_awarder)
+            self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.message_dashboard_builder = MessageDashboardBuilder(
             self.message_repo, self.avatar_loader)
 
@@ -104,7 +104,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def teams(self):
         # Fetch all groups
-        groups = self.user_repo.get_all_groups()
+        groups = self.user_repo.get_all_groups(self.get_org_id())
 
         # No groups?
         if not groups:
@@ -121,7 +121,7 @@ class TeacherPortal(BasePortal, ABC):
             row_data = {
                 "Team ID": group['group_id'],
                 "Team Name": group['group_name'],
-                "Member Count": group['member_count']  # Assumes 'member_count' is being returned by get_all_groups
+                "Member Count": group['member_count']
             }
             list_builder.build_row(row_data=row_data)
 
@@ -147,7 +147,7 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(row_data=row_data)
 
     def team_assignments(self):
-        groups = self.user_repo.get_all_groups()
+        groups = self.user_repo.get_all_groups(self.get_org_id())
         if not groups:
             st.info("Please create a team to get started.")
             return
@@ -243,7 +243,7 @@ class TeacherPortal(BasePortal, ABC):
                                      st.multiselect("Select Resources", list(resource_options.keys()),
                                                     key='selected_resources')]
             # Fetch all teams
-            all_teams = self.user_repo.get_all_groups()
+            all_teams = self.user_repo.get_all_groups(self.get_org_id())
             team_options = {team['group_name']: team['group_id'] for team in all_teams}
             selected_team_ids = [team_options[team_name] for team_name in
                                  st.multiselect("Select Teams", list(team_options.keys()),
@@ -509,7 +509,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_students_and_tracks(self, source):
         # Show groups in a dropdown
-        groups = self.user_repo.get_all_groups()
+        groups = self.user_repo.get_all_groups(self.get_org_id())
         group_options = {group['group_name']: group['group_id'] for group in groups}
         selected_group_name = st.selectbox(key=f"{source}-group", label="Select a team:",
                                            options=['--Select a team--'] + list(group_options.keys()))
@@ -691,7 +691,7 @@ class TeacherPortal(BasePortal, ABC):
         self.practice_dashboard_builder.practice_dashboard(selected_user_id)
 
     def team_dashboard(self):
-        groups = self.user_repo.get_all_groups()
+        groups = self.user_repo.get_all_groups(self.get_org_id())
 
         if not groups:
             st.info("Please create a team to get started.")
@@ -700,7 +700,7 @@ class TeacherPortal(BasePortal, ABC):
         group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
 
         with col1:
             selected_group = st.selectbox(
@@ -736,12 +736,12 @@ class TeacherPortal(BasePortal, ABC):
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
+                    "font-size: 24px;'> 💼 Team Engagement & Insights 💼</h2>", unsafe_allow_html=True)
         st.write("This is a space for team members to share messages and updates.")
         self.divider()
 
         # Fetch all groups
-        all_groups = self.user_repo.get_all_groups()
+        all_groups = self.user_repo.get_all_groups(self.get_org_id())
         group_options = ["Select a Team"] + [group['group_name'] for group in all_groups]
         group_ids = [None] + [group['group_id'] for group in all_groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in all_groups}
@@ -753,8 +753,6 @@ class TeacherPortal(BasePortal, ABC):
         if selected_group != "Select a Team":
             selected_group_id = group_name_to_id[selected_group]
             self.message_dashboard_builder.message_dashboard(self.get_user_id(), selected_group_id)
-        else:
-            st.warning("Please select a team to view and participate in the discussion forum.")
 
     def award_weekly_badges(self, group_id):
         self.badge_awarder.auto_award_weekly_badges(group_id)

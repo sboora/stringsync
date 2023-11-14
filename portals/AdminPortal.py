@@ -9,6 +9,8 @@ from enums.Settings import Portal
 from portals.BasePortal import BasePortal
 from enums.UserType import UserType
 
+DEFAULT_TEACHER_AVATAR = "teacher avatar 1"
+
 
 class AdminPortal(BasePortal, ABC):
     def __init__(self):
@@ -33,7 +35,7 @@ class AdminPortal(BasePortal, ABC):
             ("📋 List Tutor Assignments", self.list_tutor_assignments),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SETTINGS) else None,
-             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
+            ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_SESSIONS) else None,
             ("📊 Activities", self.activities) if self.is_feature_enabled(
                 Features.ADMIN_PORTAL_SHOW_USER_ACTIVITY) else None
@@ -94,7 +96,7 @@ class AdminPortal(BasePortal, ABC):
         field_names = ['Name', 'Username', 'Email', 'Password']
         button_label = 'Register Tutor'
         button, form_data = self.build_form(form_key, field_names, button_label)
-
+        avatar = self.user_repo.get_avatar_by_name(DEFAULT_TEACHER_AVATAR)
         if button:
             success, message, user_id = self.user_repo.register_user(
                 name=form_data['Name'],
@@ -102,7 +104,8 @@ class AdminPortal(BasePortal, ABC):
                 email=form_data['Email'],
                 password=form_data['Password'],
                 org_id=self.get_org_id(),
-                user_type=UserType.TEACHER.value
+                user_type=UserType.TEACHER.value,
+                avatar_id=avatar['id']
             )
             if success:
                 additional_params = {
@@ -194,4 +197,3 @@ class AdminPortal(BasePortal, ABC):
                 "School Name": assignment['school_name'],
                 "School Description": assignment['school_description']
             })
-

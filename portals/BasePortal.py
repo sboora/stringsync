@@ -312,8 +312,6 @@ class BasePortal(ABC):
                     # Create a button for selecting an avatar
                     if st.button(f"Select", key=f"avatar_{index}"):
                         st.session_state['selected_avatar_id'] = avatar['id']
-                        # Provide feedback that an avatar has been selected
-                        st.success(f"Avatar selected")
 
             col1, col2, col3 = st.columns([3, 4, 40])
 
@@ -597,7 +595,7 @@ class BasePortal(ABC):
         user_id = self.get_user_id()  # Get the current user ID
 
         # Fetch time series data for the current user
-        time_series_data = self.user_session_repo.get_recording_duration_by_date(user_id)
+        time_series_data = self.user_session_repo.get_time_series_data(self.get_user_id())
 
         if not time_series_data:
             st.info("No session data available.")
