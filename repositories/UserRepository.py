@@ -91,6 +91,17 @@ class UserRepository:
         self.connection.commit()
         print(f"Root user {root_user} has been created.")
 
+    def get_user(self, user_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query to select the user with the given user_id
+            cursor.execute("""
+                SELECT * FROM users
+                WHERE id = %s;
+            """, (user_id,))
+            # Fetch one result
+            result = cursor.fetchone()
+            return result
+
     def add_user_to_group(self, username, group_name):
         cursor = self.connection.cursor()
         cursor.execute("SELECT id FROM user_groups WHERE name = %s", (group_name,))
