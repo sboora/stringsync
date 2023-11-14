@@ -1,10 +1,14 @@
+# Standard library imports
 import datetime
-from abc import ABC
-import pandas as pd
 import hashlib
-import streamlit as st
-import os
 import json
+import os
+
+# Third-party imports
+import pandas as pd
+import streamlit as st
+import streamlit as st
+from abc import ABC
 from streamlit_lottie import st_lottie
 
 from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
@@ -318,8 +322,11 @@ class StudentPortal(BasePortal, ABC):
                     "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
         st.write("This is a space for team members to share messages and updates.")
         self.divider()
-
-        self.message_dashboard_builder.message_dashboard(self.get_user_id(), self.get_group_id())
+        if self.get_group_id():
+            self.message_dashboard_builder.message_dashboard(
+                self.get_user_id(), self.get_group_id())
+        else:
+            st.info("Please wait for your teacher to assign you to a team!!")
 
     def filter_tracks(self):
         ragas = self.raga_repo.get_all_ragas()
@@ -510,7 +517,7 @@ class StudentPortal(BasePortal, ABC):
                     f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
-
+        print(badges)
         if badges:  # If there are badges
             cols = st.columns(5)
             for i, badge in enumerate(badges):

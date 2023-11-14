@@ -94,6 +94,8 @@ class BasePortal(ABC):
         self.set_app_layout()
         self.show_app_title()
         if self.user_logged_in() and self.is_avatar_assigned():
+            user = self.user_repo.get_user(self.get_user_id())
+            st.session_state['group_id'] = user['group_id']
             left_column, right_column = st.columns([11, 1])
             with left_column:
                 self.show_introduction()
