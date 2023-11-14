@@ -191,11 +191,13 @@ class PortalRepository:
         recordings_query = """
         SELECT u.id AS user_id,
                u.name AS teammate,
+               a.name AS avatar,
                COALESCE(COUNT(DISTINCT r.track_id), 0) AS unique_tracks,
                COALESCE(COUNT(r.id), 0) AS recordings,
                COALESCE(ROUND(SUM(r.duration) / 60, 2), 0) AS recording_minutes,
                COALESCE(SUM(r.score), 0) AS score
         FROM users u
+        LEFT JOIN avatars a ON u.avatar_id = a.id
         LEFT JOIN recordings r ON u.id = r.user_id AND (r.timestamp BETWEEN %s AND %s)
         WHERE u.group_id = %s AND u.user_type = 'student'
         GROUP BY u.id
@@ -239,10 +241,11 @@ class PortalRepository:
             user_id = row[0]
             if user_id not in aggregated_data:
                 aggregated_data[user_id] = {'user_id': user_id, 'teammate': row[1]}
-            aggregated_data[user_id]['unique_tracks'] = row[2]
-            aggregated_data[user_id]['recordings'] = row[3]
-            aggregated_data[user_id]['recording_minutes'] = row[4]
-            aggregated_data[user_id]['score'] = row[5]
+            aggregated_data[user_id]['avatar'] = row[2]
+            aggregated_data[user_id]['unique_tracks'] = row[3]
+            aggregated_data[user_id]['recordings'] = row[4]
+            aggregated_data[user_id]['recording_minutes'] = row[5]
+            aggregated_data[user_id]['score'] = row[6]
 
         # Aggregate practice logs data
         for row in practice_logs_results:
@@ -260,25 +263,25 @@ class PortalRepository:
         return dashboard_data
 
     def get_weekly_winners(self, group_id):
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Calculate the start and end dates for the current week
+            start_of_week, end_of_week = TimeFrame.PREVIOUS_WEEK.get_date_range()
 
-        # Calculate the start and end dates for the current week
-        start_of_week, end_of_week = TimeFrame.PREVIOUS_WEEK.get_date_range()
+            # Query to get the student name, the weekly badge they won, and their avatar name
+            cursor.execute("""
+                SELECT u.name AS student_name, ua.badge AS weekly_badge, a.name AS avatar
+                FROM users u
+                JOIN user_achievements ua ON u.id = ua.user_id
+                LEFT JOIN avatars a ON u.avatar_id = a.id
+                WHERE ua.badge IN ('Practice Champ', 'Badge Baron', 'Melody Master',
+                                   'Track Titan', 'Sound Sorcerer', 'Recording Kingpin')
+                AND DATE(ua.timestamp) BETWEEN %s AND %s
+                AND u.group_id = %s
+                """, (start_of_week, end_of_week, group_id))
 
-        # Query to get the student name and the weekly badge they won
-        cursor.execute(
-            "SELECT u.name AS student_name, ua.badge AS weekly_badge "
-            "FROM users u "
-            "JOIN user_achievements ua ON u.id = ua.user_id "
-            "WHERE ua.badge IN ('Practice Champ', 'Badge Baron', 'Melody Master', "
-            "'Track Titan', 'Sound Sorcerer', 'Recording Kingpin') "
-            "AND DATE(ua.timestamp) BETWEEN %s AND %s",
-            (start_of_week, end_of_week)
-        )
-
-        winners = cursor.fetchall()
-
-        return winners
+            # Fetch all the results
+            results = cursor.fetchall()
+            return results
 
     def get_group_stats(self, group_id, timeframe=TimeFrame.PREVIOUS_WEEK):
         dashboard_data = self.fetch_team_dashboard_data(group_id, timeframe)

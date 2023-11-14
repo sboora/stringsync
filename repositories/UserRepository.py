@@ -141,7 +141,8 @@ class UserRepository:
             self.connection.rollback()  # Rollback the transaction in case of an error
             return False, f"Failed to create group '{group_name}'. Error: {str(e)}"
 
-    def register_user(self, name, username, email, password, org_id, user_type=UserType.STUDENT.value, avatar_id=None):
+    def register_user(self, name, username, email, password,
+                      org_id, user_type=UserType.STUDENT.value, avatar_id=None):
         try:
             with self.connection.cursor() as cursor:
                 # Check if the username or email already exists
@@ -192,6 +193,17 @@ class UserRepository:
             results = cursor.fetchall()
             return results
 
+    def get_avatar_by_name(self, name):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query to select the avatar with the given name
+            cursor.execute("""
+                SELECT * FROM avatars
+                WHERE name = %s;
+            """, (name,))
+            # Fetch one result
+            result = cursor.fetchone()
+            return result
+
     def get_available_avatars(self):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             # Select avatars that are not yet assigned
@@ -239,26 +251,25 @@ class UserRepository:
         else:
             return False, -1, -1, -1
 
-    def get_all_users(self):
-        cursor = self.connection.cursor()
-        get_users_query = """SELECT id, username FROM users;"""
-        cursor.execute(get_users_query)
-        result = cursor.fetchall()
-        users = [{'user_id': row[0], 'username': row[1]} for row in result]
+    def get_all_users(self, org_id):
+        with self.connection.cursor() as cursor:
+            # SQL query to select users from a specific organization
+            get_users_query = """SELECT id, username FROM users WHERE org_id = %s;"""
+            cursor.execute(get_users_query, (org_id,))  # Pass org_id as a parameter to the query
+            result = cursor.fetchall()
+            users = [{'user_id': row[0], 'username': row[1]} for row in result]
         return users
 
-    def get_all_groups(self):
+    def get_all_groups(self, org_id):
         cursor = self.connection.cursor()
-
-        # Modified query to join the users table with the user_groups table and count members per group
         get_groups_query = """
-        SELECT ug.id, ug.name, COUNT(u.id) as member_count
-        FROM user_groups ug
-        LEFT JOIN users u ON ug.id = u.group_id
-        GROUP BY ug.id, ug.name;
-        """
-
-        cursor.execute(get_groups_query)
+                SELECT ug.id, ug.name, COUNT(u.id) as member_count
+                FROM user_groups ug
+                LEFT JOIN users u ON ug.id = u.group_id
+                WHERE ug.org_id = %s
+                GROUP BY ug.id, ug.name;
+                """
+        cursor.execute(get_groups_query, (org_id,))
         result = cursor.fetchall()
         groups = [
             {'group_id': row[0], 'group_name': row[1], 'member_count': row[2]}
@@ -326,9 +337,15 @@ class UserRepository:
                 VALUES (%s, %s);
                 """
 
-        # Insert 10 avatars into the table
-        for i in range(1, 12):  # Assuming you want to include 'avatar 11'
+        for i in range(1, 13):
             avatar_name = f"avatar {i}"
             with self.connection.cursor() as cursor:
                 cursor.execute(insert_avatar_query, (avatar_name, False))
             self.connection.commit()
+
+        for i in range(1, 2):
+            avatar_name = f"teacher avatar {i}"
+            with self.connection.cursor() as cursor:
+                cursor.execute(insert_avatar_query, (avatar_name, False))
+            self.connection.commit()
+
