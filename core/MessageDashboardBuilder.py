@@ -48,8 +48,8 @@ class MessageDashboardBuilder:
                 encoded_string = 'base64_string_of_a_default_placeholder_avatar'
 
             # Embed the base64 string into the HTML image tag
-            avatar_image_html = f'<img src="data:image/png;base64,{encoded_string}" alt="avatar" style="width: 50px; ' \
-                                f'height: 50px; border-radius: 50%; margin-right: 10px;"> '
+            avatar_image_html = f'<img src="data:image/png;base64,{encoded_string}" alt="avatar" style="width: 60px; ' \
+                                f'height: 60px; border-radius: 50%; margin-right: 10px;"> '
 
             st.markdown(f"""
                 <div style='display: flex; align-items: center; background-color: #E8F4FA; border-radius: 10px; padding: 10px; margin-bottom: 5px;'>

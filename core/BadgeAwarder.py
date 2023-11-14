@@ -62,12 +62,16 @@ class BadgeAwarder:
                     stat['student_id'], badge_category)
         return True
 
-    def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges):
-        badge_awarded, _ = self.user_achievement_repo.award_track_badge(user_id, recording_id, badge)
+    def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges,
+                          timestamp=datetime.datetime.now()):
+        badge_awarded, _ = self.user_achievement_repo.award_track_badge(
+            user_id, recording_id, badge, timestamp)
         return badge_awarded
 
-    def award_user_badge(self, org_id, user_id, badge: UserBadges):
-        badge_awarded, _ = self.user_achievement_repo.award_user_badge(user_id, badge)
+    def award_user_badge(self, org_id, user_id, badge: UserBadges,
+                         timestamp=datetime.datetime.now()):
+        badge_awarded, _ = self.user_achievement_repo.award_user_badge(
+            user_id, badge, timestamp)
         return badge_awarded
 
     def get_badge(self, badge_name):
