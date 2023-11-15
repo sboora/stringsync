@@ -29,7 +29,7 @@ class ProgressDashboardBuilder:
     def progress_dashboard(self, user_id):
         tracks = self.get_tracks(user_id)
         if len(tracks) == 0:
-            st.info("No data available.")
+            st.info("Please wait for lessons to be available.")
             return
         # Assignment stats
         self.show_assignment_stats(user_id)

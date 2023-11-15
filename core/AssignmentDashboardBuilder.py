@@ -26,6 +26,10 @@ class AssignmentDashboardBuilder:
     def assignments_dashboard(self, user_id):
         # Retrieve assignments for the specific user
         user_assignments = self.assignment_repo.get_assignments(user_id)
+        if not user_assignments:
+            st.info("No assignments available.")
+            return
+
         # Loop through assignments and display them
         for assignment in user_assignments:
             st.markdown(f"""
