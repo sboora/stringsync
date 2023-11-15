@@ -758,8 +758,8 @@ class BasePortal(ABC):
             return temp_file.name
 
     @staticmethod
-    def divider():
-        divider = "<hr style='height:2px; margin-top: 0; border-width:0; background: lightblue;'>"
+    def divider(height=2):
+        divider = f"<hr style='height:{height}px; margin-top: 0; border-width:0; background: lightblue;'>"
         st.markdown(f"{divider}", unsafe_allow_html=True)
 
     def clean_up(self):

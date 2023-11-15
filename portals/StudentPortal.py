@@ -559,8 +559,9 @@ class StudentPortal(BasePortal, ABC):
                               "minutes.",
             "Sound Sorcerer": "Cast a spell by recording the most minutes in a week, with a starting spell of 10 "
                               "minutes.",
-            "Recording Kingpin": "Rule the studio by making the most recordings in a week, starting at 5 recordings.",
-            "Melody Master": "Hit the high score by earning the most points in a week, with a minimum of 40 points.",
+            "Recording Kingpin": "Rule the studio by making the most recordings in a week, starting at a minimum of 5 "
+                                 "recordings.",
+            "Melody Master": "Hit the high score by earning the most points in a week, starting at 40 points.",
             "Track Titan": "Be prolific! Record on the most number of different tracks in a week, starting at 3.",
             "Badge Baron": "Be the ultimate achiever by earning the highest variety of badges."
         }
