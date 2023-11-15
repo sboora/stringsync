@@ -107,8 +107,8 @@ class StudentPortal(BasePortal, ABC):
             """)
 
         st.write(
-            "Ready to dive into your musical journey? Scroll down to explore all the exciting features available to "
-            "you! "
+            "Ready to dive into your musical journey? Register & Login to explore all the exciting features available "
+            "to you! "
         )
 
     def show_animations(self):
@@ -306,9 +306,6 @@ class StudentPortal(BasePortal, ABC):
 
                 # End of the border div
                 st.markdown("</div>", unsafe_allow_html=True)
-
-    def assignments(self):
-        pass
 
     def progress_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"

@@ -91,6 +91,9 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def create_team(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
+        self.divider()
         with st.form(key='create_team_form', clear_on_submit=True):
             group_name = st.text_input("Team Name")
             if st.form_submit_button("Create Team", type='primary'):
@@ -104,6 +107,9 @@ class TeacherPortal(BasePortal, ABC):
                     st.warning("Team name cannot be empty.")
 
     def teams(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🏷️ Teams Listing 🏷️️ </h2>", unsafe_allow_html=True)
+        self.divider()
         # Fetch all groups
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
@@ -127,6 +133,9 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(row_data=row_data)
 
     def list_students(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
+        self.divider()
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
 
         if not students:
@@ -148,6 +157,9 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(row_data=row_data)
 
     def team_assignments(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
+        self.divider()
         groups = self.user_repo.get_all_groups(self.get_org_id())
         if not groups:
             st.info("Please create a team to get started.")
@@ -200,7 +212,9 @@ class TeacherPortal(BasePortal, ABC):
                             st.rerun()
 
     def resource_management(self):
-        st.header("Resources Management")
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
+        self.divider()
 
         # Part for uploading new resources
         with st.form("resource_upload"):
@@ -224,6 +238,9 @@ class TeacherPortal(BasePortal, ABC):
         self.list_resources()
 
     def assignment_management(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
+        self.divider()
         assignment_title = st.text_input("Assignment Title", key="assignment_title")
         assignment_description = st.text_input("Assignment Description", key="assignment_desc")
         due_date = st.date_input("Due Date", key="assignment_due_date")
@@ -355,6 +372,9 @@ class TeacherPortal(BasePortal, ABC):
             st.error("Resource not found.")
 
     def create_track(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 🔊 Create Audio Tracks 🔊 </h2>", unsafe_allow_html=True)
+        self.divider()
         with st.form(key='create_track_form', clear_on_submit=True):
             track_name = st.text_input("Track Name")
             track_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
@@ -406,6 +426,9 @@ class TeacherPortal(BasePortal, ABC):
                     st.success("Track added successfully!")
 
     def list_tracks(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
+        self.divider()
         # Fetching all track details using the method from PortalRepository
         tracks = self.portal_repo.list_tracks()
         if not tracks:
@@ -471,6 +494,9 @@ class TeacherPortal(BasePortal, ABC):
         return self.storage_repo.upload_blob(data, blob_path)
 
     def remove_track(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 🗑️ Remove Tracks 🗑️ </h2>", unsafe_allow_html=True)
+        self.divider()
         # Fetch all tracks
         all_tracks = self.track_repo.get_all_tracks()
 
@@ -618,6 +644,10 @@ class TeacherPortal(BasePortal, ABC):
                           unsafe_allow_html=True)
 
     def submissions(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
+                    unsafe_allow_html=True)
+        self.divider()
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
         if group_id is None and user_id is None:
@@ -678,6 +708,9 @@ class TeacherPortal(BasePortal, ABC):
                                                              submission['timestamp'])
 
     def progress_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
+        self.divider()
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
 
@@ -701,6 +734,9 @@ class TeacherPortal(BasePortal, ABC):
         self.practice_dashboard_builder.practice_dashboard(selected_user_id)
 
     def team_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 🤝 Team Performance & Collaboration 🤝 </h2>", unsafe_allow_html=True)
+        self.divider()
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
         if not groups:
@@ -747,7 +783,6 @@ class TeacherPortal(BasePortal, ABC):
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 💼 Team Engagement & Insights 💼</h2>", unsafe_allow_html=True)
-        st.write("This is a space for team members to share messages and updates.")
         self.divider()
 
         # Fetch all groups
