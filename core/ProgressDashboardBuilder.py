@@ -1,6 +1,7 @@
 import streamlit as st
 
 from core.ListBuilder import ListBuilder
+from repositories.AssignmentRepository import AssignmentRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
 from repositories.TrackRepository import TrackRepository
@@ -16,20 +17,23 @@ class ProgressDashboardBuilder:
                  recording_repo: RecordingRepository,
                  user_achievement_repo: UserAchievementRepository,
                  user_practice_log_repo: UserPracticeLogRepository,
-                 track_repo: TrackRepository):
+                 track_repo: TrackRepository,
+                 assignment_repo: AssignmentRepository):
         self.settings_repo = settings_repo
         self.recording_repo = recording_repo
         self.user_achievement_repo = user_achievement_repo
         self.user_practice_log_repo = user_practice_log_repo
         self.track_repo = track_repo
+        self.assignment_repo = assignment_repo
 
     def progress_dashboard(self, user_id):
         tracks = self.get_tracks(user_id)
         if len(tracks) == 0:
             st.info("No data available.")
-
-        # Display stats by track
-        self.display_tracks(tracks)
+        # Assignment stats
+        self.show_assignment_stats(user_id)
+        # Recording stats
+        self.show_recording_stats(tracks)
         # Display the line graphs for duration, tracks, and average scores
         self.show_track_count_and_duration_trends(user_id)
         # Display practice logs line graph
@@ -38,6 +42,31 @@ class ProgressDashboardBuilder:
         self.show_score_graph_by_track(tracks)
         # bar graph for attempts comparison
         self.show_attempt_graph_by_track(tracks)
+
+    def show_assignment_stats(self, user_id):
+        # Retrieve assignment stats for the specific user
+        assignment_stats = self.assignment_repo.get_assignment_stats_for_user(user_id)
+        if not assignment_stats:
+            return
+
+        st.markdown("<h1 style='font-size: 20px;'>Assignment Statistics</h1>", unsafe_allow_html=True)
+        # Display the assignment stats in a table using ListBuilder
+        column_widths = [20, 20, 20, 20, 20]
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(column_names=[
+            "Assignment", "Total Details", "Completed", "Pending", "Due Date"])
+
+        for stat in assignment_stats:
+            row_data = {
+                "Assignment": stat['title'],
+                "Total Details": stat['total_details'],
+                "Completed": stat['completed_details'],
+                "Pending": stat['pending_details'],
+                "Due Date": stat["due_date"]
+            }
+            list_builder.build_row(row_data=row_data)
+
+        st.write("")
 
     def get_tracks(self, user_id):
         # Fetch all tracks and track statistics for this user
@@ -62,7 +91,8 @@ class ProgressDashboardBuilder:
         return track_details
 
     @staticmethod
-    def display_tracks(tracks):
+    def show_recording_stats(tracks):
+        st.markdown("<h1 style='font-size: 20px;'>Recording Statistics</h1>", unsafe_allow_html=True)
         column_widths = [20, 20, 20, 20, 20]
         list_builder = ListBuilder(column_widths)
 

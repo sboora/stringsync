@@ -2,6 +2,7 @@ import tempfile
 
 import streamlit as st
 
+from core.ListBuilder import ListBuilder
 from core.ResourceDashboardBuilder import ResourceDashboardBuilder
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.ResourceRepository import ResourceRepository
@@ -39,8 +40,8 @@ class AssignmentDashboardBuilder:
             assigned_tracks = self.assignment_repo.get_assigned_tracks(
                 assignment['id'], user_id)
             for track in assigned_tracks:
-                with st.expander(f"Track: {track['name']} - Details"):
-                    st.write(f"Description: {track['description']}")
+                with st.expander(f"**Track**: {track['name']}"):
+                    st.write(f"**Instructions**: {track['description']}")
                     # Add a button to load the audio track
                     if st.button(f"Load Track", key=f"load_{track['assignment_detail_id']}"):
                         # Assume self.storage_repo has a method to get the audio URL directly
