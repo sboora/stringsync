@@ -7,7 +7,6 @@ import os
 # Third-party imports
 import pandas as pd
 import streamlit as st
-import streamlit as st
 from abc import ABC
 from streamlit_lottie import st_lottie
 
@@ -37,7 +36,7 @@ class StudentPortal(BasePortal, ABC):
             self.portal_repo, self.storage_repo)
         self.progress_dashboard_builder = ProgressDashboardBuilder(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
-            self.user_practice_log_repo, self.track_repo)
+            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
         self.resource_dashboard_builder = ResourceDashboardBuilder(
             self.resource_repo, self.storage_repo)
         self.practice_dashboard_builder = PracticeDashboardBuilder(
@@ -314,13 +313,14 @@ class StudentPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 👥 Team Performance & Collaboration 👥</h2>", unsafe_allow_html=True)
         self.divider()
-
-        self.team_dashboard_builder.team_dashboard(self.get_group_id())
+        if self.get_group_id():
+            self.team_dashboard_builder.team_dashboard(self.get_group_id())
+        else:
+            st.info("Please wait for your teacher to assign you to a team!!")
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
-        st.write("This is a space for team members to share messages and updates.")
         self.divider()
         if self.get_group_id():
             self.message_dashboard_builder.message_dashboard(
@@ -523,7 +523,7 @@ class StudentPortal(BasePortal, ABC):
             for i, badge in enumerate(badges):
                 with cols[i % 5]:
                     # Display the badge icon from the badge folder
-                    st.image(self.get_badge(badge), width=225)
+                    st.image(self.get_badge(badge), width=200)
         else:  # If there are no badges
             st.markdown("### No Badges Yet 🎖️")
             st.markdown("""
@@ -571,7 +571,7 @@ class StudentPortal(BasePortal, ABC):
             with cols[index % 3]:
                 st.markdown(f"### {badge_name}")
                 st.markdown(f"_{badge_criteria}_")
-                st.image(self.get_badge(badge_name), width=225)
+                st.image(self.get_badge(badge_name), width=200)
 
     def resources_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"

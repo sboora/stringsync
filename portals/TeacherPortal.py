@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import os
 from abc import ABC
@@ -31,7 +32,7 @@ class TeacherPortal(BasePortal, ABC):
             self.user_practice_log_repo)
         self.progress_dashboard_builder = ProgressDashboardBuilder(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
-            self.user_practice_log_repo, self.track_repo)
+            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
             self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.message_dashboard_builder = MessageDashboardBuilder(
@@ -223,53 +224,61 @@ class TeacherPortal(BasePortal, ABC):
         self.list_resources()
 
     def assignment_management(self):
-        st.header("Assignment Management")
+        assignment_title = st.text_input("Assignment Title", key="assignment_title")
+        assignment_description = st.text_input("Assignment Description", key="assignment_desc")
+        due_date = st.date_input("Due Date", key="assignment_due_date")
 
-        with st.form("assignment_creation"):
-            assignment_title = st.text_input("Assignment Title", key='assignment_title')
-            assignment_description = st.text_area("Assignment Description", key='assignment_description')
-            due_date = st.date_input("Due Date", key='due_date')
+        all_tracks = self.track_repo.get_all_tracks()
+        all_resources = self.resource_repo.get_all_resources()
 
-            all_tracks = self.track_repo.get_all_tracks()
-            all_resources = self.resource_repo.get_all_resources()
+        track_options = {track['name']: track['id'] for track in all_tracks}
+        resource_options = {resource['title']: resource['id'] for resource in all_resources}
 
-            track_options = {track['name']: track['id'] for track in all_tracks}
-            resource_options = {resource['title']: resource['id'] for resource in all_resources}
+        selected_track_names = st.multiselect(
+            "Select Tracks", list(track_options.keys()), key='assignment_tracks')
+        selected_resource_titles = st.multiselect(
+            "Select Resources", list(resource_options.keys()), key='assignment_resources')
 
-            selected_track_ids = [track_options[track_name] for track_name in
-                                  st.multiselect("Select Tracks", list(track_options.keys()),
-                                                 key='selected_tracks')]
-            selected_resource_ids = [resource_options[resource_title] for resource_title in
-                                     st.multiselect("Select Resources", list(resource_options.keys()),
-                                                    key='selected_resources')]
-            # Fetch all teams
-            all_teams = self.user_repo.get_all_groups(self.get_org_id())
-            team_options = {team['group_name']: team['group_id'] for team in all_teams}
-            selected_team_ids = [team_options[team_name] for team_name in
-                                 st.multiselect("Select Teams", list(team_options.keys()),
-                                 key='selected_teams')]
+        track_descriptions = {}
+        for track_name in selected_track_names:
+            track_descriptions[track_name] = st.text_input(
+                f"Instructions for {track_name}")
 
-            # Fetch all individual users
-            all_users = self.user_repo.get_users_by_org_id_and_type(
-                self.get_org_id(), UserType.STUDENT.value)
-            user_options = {user['username']: user['id'] for user in all_users}
-            selected_user_ids = [user_options[username] for username in
-                                 st.multiselect("Select Individual Users", list(user_options.keys()),
-                                 key='selected_users')]
+        resource_descriptions = {}
+        for resource_title in selected_resource_titles:
+            resource_descriptions[resource_title] = st.text_input(
+                f"Instructions for {resource_title}")
 
-            submit_button = st.form_submit_button("Create Assignment")
+        # Fetch all teams
+        all_teams = self.user_repo.get_all_groups(self.get_org_id())
+        team_options = {team['group_name']: team['group_id'] for team in all_teams}
+        selected_team_ids = [team_options[team_name] for team_name in
+                             st.multiselect("Select Teams", list(team_options.keys()),
+                                            key='selected_teams')]
 
-            if submit_button:
+        # Fetch all individual users
+        all_users = self.user_repo.get_users_by_org_id_and_type(
+            self.get_org_id(), UserType.STUDENT.value)
+        user_options = {user['username']: user['id'] for user in all_users}
+        selected_user_ids = [user_options[username] for username in
+                             st.multiselect("Select Individual Users", list(user_options.keys()),
+                                            key='selected_users')]
+
+        if st.button("Create Assignment", type='primary'):
+            if assignment_title:
                 assignment_id = self.assignment_repo.add_assignment(
                     assignment_title, assignment_description, due_date
                 )
 
-                for track_id in selected_track_ids:
-                    self.assignment_repo.add_assignment_detail(assignment_id,
-                                                               track_id=track_id)
-                for resource_id in selected_resource_ids:
-                    self.assignment_repo.add_assignment_detail(assignment_id,
-                                                               resource_id=resource_id)
+                for track_name in selected_track_names:
+                    track_id = track_options[track_name]
+                    self.assignment_repo.add_assignment_detail(
+                        assignment_id, track_descriptions[track_name], track_id=track_id)
+
+                for resource_title in selected_resource_titles:
+                    resource_id = resource_options[resource_title]
+                    self.assignment_repo.add_assignment_detail(
+                        assignment_id, resource_descriptions[resource_title], resource_id=resource_id)
 
                 # Combine users from selected teams with individually selected users
                 users_to_assign = set(selected_user_ids)
@@ -282,6 +291,8 @@ class TeacherPortal(BasePortal, ABC):
                 self.assignment_repo.assign_to_users(assignment_id, list(users_to_assign))
 
                 st.success("Assignment created and assigned successfully!")
+            else:
+                st.error("Please provide a title for the assignment.")
 
     def handle_resource_upload(self, title, description, file, rtype, link):
         if rtype != "Link" and not file:
@@ -339,7 +350,7 @@ class TeacherPortal(BasePortal, ABC):
             self.resource_repo.delete_resource(resource_id)
             st.success("Resource deleted successfully!")
             # Refresh the page to show the updated list
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Resource not found.")
 
@@ -665,7 +676,6 @@ class TeacherPortal(BasePortal, ABC):
                                                              submission['id'],
                                                              TrackBadges(selected_badge),
                                                              submission['timestamp'])
-            st.rerun()
 
     def progress_dashboard(self):
         users = self.user_repo.get_users_by_org_id_and_type(
