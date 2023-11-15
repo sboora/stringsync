@@ -30,6 +30,7 @@ class ProgressDashboardBuilder:
         tracks = self.get_tracks(user_id)
         if len(tracks) == 0:
             st.info("No data available.")
+            return
         # Assignment stats
         self.show_assignment_stats(user_id)
         # Recording stats
