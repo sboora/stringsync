@@ -21,6 +21,7 @@ class UserRepository:
                 CREATE TABLE IF NOT EXISTS `avatars` (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) UNIQUE,
+                user_type ENUM('admin', 'teacher', 'student') NOT NULL,
                 is_assigned BOOLEAN DEFAULT FALSE
             ); """
 
@@ -344,19 +345,19 @@ class UserRepository:
     def create_avatars(self):
         # Query to insert a new avatar if it does not exist
         insert_avatar_query = """
-                INSERT IGNORE INTO avatars (name, is_assigned)
-                VALUES (%s, %s);
+                INSERT IGNORE INTO avatars (name, user_type, is_assigned)
+                VALUES (%s, %s, %s);
                 """
 
         for i in range(1, 13):
             avatar_name = f"avatar {i}"
             with self.connection.cursor() as cursor:
-                cursor.execute(insert_avatar_query, (avatar_name, False))
+                cursor.execute(insert_avatar_query, (avatar_name, UserType.STUDENT.value, False))
             self.connection.commit()
 
         for i in range(1, 2):
             avatar_name = f"teacher avatar {i}"
             with self.connection.cursor() as cursor:
-                cursor.execute(insert_avatar_query, (avatar_name, False))
+                cursor.execute(insert_avatar_query, (avatar_name, UserType.TEACHER.value, False))
             self.connection.commit()
 

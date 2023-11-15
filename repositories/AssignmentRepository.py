@@ -15,7 +15,7 @@ class AssignmentRepository:
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     title VARCHAR(255),
                     description TEXT,
-                    due_date DATETIME,
+                    due_date DATE,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
             """)
@@ -29,6 +29,7 @@ class AssignmentRepository:
                     assignment_id INT,
                     resource_id INT DEFAULT NULL,
                     track_id INT DEFAULT NULL,
+                    description VARCHAR(255),
                     FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE,
                     FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE SET NULL,
                     FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE SET NULL
@@ -59,38 +60,41 @@ class AssignmentRepository:
             self.connection.commit()
             return cursor.lastrowid
 
-    def add_assignment_detail(self, assignment_id, resource_id=None, track_id=None):
+    def add_assignment_detail(self, assignment_id, description,
+                              resource_id=None, track_id=None):
         with self.connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO assignment_details (assignment_id, resource_id, track_id) 
-                VALUES (%s, %s, %s);
-            """, (assignment_id, resource_id, track_id))
+                INSERT INTO assignment_details (assignment_id, resource_id, track_id, description) 
+                VALUES (%s, %s, %s, %s);
+            """, (assignment_id, resource_id, track_id, description))
             self.connection.commit()
             return cursor.lastrowid
 
     def get_assignment_details(self, assignment_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
-                SELECT id FROM assignment_details
+                SELECT * FROM assignment_details
                 WHERE assignment_id = %s;
             """, (assignment_id,))
-            return [row['id'] for row in cursor.fetchall()]
+            return cursor.fetchall()
 
     def assign_to_user(self, assignment_id, user_id):
-        assignment_detail_ids = self.get_assignment_details(assignment_id)
+        assignment_details = self.get_assignment_details(assignment_id)
         with self.connection.cursor() as cursor:
-            for assignment_detail_id in assignment_detail_ids:
+            for assignment_detail in assignment_details:
                 cursor.execute("""
                     INSERT INTO user_assignments (assignment_detail_id, user_id)
                     VALUES (%s, %s);
-                """, (assignment_detail_id, user_id))
+                """, (assignment_detail['id'], user_id))
             self.connection.commit()
-            return len(assignment_detail_ids)  # Return the count of details assigned
+            return len(assignment_details)  # Return the count of details assigned
 
     def assign_to_users(self, assignment_id, user_ids):
-        assignment_detail_ids = self.get_assignment_details(assignment_id)
+        assignment_details = self.get_assignment_details(assignment_id)
         with self.connection.cursor() as cursor:
-            values = [(detail_id, user_id) for detail_id in assignment_detail_ids for user_id in user_ids]
+            # Assuming each assignment_detail object has an 'id' attribute
+            values = [(detail['id'], user_id) for detail in assignment_details for user_id in user_ids]
+            print(values)
             cursor.executemany("""
                 INSERT INTO user_assignments (assignment_detail_id, user_id)
                 VALUES (%s, %s);
@@ -112,7 +116,7 @@ class AssignmentRepository:
     def get_assigned_tracks(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
-                SELECT t.id, t.name, t.description, t.track_path, ad.id AS assignment_detail_id
+                SELECT t.id, t.name, ad.description, t.track_path, ad.id AS assignment_detail_id
                 FROM assignment_details ad
                 JOIN tracks t ON ad.track_id = t.id
                 JOIN user_assignments ua ON ad.id = ua.assignment_detail_id
@@ -123,7 +127,7 @@ class AssignmentRepository:
     def get_assigned_resources(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
-                SELECT r.id, r.title, r.description, r.link, ad.id AS assignment_detail_id
+                SELECT r.id, r.title, ad.description, r.link, ad.id AS assignment_detail_id
                 FROM assignment_details ad
                 JOIN resources r ON ad.resource_id = r.id
                 JOIN user_assignments ua ON ad.id = ua.assignment_detail_id
@@ -161,4 +165,28 @@ class AssignmentRepository:
             self.connection.commit()
             return cursor.rowcount
 
+    def get_assignment_stats_for_user(self, user_id):
+        """
+        Fetch statistics for each assignment for a given user.
+
+        Statistics include the number of completed and pending assignment details.
+        """
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query to get the assignment stats
+            query = """
+                SELECT 
+                    a.id AS assignment_id,
+                    a.title,
+                    a.due_date,
+                    COUNT(ua.id) AS total_details,
+                    SUM(CASE WHEN ua.status = 'Completed' THEN 1 ELSE 0 END) AS completed_details,
+                    SUM(CASE WHEN ua.status != 'Completed' THEN 1 ELSE 0 END) AS pending_details
+                FROM assignments a
+                INNER JOIN assignment_details ad ON a.id = ad.assignment_id
+                INNER JOIN user_assignments ua ON ad.id = ua.assignment_detail_id
+                WHERE ua.user_id = %s
+                GROUP BY a.id, a.title;
+            """
+            cursor.execute(query, (user_id,))
+            return cursor.fetchall()
 
