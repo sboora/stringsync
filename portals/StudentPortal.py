@@ -80,13 +80,13 @@ class StudentPortal(BasePortal, ABC):
 
     def show_introduction(self):
         st.write("""
-            ### What Can You Do Here? 🎻
+                ### What Can You Do Here? 🎻
 
-            1. **Listen to Tracks**: Browse through a curated list of tracks that suit your musical taste and skill level.
-            2. **Record Performances**: Record your own renditions of these tracks and get instant feedback.
-            3. **Progress Dashboard**: Track your practice time, number of tracks completed, and other key metrics.
-            4. **Badges**: Earn badges for reaching milestones and accomplishing challenges.
-        """)
+                - **Explore & Learn**: Access a variety of musical tracks and educational resources.
+                - **Perform & Improve**: Record your music, submit assignments, and receive instant feedback.
+                - **Track & Grow**: Monitor your progress and celebrate achievements with badges.
+                - **Connect & Collaborate**: Join the community, share insights, and learn together.
+            """)
 
         if not self.user_logged_in():
             st.write("""
