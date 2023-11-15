@@ -617,9 +617,10 @@ class StudentPortal(BasePortal, ABC):
                                               key="practice_date")
                 practice_time = st.time_input("Practice Time",
                                               value=practice_time,
-                                              key="practice_time")
+                                              key="practice_time",
+                                              step=300)
                 practice_minutes = st.selectbox("Minutes Practiced",
-                                                [i for i in range(15, 61)],
+                                                [i for i in range(10, 61, 5)],
                                                 key="practice_minutes")
                 submit = st.form_submit_button("Log Practice", type="primary")
 
