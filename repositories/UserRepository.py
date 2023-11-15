@@ -10,8 +10,8 @@ class UserRepository:
     def __init__(self, connection):
         self.connection = connection
         self.create_user_groups_table()
-        self.create_users_table()
         self.create_avatars_table()
+        self.create_users_table()
         self.create_root_user()
         self.create_avatars()
 
@@ -343,21 +343,33 @@ class UserRepository:
             return False, f"Failed to assign user to organization. Error: {str(e)}"
 
     def create_avatars(self):
+        # Query to check if the avatar already exists
+        check_avatar_query = """
+                SELECT COUNT(*) FROM avatars WHERE name = %s;
+                """
         # Query to insert a new avatar if it does not exist
         insert_avatar_query = """
-                INSERT IGNORE INTO avatars (name, user_type, is_assigned)
+                INSERT INTO avatars (name, user_type, is_assigned)
                 VALUES (%s, %s, %s);
                 """
 
-        for i in range(1, 13):
-            avatar_name = f"avatar {i}"
-            with self.connection.cursor() as cursor:
-                cursor.execute(insert_avatar_query, (avatar_name, UserType.STUDENT.value, False))
-            self.connection.commit()
+        with self.connection.cursor() as cursor:
+            for i in range(1, 19):
+                avatar_name = f"avatar {i}"
+                # Check if avatar already exists
+                cursor.execute(check_avatar_query, (avatar_name,))
+                if cursor.fetchone()[0] == 0:
+                    # Avatar does not exist, proceed to insert
+                    cursor.execute(insert_avatar_query, (avatar_name, UserType.STUDENT.value, False))
+                    self.connection.commit()
 
-        for i in range(1, 2):
-            avatar_name = f"teacher avatar {i}"
-            with self.connection.cursor() as cursor:
-                cursor.execute(insert_avatar_query, (avatar_name, UserType.TEACHER.value, False))
-            self.connection.commit()
+            for i in range(1, 2):
+                avatar_name = f"teacher avatar {i}"
+                # Check if avatar already exists
+                cursor.execute(check_avatar_query, (avatar_name,))
+                if cursor.fetchone()[0] == 0:
+                    # Avatar does not exist, proceed to insert
+                    cursor.execute(insert_avatar_query, (avatar_name, UserType.TEACHER.value, False))
+                    self.connection.commit()
+
 
