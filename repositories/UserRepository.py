@@ -211,18 +211,18 @@ class UserRepository:
             cursor.execute("""
                 SELECT * FROM avatars
                 WHERE name = %s;
-            """, (name,))
+            """, name)
             # Fetch one result
             result = cursor.fetchone()
             return result
 
-    def get_available_avatars(self):
+    def get_available_avatars(self, user_type=UserType.STUDENT):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             # Select avatars that are not yet assigned
             cursor.execute("""
                 SELECT * FROM avatars
-                WHERE is_assigned IS FALSE;
-            """)
+                WHERE user_type = %s and is_assigned IS FALSE;
+            """, user_type.value)
             # Fetch all results
             results = cursor.fetchall()
             return results
