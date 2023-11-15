@@ -96,6 +96,14 @@ class StudentPortal(BasePortal, ABC):
                 - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
                 - **Progress Tracking**: Visualize your growth over time with easy-to-understand charts and metrics.
                 - **Achievements and Badges**: Get rewarded for your hard work and dedication with exciting badges.
+                - **Comprehensive Recording**: Improve your skills by recording and reviewing your performances.
+                - **Organized Submissions**: Keep track of all your work and submissions in one place.
+                - **Diligent Practice Log**: Maintain a detailed log of your practice sessions to monitor your improvement.
+                - **Resource Library**: Access a wide range of resources to support your learning.
+                - **Structured Assignments**: Receive and submit assignments directly through the portal.
+                - **Detailed Progress Dashboard**: Gain insights into your learning progression with detailed analytics.
+                - **Collaborative Team Dashboard**: Engage with your peers and track team progress.
+                - **Networking with Team Connect**: Build connections and collaborate with fellow learners.
             """)
 
         st.write(
