@@ -203,16 +203,16 @@ class StudentPortal(BasePortal, ABC):
 
         # Create a DataFrame to hold the recording data
         df = pd.DataFrame(recordings)
-        column_widths = [20, 20, 20, 20, 20]
+        column_widths = [25, 25, 25, 25]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=["Track", "Remarks", "Score", "Analysis", "Time"])
+            column_names=["Track", "Remarks", "Score", "Time"])
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
             st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
             with st.container():
-                col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+                col1, col2, col3, col4 = st.columns([2.5, 2.5, 2.5, 2.5])
                 if recording['blob_url']:
                     filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
                     col1.write("")
@@ -228,14 +228,10 @@ class StudentPortal(BasePortal, ABC):
                 col3.markdown(
                     f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
                     unsafe_allow_html=True)
-                col4.write("")
-                col4.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
-                    unsafe_allow_html=True)
                 formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
                     int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-                col5.write("")
-                col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                col4.write("")
+                col4.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                               unsafe_allow_html=True)
 
     def get_audio_data(self, recording):
@@ -259,21 +255,22 @@ class StudentPortal(BasePortal, ABC):
                 return
 
         # Fetch submissions from the database
-        submissions = self.portal_repo.get_submissions_by_user_id(self.get_user_id(), limit=self.limit)
+        submissions = self.portal_repo.get_submissions_by_user_id(
+            self.get_user_id(), limit=self.limit)
 
         if not submissions:
             st.info("No submissions found.")
             return
-        column_widths = [14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28]
+        column_widths = [16.66, 16.66, 16.66, 17.2, 17.8, 15]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=["Track Name", "Track", "Recording", "Score", "Teacher Remarks", "System Remarks", "Badges"])
+            column_names=["Track Name", "Track", "Recording", "Score", "Teacher Remarks", "Badges"])
 
         # Display submissions
         for submission in submissions:
             st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
             with st.container():
-                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.9, 1, 1.1, 1, 1, 1, 1])
+                col1, col2, col3, col4, col5, col6 = st.columns([0.9, 1, 1.1, 1, 1, 1])
 
                 col1.markdown(
                     f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
@@ -298,13 +295,9 @@ class StudentPortal(BasePortal, ABC):
                     f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
                     unsafe_allow_html=True)
 
-                col6.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('system_remarks', 'N/A')}</div>",
-                    unsafe_allow_html=True)
-
                 badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
                 if badge:
-                    col7.image(self.get_badge(badge), width=75)
+                    col6.image(self.get_badge(badge), width=75)
 
                 # End of the border div
                 st.markdown("</div>", unsafe_allow_html=True)
