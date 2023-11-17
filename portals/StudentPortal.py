@@ -203,16 +203,16 @@ class StudentPortal(BasePortal, ABC):
 
         # Create a DataFrame to hold the recording data
         df = pd.DataFrame(recordings)
-        column_widths = [25, 25, 25, 25]
+        column_widths = [20, 20, 21, 21, 18]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=["Track", "Remarks", "Score", "Time"])
+            column_names=["Track", "Remarks", "Score", "Time", "Badges"])
 
         # Loop through each recording and create a table row
         for index, recording in df.iterrows():
             st.markdown("<div style='border-top:1px solid #AFCAD6; height: 1px;'>", unsafe_allow_html=True)
             with st.container():
-                col1, col2, col3, col4 = st.columns([2.5, 2.5, 2.5, 2.5])
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
                 if recording['blob_url']:
                     filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
                     col1.write("")
@@ -233,6 +233,10 @@ class StudentPortal(BasePortal, ABC):
                 col4.write("")
                 col4.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
                               unsafe_allow_html=True)
+
+                badge = self.user_achievement_repo.get_badge_by_recording(recording['id'])
+                if badge:
+                    col5.image(self.get_badge(badge), width=75)
 
     def get_audio_data(self, recording):
         if recording['blob_url']:
