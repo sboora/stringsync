@@ -1,4 +1,5 @@
 import pymysql.cursors
+import pytz
 
 
 class MessageRepository:
@@ -30,7 +31,7 @@ class MessageRepository:
             self.connection.commit()
             return cursor.lastrowid
 
-    def get_messages_by_group(self, group_id):
+    def get_messages_by_group(self, group_id, timezone='America/Los_Angeles'):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
                 SELECT m.*, u.name as sender_name, a.name as avatar_name
@@ -40,5 +41,10 @@ class MessageRepository:
                 WHERE m.group_id = %s
                 ORDER BY m.timestamp DESC;
             """, (group_id,))
-            return cursor.fetchall()
-
+            messages = cursor.fetchall()
+            for message in messages:
+                utc_timestamp = pytz.utc.localize(message['timestamp'])
+                local_tz = pytz.timezone(timezone)
+                local_timestamp = utc_timestamp.astimezone(local_tz)
+                message['timestamp'] = local_timestamp
+            return messages

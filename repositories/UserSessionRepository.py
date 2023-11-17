@@ -1,6 +1,7 @@
 from time import time
 from datetime import datetime, timedelta
 import pymysql
+import pytz
 
 
 class UserSessionRepository:
@@ -96,7 +97,7 @@ class UserSessionRepository:
         result = cursor.fetchone()
         return result[0] if result else None
 
-    def get_user_sessions(self, user_id):
+    def get_user_sessions(self, user_id, timezone='America/Los_Angeles'):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
             SELECT session_id,
@@ -111,8 +112,18 @@ class UserSessionRepository:
             ORDER BY open_session_time DESC;
         """
         cursor.execute(query, (user_id,))
-        result = cursor.fetchall()
-        return result
+        sessions = cursor.fetchall()
+        for session in sessions:
+            local_tz = pytz.timezone(timezone)
+            # Open session time
+            open_utc_timestamp = pytz.utc.localize(session['open_session_time'])
+            local_open_timestamp = open_utc_timestamp.astimezone(local_tz)
+            session['open_session_time'] = local_open_timestamp
+            # Close session time
+            close_utc_timestamp = pytz.utc.localize(session['close_session_time'])
+            local_close_timestamp = close_utc_timestamp.astimezone(local_tz)
+            session['close_session_time'] = local_close_timestamp
+        return sessions
 
     def get_time_series_data(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)

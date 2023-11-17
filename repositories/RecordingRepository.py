@@ -17,6 +17,7 @@ class RecordingRepository:
             timestamp DATETIME,
             duration INT,
             score INT,
+            distance INT,
             analysis TEXT,
             remarks TEXT,
             file_hash VARCHAR(32)  
@@ -94,10 +95,16 @@ class RecordingRepository:
         result = cursor.fetchall()
         return [row[0] for row in result]
 
-    def update_score_and_analysis(self, recording_id, score, analysis):
+    def update_score_and_analysis(
+            self,
+            recording_id,
+            distance,
+            score,
+            analysis):
         cursor = self.connection.cursor()
-        update_query = """UPDATE recordings SET score = %s, analysis = %s WHERE id = %s;"""
-        cursor.execute(update_query, (score, analysis, recording_id))
+        update_query = """UPDATE recordings SET score = %s, distance = %s, analysis = %s 
+                        WHERE id = %s;"""
+        cursor.execute(update_query, (score, distance, analysis, recording_id))
         self.connection.commit()
 
     def update_score(self, recording_id, score):
