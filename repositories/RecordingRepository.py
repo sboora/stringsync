@@ -1,4 +1,5 @@
 import pymysql.cursors
+import pytz
 
 
 class RecordingRepository:
@@ -52,7 +53,8 @@ class RecordingRepository:
         result = cursor.fetchone()
         return result[0] == 1
 
-    def get_recordings_by_user_id_and_track_id(self, user_id, track_id):
+    def get_recordings_by_user_id_and_track_id(
+            self, user_id, track_id, timezone='America/Los_Angeles'):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """SELECT id, blob_name, blob_url, timestamp, duration, track_id, score, analysis, remarks 
                    FROM recordings 
@@ -60,6 +62,11 @@ class RecordingRepository:
                    ORDER BY timestamp DESC;"""
         cursor.execute(query, (user_id, track_id))
         recordings = cursor.fetchall()
+        for recording in recordings:
+            local_tz = pytz.timezone(timezone)
+            utc_timestamp = pytz.utc.localize(recording['timestamp'])
+            local_timestamp = utc_timestamp.astimezone(local_tz)
+            recording['timestamp'] = local_timestamp
         return recordings
 
     def get_all_recordings_by_user(self, user_id):
