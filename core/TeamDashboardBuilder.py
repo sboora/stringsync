@@ -42,10 +42,10 @@ class TeamDashboardBuilder:
         dashboard_data = self.portal_repo.fetch_team_dashboard_data(
             group_id, time_frame_selected)
 
-        column_widths = [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
+        column_widths = [1.5, 11, 12.5, 12.5, 12.5, 12.5, 13, 14, 10.5]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=["Teammate", "Unique Tracks", "Recordings",
+            column_names=["", "Teammate", "Unique Tracks", "Recordings",
                           "Badges Earned", "Recording Minutes", "Practice Minutes",
                           "Score", "Badges"])
 
