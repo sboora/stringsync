@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import re
 import tempfile
@@ -575,17 +576,22 @@ class BasePortal(ABC):
         column_widths = [33.33, 33.33, 33.33]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=['Activity Type', 'Timestamp', 'Additional Information'])
+            column_names=['Activity Type', 'Time', 'Metadata'])
 
         # Build rows for the user activities listing
         for activity in user_activities_data:
             activity_type = activity['activity_type']
-            timestamp = activity['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = activity['timestamp'].strftime('%-I:%M %p | %b %d') \
+                if isinstance(activity['timestamp'], datetime) else activity['timestamp']
             additional_params_dict = activity.get('additional_params', '{}')
-            if len(additional_params_dict) > 0:
-                additional_params_str = ', '.join(f'{key}: {value}' for key, value in additional_params_dict.items())
-            else:
-                additional_params_str = 'No additional information available'
+            additional_params_str = None
+            if additional_params_dict:
+                additional_params_str = ', '.join(
+                    f'{key}: {value}' for key, value in additional_params_dict.items() if key != 'session_id'
+                )
+
+            if not additional_params_str or not additional_params_dict:
+                additional_params_str = 'N/A'
 
             list_builder.build_row(row_data={
                 'Activity Type': activity_type,
@@ -620,7 +626,7 @@ class BasePortal(ABC):
         st.line_chart(df.set_index('Date'))
 
         # Fetch session details for the current user
-        session_details = self.user_session_repo.get_user_sessions(user_id)  # Corrected method name
+        session_details = self.user_session_repo.get_user_sessions(user_id)
 
         if not session_details:
             st.info("No session details available.")
@@ -634,9 +640,10 @@ class BasePortal(ABC):
 
         # Build rows for the session listing
         for session in session_details:
-            open_time = session['open_session_time'].strftime('%Y-%m-%d %H:%M:%S')
-            close_time = session['close_session_time'].strftime('%Y-%m-%d %H:%M:%S') if session[
-                'close_session_time'] else 'N/A'
+            open_time = session['open_session_time'].strftime('%-I:%M %p | %b %d') \
+                if isinstance(session['open_session_time'], datetime) else session['open_session_time']
+            close_time = session['close_session_time'].strftime('%-I:%M %p | %b %d') \
+                if isinstance(session['close_session_time'], datetime) else session['close_session_time']
             # Convert the session duration from seconds to minutes
             duration_minutes = session['session_duration'] / 60
             list_builder.build_row(

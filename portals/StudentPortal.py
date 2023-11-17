@@ -141,6 +141,7 @@ class StudentPortal(BasePortal, ABC):
         self.divider()
         track = self.filter_tracks()
         if not track:
+            st.info("No tracks found.")
             return
 
         self.create_track_headers()
@@ -173,9 +174,10 @@ class StudentPortal(BasePortal, ABC):
                     self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE, timestamp)
         with col3:
             if is_success:
-                score, analysis = self.display_student_performance(
-                    track_audio_path, recording_name, track_notes, track['offset'])
-                self.recording_repo.update_score_and_analysis(recording_id, score, analysis)
+                distance, score, analysis = self.display_student_performance(
+                        track_audio_path, recording_name, track_notes, track['offset'])
+                self.recording_repo.update_score_and_analysis(
+                    recording_id, distance, score, analysis)
         if badge_awarded:
             self.show_animations()
 
@@ -253,7 +255,7 @@ class StudentPortal(BasePortal, ABC):
         self.divider()
         col1, col2, col3 = st.columns([2.4, 2, 1])
         with col2:
-            if not st.button("Load Submissions", key='load_submissions'):
+            if not st.button("Load Submissions", key='load_submissions', type='primary'):
                 return
 
         # Fetch submissions from the database
@@ -457,27 +459,22 @@ class StudentPortal(BasePortal, ABC):
             user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash)
         return recording_name, blob_url, recording_id
 
-    def display_student_performance(self, track_file, student_path, track_notes, offset_distance):
+    def display_student_performance(
+            self, track_file, student_path, track_notes, offset_distance):
         if not student_path:
             return -1, ""
 
-        distance = self.get_audio_distance(track_file, student_path, offset_distance)
-        track_notes = self.get_filtered_track_notes(track_file, track_notes)
+        distance = self.get_audio_distance(track_file, student_path)
+        offset_corrected_distance = distance - offset_distance
         student_notes = self.get_filtered_student_notes(student_path)
-        error_notes, missing_notes = self.audio_processor.error_and_missing_notes(track_notes, student_notes)
-        score = self.audio_processor.distance_to_score(distance)
+        error_notes, missing_notes = self.audio_processor.error_and_missing_notes(
+            track_notes, student_notes)
+        score = self.audio_processor.distance_to_score(offset_corrected_distance)
         analysis, score = self.display_score_and_analysis(score, error_notes, missing_notes)
-        return score, analysis
+        return distance, score, analysis
 
-    def get_audio_distance(self, track_file, student_path, offset_distance):
-        distance = self.audio_processor.compare_audio(track_file, student_path)
-        return distance - offset_distance
-
-    def get_filtered_track_notes(self, track_file, track_notes):
-        if len(track_notes) == 0:
-            track_notes = self.audio_processor.get_notes(track_file)
-            track_notes = self.audio_processor.filter_consecutive_notes(track_notes)
-        return track_notes
+    def get_audio_distance(self, track_file, student_path):
+        return self.audio_processor.compare_audio(track_file, student_path)
 
     def get_filtered_student_notes(self, student_path):
         student_notes = self.audio_processor.get_notes(student_path)
@@ -487,16 +484,21 @@ class StudentPortal(BasePortal, ABC):
         analysis, off_notes = self.audio_processor.generate_note_analysis(
             error_notes, missing_notes)
         new_score = self.display_score(score, off_notes)
-        st.info(analysis)
+        #st.info(analysis)
+        encouragement_message = ""
+        """
         encouragement_message = self.generate_message(new_score)
         st.info(encouragement_message)
+        """
         return analysis + encouragement_message, new_score
 
     @staticmethod
     def display_score(score, errors):
         new_score = score
+        """
         if score == 10 and errors > 0:
             new_score = score - errors
+        """
         message = f"Score: {new_score}\n"
         if score <= 3:
             st.error(message)
@@ -522,7 +524,6 @@ class StudentPortal(BasePortal, ABC):
                     f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
         badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
-        print(badges)
         if badges:  # If there are badges
             cols = st.columns(5)
             for i, badge in enumerate(badges):
