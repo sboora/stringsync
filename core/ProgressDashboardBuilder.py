@@ -103,7 +103,7 @@ class ProgressDashboardBuilder:
             row_data = {
                 "Track": track_detail['track']['name'],
                 "Number of Recordings": track_detail['num_recordings'],
-                "Average Score": track_detail['avg_score'],
+                "Average Score": round(track_detail['avg_score'], 2),
                 "Min Score": track_detail['min_score'],
                 "Max Score": track_detail['max_score']
             }
