@@ -48,7 +48,7 @@ class UserActivityRepository:
         cursor.execute(insert_activity_query, (user_id, session_id, activity_type.value, additional_params_json))
         self.connection.commit()
 
-    def get_user_activities(self, user_id, timezone='America/Los_Angeles'):
+    def get_user_activities(self, user_id, timezone='America/Los_Angeles', limit=50):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
             SELECT activity_id,
@@ -59,9 +59,10 @@ class UserActivityRepository:
                    timestamp
             FROM user_activities
             WHERE user_id = %s
-            ORDER BY session_id DESC, timestamp DESC;
+            ORDER BY session_id DESC, timestamp DESC
+            LIMIT %s;
         """
-        cursor.execute(query, (user_id,))
+        cursor.execute(query, (user_id, limit))
         result = cursor.fetchall()
         for activity in result:
             # Deserialize the additional_params JSON string to a dictionary

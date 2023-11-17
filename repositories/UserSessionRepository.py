@@ -97,7 +97,7 @@ class UserSessionRepository:
         result = cursor.fetchone()
         return result[0] if result else None
 
-    def get_user_sessions(self, user_id, timezone='America/Los_Angeles'):
+    def get_user_sessions(self, user_id, timezone='America/Los_Angeles', limit=50):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
             SELECT session_id,
@@ -109,9 +109,10 @@ class UserSessionRepository:
             FROM user_sessions
             WHERE user_id = %s
             AND close_session_time IS NOT NULL
-            ORDER BY open_session_time DESC;
+            ORDER BY open_session_time DESC
+            LIMIT %s;
         """
-        cursor.execute(query, (user_id,))
+        cursor.execute(query, (user_id, limit))
         sessions = cursor.fetchall()
         for session in sessions:
             local_tz = pytz.timezone(timezone)
