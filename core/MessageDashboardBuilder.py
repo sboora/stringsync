@@ -37,7 +37,8 @@ class MessageDashboardBuilder:
 
             sender_name = message['sender_name']
             avatar_name = message.get('avatar_name', 'avatar 10')
-            avatar_file_path = self.avatar_loader.get_avatar(avatar_name) if avatar_name else 'path_to_default_avatar'
+            avatar_file_path = self.avatar_loader.get_avatar(avatar_name) \
+                if avatar_name else 'path_to_default_avatar'
 
             # Check if the avatar file exists, else use a default image
             if avatar_file_path and os.path.isfile(avatar_file_path):

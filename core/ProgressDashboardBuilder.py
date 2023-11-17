@@ -218,7 +218,6 @@ class ProgressDashboardBuilder:
 
         # Create a DataFrame for the track statistics
         df_track_stats = pd.DataFrame(flattened_tracks)
-        print(df_track_stats)
         df_track_stats.sort_values('Average Score', ascending=False, inplace=True)
 
         # Visualize with a bar chart

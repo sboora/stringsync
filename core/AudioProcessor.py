@@ -2,7 +2,6 @@ import librosa
 import numpy as np
 from fastdtw import fastdtw
 from scipy.spatial.distance import cosine, euclidean
-import streamlit as st
 from scipy.stats import zscore
 
 
@@ -94,10 +93,11 @@ class AudioProcessor:
         return notes
 
     @staticmethod
-    def filter_consecutive_notes(notes, min_consecutive=3):
+    def filter_consecutive_notes(notes, min_consecutive=1):
         filtered_notes = []
         prev_note = None
         count = 0
+        print(notes)
         for note in notes:
             if note == prev_note:
                 count += 1
