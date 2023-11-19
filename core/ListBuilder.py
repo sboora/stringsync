@@ -16,11 +16,11 @@ class ListBuilder:
         header_html += "</div>"
         st.markdown(header_html, unsafe_allow_html=True)
 
-    def build_row(self, row_data):
+    def build_row(self, row_data, col0=""):
         num_columns = len(row_data)
 
         row_html = "<div style='padding:5px;border-radius:3px;border:1px solid black;'>"
-
+        row_html += col0
         for (column_name, value), width in zip(row_data.items(), self.column_widths):
             row_html += f"<div style='display:inline-block;width:{width}%;text-align:left;box-sizing: border-box;'>"
             row_html += f"<p style='color:black;margin:0;font-size:14px;'>{value}</p>"
