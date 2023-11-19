@@ -113,6 +113,26 @@ class AssignmentRepository:
             """, (user_id,))
             return cursor.fetchall()
 
+    def get_all_assignments_with_details(self):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query to select all assignments along with their tracks and resources
+            cursor.execute("""
+                SELECT a.id as assignment_id, a.title, a.description, a.due_date, 
+                       t.id as track_id, t.name as track_name, t.track_path, 
+                       r.id as resource_id, r.title as resource_title, r.link
+                FROM assignments a
+                LEFT JOIN assignment_details ad ON a.id = ad.assignment_id
+                LEFT JOIN tracks t ON ad.track_id = t.id
+                LEFT JOIN resources r ON ad.resource_id = r.id
+                ORDER BY a.timestamp DESC;
+            """)
+
+            # Fetch all results
+            assignments_with_details = cursor.fetchall()
+
+            # Return the list of assignments with tracks and resources
+            return assignments_with_details
+
     def get_assigned_tracks(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
