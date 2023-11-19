@@ -1,3 +1,4 @@
+import base64
 import datetime
 import hashlib
 import os
@@ -146,15 +147,24 @@ class TeacherPortal(BasePortal, ABC):
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(column_names=["Name", "Username", "Email", "Team", "Join Code"])
 
-        for student_detail in students:
+        avatar_image_html = ""
+        for student in students:
+            avatar_file_path = self.avatar_loader.get_avatar(student['avatar'])
+            if os.path.isfile(avatar_file_path):
+                with open(avatar_file_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode()
+                    avatar_image_html = f'<img src="data:image/png;base64,{encoded_string}" alt="avatar" ' \
+                                        f'style="width: 60px; ' \
+                                        f'height: 60px; border-radius: 50%; margin-right: 10px;"> '
             row_data = {
-                "Name": student_detail['name'],
-                "Username": student_detail['username'],
-                "Email": student_detail['email'],
-                "Team": student_detail['group_name'] if 'group_name' in student_detail else 'N/A',
+                "Name": student['name'],
+                "Username": student['username'],
+                "Email": student['email'],
+                "Team": student['group_name'] if 'group_name' in student else 'N/A',
                 "Join Code": st.session_state['join_code']
             }
-            list_builder.build_row(row_data=row_data)
+            list_builder.build_row(row_data, f""" <div style='display: flex; align-items: center; border-radius: 10px; padding: 10px; 
+                        margin-bottom: 5px;'> {avatar_image_html} </div>""")
 
     def team_assignments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"

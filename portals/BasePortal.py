@@ -101,7 +101,7 @@ class BasePortal(ABC):
             with left_column:
                 self.show_introduction()
             with right_column:
-                st.image(self.show_avatar(), width=100)
+                self.show_avatar(st.session_state["avatar"])
         else:
             self.show_introduction()
 
@@ -115,8 +115,8 @@ class BasePortal(ABC):
         self.show_copyright()
         self.clean_up()
 
-    def show_avatar(self):
-        return self.avatar_loader.get_avatar(st.session_state["avatar"])
+    def show_avatar(self, avatar):
+        st.image(self.avatar_loader.get_avatar(avatar), width=100)
 
     def cache_badges(self):
         # Directory where badges are stored locally
