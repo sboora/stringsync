@@ -62,13 +62,20 @@ class FeatureToggleRepository:
         cursor = self.connection.cursor()
 
         for feature in Features:
-            query = """
-            INSERT INTO feature_toggles (feature_name, is_enabled)
-            VALUES (%s, TRUE)
-            ON DUPLICATE KEY UPDATE feature_name = VALUES(feature_name)
-            """
-            cursor.execute(query, (feature.name,))
+            # Check if the feature already exists
+            select_query = "SELECT COUNT(*) FROM feature_toggles WHERE feature_name = %s"
+            cursor.execute(select_query, (feature.name,))
+            exists = cursor.fetchone()[0] > 0
+
+            # If the feature exists, update it
+            if not exists:
+                insert_query = """
+                INSERT INTO feature_toggles (feature_name, is_enabled)
+                VALUES (%s, TRUE)
+                """
+                cursor.execute(insert_query, (feature.name,))
 
         self.connection.commit()
+
 
 

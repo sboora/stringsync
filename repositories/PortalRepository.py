@@ -90,17 +90,14 @@ class PortalRepository:
         cursor = self.connection.cursor()
         query = """
             SELECT r.id, r.blob_name, r.blob_url, t.track_path, r.timestamp, r.duration,
-                   r.track_id, r.score, r.analysis, r.remarks, r.user_id                  
+                   r.track_id, r.score, r.analysis, r.remarks, r.user_id, u.name as user_name                  
             FROM recordings r
             JOIN tracks t ON r.track_id = t.id
+            JOIN users u ON r.user_id = u.id
         """
         filters = ["r.remarks IS NULL OR r.remarks = ''"]
 
-        # Join with users table if group_id is not None
         if group_id is not None:
-            query += """
-                JOIN users u ON r.user_id = u.id
-            """
             filters.append("u.group_id = %s")
 
         if user_id is not None:
@@ -120,22 +117,20 @@ class PortalRepository:
         cursor.execute(query, params)
         result = cursor.fetchall()
         self.connection.commit()
-        recordings = []
-        for row in result:
-            recording = {
-                'id': row[0],
-                'blob_name': row[1],
-                'blob_url': row[2],
-                'track_path': row[3],
-                'timestamp': row[4],
-                'duration': row[5],
-                'track_id': row[6],
-                'score': row[7],
-                'analysis': row[8],
-                'remarks': row[9],
-                'user_id': row[10]
-            }
-            recordings.append(recording)
+        recordings = [{
+            'id': row[0],
+            'blob_name': row[1],
+            'blob_url': row[2],
+            'track_path': row[3],
+            'timestamp': row[4],
+            'duration': row[5],
+            'track_id': row[6],
+            'score': row[7],
+            'analysis': row[8],
+            'remarks': row[9],
+            'user_id': row[10],
+            'user_name': row[11]
+        } for row in result]
 
         return recordings
 
