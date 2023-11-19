@@ -352,7 +352,7 @@ class UserRepository:
                 """
 
         with self.connection.cursor() as cursor:
-            for i in range(1, 26):
+            for i in range(1, 36):
                 avatar_name = f"avatar {i}"
                 # Check if avatar already exists
                 cursor.execute(check_avatar_query, (avatar_name,))
