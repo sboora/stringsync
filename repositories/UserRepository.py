@@ -310,18 +310,16 @@ class UserRepository:
         return users
 
     def get_users_by_org_id_and_type(self, org_id, user_type):
-        cursor = self.connection.cursor()
-        get_users_query = """SELECT u.id, u.name, u.username, u.email, g.name AS group_name 
-                             FROM users u
-                             LEFT JOIN user_groups g ON u.group_id = g.id
-                             WHERE u.org_id = %s AND u.user_type = %s;"""
-        cursor.execute(get_users_query, (org_id, user_type))
-        result = cursor.fetchall()
-
-        # Create a list of dictionaries to hold the user data
-        users = [{'id': row[0], 'name': row[1], 'username': row[2],
-                  'email': row[3], 'group_name': row[4]} for row in result]
-        return users
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            get_users_query = """
+            SELECT u.id, u.name, u.username, u.email, g.name AS group_name, a.name AS avatar
+            FROM users u
+            LEFT JOIN user_groups g ON u.group_id = g.id
+            LEFT JOIN avatars a ON u.avatar_id = a.id
+            WHERE u.org_id = %s AND u.user_type = %s;
+            """
+            cursor.execute(get_users_query, (org_id, user_type))
+            return cursor.fetchall()
 
     def assign_user_to_org(self, user_id, org_id):
         cursor = self.connection.cursor()
@@ -354,7 +352,7 @@ class UserRepository:
                 """
 
         with self.connection.cursor() as cursor:
-            for i in range(1, 19):
+            for i in range(1, 26):
                 avatar_name = f"avatar {i}"
                 # Check if avatar already exists
                 cursor.execute(check_avatar_query, (avatar_name,))
