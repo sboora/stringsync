@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import os
 from abc import ABC
+from collections import defaultdict
 
 from core.AudioProcessor import AudioProcessor
 from core.BadgeAwarder import BadgeAwarder
@@ -320,6 +321,47 @@ class TeacherPortal(BasePortal, ABC):
                 st.success("Assignment created and assigned successfully!")
             else:
                 st.error("Please provide a title for the assignment.")
+
+        self.list_assignments()
+
+    def list_assignments(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
+        self.divider()
+        # Retrieve all assignments with their details from the repository
+        assignments_with_details = self.assignment_repo.get_all_assignments_with_details()
+
+        # Structure to hold the consolidated assignments
+        consolidated_assignments = defaultdict(lambda: {'tracks': set(), 'resources': set()})
+
+        # Consolidate tracks and resources by assignment
+        for detail in assignments_with_details:
+            assignment_id = detail['assignment_id']
+            if detail.get('track_name'):
+                consolidated_assignments[assignment_id]['tracks'].add((detail['track_name'], detail['track_path']))
+            if detail.get('resource_title'):
+                consolidated_assignments[assignment_id]['resources'].add((detail['resource_title'], detail['link']))
+            consolidated_assignments[assignment_id].update(detail)  # Add other assignment details
+
+        # If there are assignments with details, display them
+        if consolidated_assignments:
+            for assignment_id, assignment_details in consolidated_assignments.items():
+                # Display assignment information
+                st.write(f"**{assignment_details['title']}**")
+                st.write(f"Description: {assignment_details['description']},  Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
+
+                # Display the consolidated track names and resources
+                track_links = [f"{name}" for name, path in assignment_details['tracks']]
+                resource_links = [f"[{title}]({link})" for title, link in assignment_details['resources']]
+
+                if track_links:
+                    st.write(f"Tracks: {', '.join(track_links)}")
+                if resource_links:
+                    st.write(f"Resources: {', '.join(resource_links)}")
+
+                st.markdown("---")  # Adding a separator line
+        else:
+            st.write("No assignments found.")
 
     def handle_resource_upload(self, title, description, file, rtype, link):
         if rtype != "Link" and not file:
