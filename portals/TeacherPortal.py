@@ -348,7 +348,8 @@ class TeacherPortal(BasePortal, ABC):
             for assignment_id, assignment_details in consolidated_assignments.items():
                 # Display assignment information
                 st.write(f"**{assignment_details['title']}**")
-                st.write(f"Description: {assignment_details['description']},  Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
+                st.write(
+                    f"Description: {assignment_details['description']},  Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
 
                 # Display the consolidated track names and resources
                 track_links = [f"{name}" for name, path in assignment_details['tracks']]
@@ -481,23 +482,42 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
         self.divider()
-        # Fetching all track details using the method from PortalRepository
-        tracks = self.portal_repo.list_tracks()
+
+        ragas = self.raga_repo.get_all_ragas()
+        filter_options = self.fetch_filter_options(ragas)
+
+        # Create three columns
+        col1, col2, col3 = st.columns(3)
+
+        level = col1.selectbox("Filter by Level", ["All"] + filter_options["Level"])
+        raga = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
+        tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
+
+        tracks = self.track_repo.search_tracks(
+            raga=None if raga == "All" else raga,
+            level=None if level == "All" else level,
+            tags=None if tags == ["All"] else tags
+        )
         if not tracks:
             st.info("No tracks found. Create a track to get started.")
+            return
+
+        selected_tracks = self.get_selected_tracks(tracks)
+
+        if not selected_tracks:
             return
 
         list_builder = ListBuilder(column_widths=[20, 20, 20, 20, 20])
         list_builder.build_header(
             column_names=["Track Name", "Audio", "Ragam", "Level", "Description"])
 
-        for track_detail in tracks:
+        for track in selected_tracks:
             col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
             row_data = {
-                "Track Name": track_detail['track_name'],
-                "Ragam": track_detail['ragam'],
-                "Level": track_detail['level'],
-                "Description": track_detail['description']
+                "Track Name": track['track_name'],
+                "Ragam": track['ragam'],
+                "Level": track['level'],
+                "Description": track['description']
             }
             col1.write("")
             col1.markdown(
@@ -505,7 +525,7 @@ class TeacherPortal(BasePortal, ABC):
                 unsafe_allow_html=True)
 
             col2.write("")
-            blob_url = track_detail['track_path']
+            blob_url = track['track_path']
             audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
             col2.audio(audio_file_path, format='core/m4a')
 
@@ -521,6 +541,29 @@ class TeacherPortal(BasePortal, ABC):
             col5.markdown(
                 f"<div style='padding-top:12px;color:black;font-size:14px;text-align:left'>{row_data['Description']}</div>",
                 unsafe_allow_html=True)
+
+    def fetch_filter_options(self, ragas):
+        return {
+            "Level": self.track_repo.get_all_levels(),
+            "Ragam": [raga['name'] for raga in ragas],
+            "Tags": self.track_repo.get_all_tags()
+        }
+
+    @staticmethod
+    def get_selected_tracks(tracks):
+        # Create a mapping from track names to track objects
+        track_options = {track['track_name']: track for track in tracks}
+
+        # Use a multiselect widget to let the user select tracks by name
+        selected_track_names = st.multiselect("Select Tracks",
+                                              list(track_options.keys()),
+                                              key="track_selection",
+                                              placeholder='Select Tracks')
+
+        # Filter the tracks list to only include the tracks with names that were selected
+        selected_tracks = [track_options[name] for name in selected_track_names if name in track_options]
+
+        return selected_tracks
 
     def validate_inputs(self, track_name, track_file, ref_track_file):
         if not track_name:

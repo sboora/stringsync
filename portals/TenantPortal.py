@@ -127,18 +127,13 @@ class TenantPortal(BasePortal, ABC):
 
                 # Display feature value
                 with col1:
+                    print(feature_display_value)
                     st.write(feature_display_value)
 
                 # Display on/off switch using st_toggles
                 with col2:
-                    current_status = tog.st_toggle_switch(label="",
-                                                          key=f"toggle_{feature_enum_name}",
-                                                          default_value=is_enabled,
-                                                          label_after=False,
-                                                          inactive_color='#D3D3D3',
-                                                          active_color="#11567f",
-                                                          track_color="#29B5E8"
-                                                          )
+                    current_status = st.toggle(
+                        "", value=is_enabled, key=f"toggle_{feature_display_value}")
 
                 # If toggle button is clicked
                 if current_status != is_enabled:

@@ -382,12 +382,12 @@ class StudentPortal(BasePortal, ABC):
 
     @staticmethod
     def get_selected_track_name(tracks):
-        track_names = [track['name'] for track in tracks]
+        track_names = [track['track_name'] for track in tracks]
         return st.selectbox("Select a Track", ["Select a Track"] + track_names, index=0)
 
     @staticmethod
     def get_selected_track_details(tracks, selected_track_name):
-        return next((track for track in tracks if track['name'] == selected_track_name), None)
+        return next((track for track in tracks if track['track_name'] == selected_track_name), None)
 
     @staticmethod
     def create_track_headers():

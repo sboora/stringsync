@@ -270,11 +270,12 @@ class BasePortal(ABC):
         Handle student login and registration through the sidebar.
         """
         is_authenticated = False
-        if not self.register_user():
+        # Login
+        if not self.register_user() and not self.change_password():
             st.header("Login")
             is_authenticated = False
             password, username = self.show_login_screen()
-            col1, col2, col3 = st.columns([2.5, 4, 32])
+            col1, col2, col3, col4 = st.columns([3, 4, 20, 32])
             if col1.button("Login", type="primary"):
                 if username and password:
                     is_authenticated, user_id, org_id, group_id = \
@@ -293,7 +294,41 @@ class BasePortal(ABC):
             if col2.button("Register", type="primary"):
                 st.session_state["show_register_section"] = True
                 st.rerun()
-        else:
+
+            if col3.button("Change Password", type="primary"):
+                st.session_state["change_password_section"] = True
+                st.rerun()
+
+        # Change password
+        if self.change_password():
+            st.subheader("Change Password")
+            email, username, new_password, confirm_new_password = \
+                self.show_change_password_screen()
+
+            col1, col2, col3 = st.columns([3, 4, 40])
+
+            if col1.button("Submit", type="primary", key='cp_submit'):
+                if username and email and new_password and confirm_new_password:
+                    # Validate user entry
+                    validated, message = self.validate(username, new_password, confirm_new_password, email)
+                    # Change password
+                    if validated:
+                        is_password_changed, message = self.user_repo.change_password(username, email, new_password)
+                        # Successful?
+                        if is_password_changed:
+                            st.success(message)
+                            st.session_state["change_password_section"] = False
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(message)
+
+            if col2.button("Cancel", type="primary"):
+                st.session_state["change_password_section"] = False
+                st.rerun()
+
+        # User registration
+        if self.register_user():
             st.subheader("Register")
             reg_email, reg_name, reg_username, reg_password, confirm_password, join_code = \
                 self.show_user_registration_screen()
@@ -423,6 +458,15 @@ class BasePortal(ABC):
         return reg_email, reg_name, reg_username, reg_password, confirm_password, join_code
 
     @staticmethod
+    def show_change_password_screen():
+        email = st.text_input("Email")
+        username = st.text_input(key="cp_username", label="User")
+        new_password = st.text_input(key="cp_password", type="password", label=" New Password")
+        confirm_new_password = st.text_input("Confirm New Password", type="password")
+
+        return email, username, new_password, confirm_new_password
+
+    @staticmethod
     def ok():
         return st.button("Ok", type="primary")
 
@@ -453,6 +497,8 @@ class BasePortal(ABC):
             st.session_state['username'] = None
         if 'show_register_section' not in st.session_state:
             st.session_state['show_register_section'] = None
+        if 'change_password_section' not in st.session_state:
+            st.session_state['change_password_section'] = None
         if 'last_selected_track' not in st.session_state:
             st.session_state['last_selected_track'] = None
 
@@ -827,6 +873,10 @@ class BasePortal(ABC):
     @staticmethod
     def register_user():
         return st.session_state["show_register_section"]
+
+    @staticmethod
+    def change_password():
+        return st.session_state["change_password_section"]
 
     def get_org_dir_bucket(self):
         return f'{self.get_tenant_id()}/{self.get_org_id()}'
