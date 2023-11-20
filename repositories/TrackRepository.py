@@ -148,24 +148,37 @@ class TrackRepository:
         count = cursor.fetchone()[0]
         return count > 0
 
-    def search_tracks(self, raga=None, level=None, tags=None):
+    def search_tracks(self, raga=None, level=None, tags=None, limit=100):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = "SELECT tracks.id, tracks.name, track_path, track_ref_path, notation_path, level, ragam_id, " \
-                "offset FROM tracks "
+        # Include ragas.name in the SELECT clause to ensure it's always returned
+        query = """
+            SELECT 
+                tracks.id, 
+                tracks.name as track_name, 
+                tracks.description,
+                tracks.track_path, 
+                tracks.track_ref_path, 
+                tracks.notation_path, 
+                tracks.level, 
+                ragas.id as ragam_id,
+                ragas.name as ragam,  
+                tracks.offset 
+            FROM tracks
+            JOIN ragas ON tracks.ragam_id = ragas.id  
+        """
         params = []
 
         joins = []
-        if raga:
-            joins.append("JOIN ragas ON tracks.ragam_id = ragas.id")
         if tags:
-            joins.append("JOIN track_tags ON tracks.id = track_tags.track_id JOIN tags ON track_tags.tag_id = tags.id")
+            joins.append("JOIN track_tags ON tracks.id = track_tags.track_id")
+            joins.append("JOIN tags ON track_tags.tag_id = tags.id")
 
         where_clauses = []
         if raga:
             where_clauses.append("ragas.name = %s")
             params.append(raga)
         if level:
-            where_clauses.append("level = %s")
+            where_clauses.append("tracks.level = %s")
             params.append(level)
         if tags:
             where_clauses.append(f"tags.tag_name IN ({', '.join(['%s'] * len(tags))})")
@@ -174,10 +187,12 @@ class TrackRepository:
         query += f" {' '.join(joins)} {' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''}"
 
         if tags:
-            query += " GROUP BY tracks.id HAVING COUNT(tracks.id) = %s"
+            query += " GROUP BY tracks.id HAVING COUNT(DISTINCT tags.id) = %s"
             params.append(len(tags))
 
+        query += f" LIMIT {limit}"
         cursor.execute(query, params)
         return cursor.fetchall()
+
 
 

@@ -263,6 +263,31 @@ class UserRepository:
         else:
             return False, -1, -1, -1
 
+    def change_password(self, username, email, new_password):
+        cursor = self.connection.cursor()
+
+        # Verify that the username and email match
+        find_user_query = """SELECT id FROM users WHERE username = %s AND email = %s;"""
+        cursor.execute(find_user_query, (username, email))
+        result = cursor.fetchone()
+
+        # If the user exists
+        if result:
+            user_id = result[0]
+
+            # Hash the new password
+            hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+
+            # Update the user's password in the database
+            update_password_query = """UPDATE users SET password = %s WHERE id = %s;"""
+            cursor.execute(update_password_query, (hashed_password.decode('utf-8'), user_id))
+            self.connection.commit()
+
+            return True, "Password updated successfully."
+
+        else:
+            return False, "Username or email does not match our records."
+
     def get_all_users(self, org_id):
         with self.connection.cursor() as cursor:
             # SQL query to select users from a specific organization

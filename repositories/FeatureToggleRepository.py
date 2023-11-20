@@ -41,7 +41,7 @@ class FeatureToggleRepository:
         if result is not None:
             return result[0]
         else:
-            return False  # or a default value if you prefer
+            return False
 
     def get_all_features(self):
         cursor = self.connection.cursor()
