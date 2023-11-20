@@ -2,11 +2,8 @@ from portals.AdminPortal import AdminPortal
 
 
 def main():
-    try:
-        admin_portal = AdminPortal()
-        admin_portal.start()
-    except Exception as e:
-        print("An error has occurred: {}".format(e))
+    admin_portal = AdminPortal()
+    admin_portal.start()
 
 
 if __name__ == "__main__":
