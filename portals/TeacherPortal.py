@@ -287,7 +287,7 @@ class TeacherPortal(BasePortal, ABC):
         # Fetch all individual users
         all_users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
-        user_options = {user['username']: user['id'] for user in all_users}
+        user_options = {user['name']: user['id'] for user in all_users}
         selected_user_ids = [user_options[username] for username in
                              st.multiselect("Select Individual Users", list(user_options.keys()),
                                             key='selected_users')]
@@ -656,7 +656,7 @@ class TeacherPortal(BasePortal, ABC):
             users = self.user_repo.get_users_by_org_id_and_type(
                 self.get_org_id(), UserType.STUDENT.value)
 
-        user_options = {user['username']: user['id'] for user in users}
+        user_options = {user['name']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
         selected_username = st.selectbox(key=f"{source}-user", label="Select a student to view their recordings:",
                                          options=options)
@@ -746,6 +746,9 @@ class TeacherPortal(BasePortal, ABC):
                     f"-size: 24px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
                     unsafe_allow_html=True)
         self.divider()
+        # Show submissions summary
+        self.show_submissions_summary()
+        self.divider()
         # Filter criteria
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("S")
         if group_id is None and user_id is None:
@@ -810,6 +813,15 @@ class TeacherPortal(BasePortal, ABC):
                                                              TrackBadges(selected_badge),
                                                              submission['timestamp'])
 
+    def show_submissions_summary(self):
+        submissions = self.portal_repo.get_unremarked_submissions()
+        list_builder = ListBuilder(column_widths=[33.33, 33.33, 33.33])
+        list_builder.build_header(
+            column_names=["Name", "Group", "Tracks"])
+        # Display recent submission summary
+        for submission in submissions:
+            list_builder.build_row(submission)
+
     def progress_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
@@ -817,7 +829,7 @@ class TeacherPortal(BasePortal, ABC):
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
 
-        user_options = {user['username']: user['id'] for user in users}
+        user_options = {user['name']: user['id'] for user in users}
         options = ['--Select a student--'] + list(user_options.keys())
         selected_username = st.selectbox(key=f"user_select_progress_dashboard",
                                          label="Select a student to view their progress report:",
