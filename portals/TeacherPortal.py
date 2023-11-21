@@ -491,7 +491,7 @@ class TeacherPortal(BasePortal, ABC):
 
         level = col1.selectbox("Filter by Level", ["All"] + filter_options["Level"])
         raga = col2.selectbox("Filter by Ragam", ["All"] + filter_options["Ragam"])
-        tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"], default=["All"])
+        tags = col3.multiselect("Filter by Tags", ["All"] + filter_options["Tags"])
 
         tracks = self.track_repo.search_tracks(
             raga=None if raga == "All" else raga,
