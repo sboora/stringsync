@@ -97,7 +97,6 @@ class AudioProcessor:
         filtered_notes = []
         prev_note = None
         count = 0
-        print(notes)
         for note in notes:
             if note == prev_note:
                 count += 1
