@@ -32,15 +32,33 @@ class RagaRepository:
 
     def add_raga(self, name, is_melakarta, parent_raga, aarohanam, avarohanam):
         cursor = self.connection.cursor()
+
+        # Check if the raga already exists
         cursor.execute("""
-            INSERT INTO ragas (name, is_melakarta, parent_raga, aarohanam, avarohanam)
-            VALUES (%s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-            is_melakarta = VALUES(is_melakarta),
-            parent_raga = VALUES(parent_raga),
-            aarohanam = VALUES(aarohanam),
-            avarohanam = VALUES(avarohanam)
-        """, (name, is_melakarta, parent_raga, aarohanam, avarohanam))
+            SELECT COUNT(*)
+            FROM ragas
+            WHERE name = %s
+        """, (name,))
+        exists = cursor.fetchone()[0]
+
+        # If the raga exists, update it
+        if exists:
+            cursor.execute("""
+                UPDATE ragas
+                SET is_melakarta = %s,
+                    parent_raga = %s,
+                    aarohanam = %s,
+                    avarohanam = %s
+                WHERE name = %s
+            """, (is_melakarta, parent_raga, aarohanam, avarohanam, name))
+        # If the raga does not exist, insert a new record
+        else:
+            print(f"added raga {name}")
+            cursor.execute("""
+                INSERT INTO ragas (name, is_melakarta, parent_raga, aarohanam, avarohanam)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (name, is_melakarta, parent_raga, aarohanam, avarohanam))
+
         self.connection.commit()
 
     def get_raga_by_name(self, name):
@@ -106,6 +124,13 @@ class RagaRepository:
             parent_raga=None,
             aarohanam='S R1 G3 M2 P D1 N3 S',
             avarohanam='S N3 D1 P M2 G3 R1 S'
+        )
+        self.add_raga(
+            name='Suddha Saveri',
+            is_melakarta=False,
+            parent_raga="Karaharapriya",
+            aarohanam='S R2 M1 P D2 S',
+            avarohanam='S D2 P M1 R2 S'
         )
 
 
