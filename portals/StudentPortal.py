@@ -162,7 +162,7 @@ class StudentPortal(BasePortal, ABC):
                 self.handle_file_upload(self.get_user_id(), track['id'])
             if is_success:
                 additional_params = {
-                    "Track": track['name'],
+                    "Track": track['track_name'],
                     "Recording": recording_name,
                 }
                 self.user_activity_repo.log_activity(self.get_user_id(),
