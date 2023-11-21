@@ -447,7 +447,7 @@ class StudentPortal(BasePortal, ABC):
         return hashlib.md5(recording_data).hexdigest()
 
     def add_recording(self, user_id, track_id, recording_data, timestamp, file_hash):
-        recording_name = f"{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
+        recording_name = f"{user_id}-{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
         blob_name = f'{self.get_recordings_bucket()}/{recording_name}'
         blob_url = self.storage_repo.upload_blob(recording_data, blob_name)
         self.storage_repo.download_blob(blob_url, recording_name)
