@@ -728,9 +728,12 @@ class TeacherPortal(BasePortal, ABC):
                 f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
                 unsafe_allow_html=True)
 
-            # Show the remarks as markdown
+            # Get the remarks, replacing new lines with <br> for HTML display
+            remarks_html = recording.get('remarks', 'N/A').replace("\n", "<br>")
+
+            # Now use markdown to display the remarks with HTML new lines
             col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                f"<div style='padding-top:5px;color:black;font-size:14px;'>{remarks_html}</div>",
                 unsafe_allow_html=True)
 
             formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
@@ -793,7 +796,7 @@ class TeacherPortal(BasePortal, ABC):
             f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('analysis', 'N/A')}</div>",
             unsafe_allow_html=True)
 
-        remarks = col6.text_input("", key=f"remarks_{submission['id']}")
+        remarks = col6.text_area("", key=f"remarks_{submission['id']}")
 
         badge_options = [badge.value for badge in TrackBadges]
         selected_badge = col7.selectbox("", ['--Select a badge--', 'N/A'] + badge_options,

@@ -221,9 +221,14 @@ class StudentPortal(BasePortal, ABC):
                     col1.write("No core data available.")
 
                 col2.write("")
+                # Get the remarks, replacing new lines with <br> for HTML display
+                remarks_html = recording.get('remarks', 'N/A').replace("\n", "<br>")
+
+                # Now use markdown to display the remarks with HTML new lines
                 col2.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('remarks', 'N/A')}</div>",
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{remarks_html}</div>",
                     unsafe_allow_html=True)
+
                 col3.write("")
                 col3.markdown(
                     f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
@@ -295,8 +300,12 @@ class StudentPortal(BasePortal, ABC):
                     f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
                     unsafe_allow_html=True)
 
+                # Get the teacher_remarks, replacing new lines with <br> for HTML display
+                teacher_remarks_html = submission.get('teacher_remarks', 'N/A').replace("\n", "<br>")
+
+                # Now use markdown to display the teacher_remarks with HTML new lines
                 col5.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{submission.get('teacher_remarks', 'N/A')}</div>",
+                    f"<div style='padding-top:5px;color:black;font-size:14px;'>{teacher_remarks_html}</div>",
                     unsafe_allow_html=True)
 
                 badge = self.user_achievement_repo.get_badge_by_recording(submission['recording_id'])
