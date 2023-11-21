@@ -86,6 +86,23 @@ class PortalRepository:
 
         return tracks_details
 
+    def get_unremarked_submissions(self):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            query = """
+                SELECT u.name as user_name, g.name as group_name, 
+                       GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ', ') as track_names
+                FROM recordings r
+                JOIN users u ON r.user_id = u.id
+                JOIN tracks t ON r.track_id = t.id
+                LEFT JOIN user_groups g ON u.group_id = g.id
+                WHERE (r.remarks IS NULL OR r.remarks = '') AND r.timestamp IS NOT NULL AND u.user_type = 'student'
+                GROUP BY u.name, g.name
+                ORDER BY u.name, g.name;
+            """
+
+            cursor.execute(query)
+            return cursor.fetchall()
+
     def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
         cursor = self.connection.cursor()
         query = """
