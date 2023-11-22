@@ -42,17 +42,7 @@ class RagaRepository:
         exists = cursor.fetchone()[0]
 
         # If the raga exists, update it
-        if exists:
-            cursor.execute("""
-                UPDATE ragas
-                SET is_melakarta = %s,
-                    parent_raga = %s,
-                    aarohanam = %s,
-                    avarohanam = %s
-                WHERE name = %s
-            """, (is_melakarta, parent_raga, aarohanam, avarohanam, name))
-        # If the raga does not exist, insert a new record
-        else:
+        if not exists:
             print(f"added raga {name}")
             cursor.execute("""
                 INSERT INTO ragas (name, is_melakarta, parent_raga, aarohanam, avarohanam)
@@ -131,6 +121,20 @@ class RagaRepository:
             parent_raga="Karaharapriya",
             aarohanam='S R2 M1 P D2 S',
             avarohanam='S D2 P M1 R2 S'
+        )
+        self.add_raga(
+            name='Bangala',
+            is_melakarta=False,
+            parent_raga="Shankarabharanam",
+            aarohanam='S R2 G3 M1 P M1 R2 P S',
+            avarohanam='S N3 P M1 R2 G3 R2 S'
+        )
+        self.add_raga(
+            name='Bilahari',
+            is_melakarta=False,
+            parent_raga="Shankarabharanam",
+            aarohanam='S R2 G3 P D2 S',
+            avarohanam='S N3 D2 P M1 G3 R2 S'
         )
 
 

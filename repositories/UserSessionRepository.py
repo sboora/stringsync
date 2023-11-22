@@ -56,8 +56,8 @@ class UserSessionRepository:
         # Update the close_session_time, calculate session_duration, and set is_open to FALSE
         update_session_query = """
             UPDATE user_sessions
-            SET close_session_time = CURRENT_TIMESTAMP,
-                session_duration = TIMESTAMPDIFF(SECOND, open_session_time, CURRENT_TIMESTAMP),
+            SET close_session_time = last_activity_time,
+                session_duration = TIMESTAMPDIFF(SECOND, open_session_time, last_activity_time),
                 is_open = FALSE
             WHERE session_id = %s;
         """
@@ -78,6 +78,19 @@ class UserSessionRepository:
 
         cursor.close()  # close the cursor after use
         return session_duration
+
+    def get_last_activity_time(self, session_id):
+        cursor = self.connection.cursor()
+        get_activity_time_query = """
+            SELECT last_activity_time
+            FROM user_sessions
+            WHERE session_id = %s;
+        """
+        cursor.execute(get_activity_time_query, (session_id,))
+        result = cursor.fetchone()
+        self.connection.commit()
+        # result will be None if there is no such session_id
+        return result[0] if result else None
 
     def update_last_activity_time(self, session_id):
         cursor = self.connection.cursor()
@@ -103,12 +116,12 @@ class UserSessionRepository:
             SELECT session_id,
                    user_id,
                    open_session_time,
+                   last_activity_time,
                    close_session_time,
                    session_duration,
                    is_open
             FROM user_sessions
             WHERE user_id = %s
-            AND close_session_time IS NOT NULL
             ORDER BY open_session_time DESC
             LIMIT %s;
         """
@@ -120,10 +133,15 @@ class UserSessionRepository:
             open_utc_timestamp = pytz.utc.localize(session['open_session_time'])
             local_open_timestamp = open_utc_timestamp.astimezone(local_tz)
             session['open_session_time'] = local_open_timestamp
-            # Close session time
-            close_utc_timestamp = pytz.utc.localize(session['close_session_time'])
-            local_close_timestamp = close_utc_timestamp.astimezone(local_tz)
-            session['close_session_time'] = local_close_timestamp
+            # Last activity time
+            last_activity_utc_timestamp = pytz.utc.localize(session['last_activity_time'])
+            local_last_activity_timestamp = last_activity_utc_timestamp.astimezone(local_tz)
+            session['last_activity_time'] = local_last_activity_timestamp
+            if not session['is_open']:
+                # Close session time
+                close_utc_timestamp = pytz.utc.localize(session['close_session_time'])
+                local_close_timestamp = close_utc_timestamp.astimezone(local_tz)
+                session['close_session_time'] = local_close_timestamp
         return sessions
 
     def get_time_series_data(self, user_id):

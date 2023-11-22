@@ -384,5 +384,26 @@ class PortalRepository:
 
         return weekly_winners
 
+    def get_notifications(self, user_id, group_id, last_activity_time):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
 
+        query = """
+        SELECT 
+            act.activity_type, 
+            act.timestamp, 
+            usr.name AS user_name 
+        FROM user_activities act
+        JOIN users usr ON act.user_id = usr.id
+        WHERE act.timestamp > %s 
+          AND usr.group_id = %s 
+          AND usr.id != %s
+        ORDER BY act.timestamp ASC;
+        """
 
+        # Execute the query with the provided parameters
+        cursor.execute(query, (last_activity_time, group_id, user_id))
+
+        # Fetch all results
+        results = cursor.fetchall()
+
+        return results
