@@ -35,6 +35,7 @@ class MessageDashboardBuilder:
                 r'(https?://\S+)', r'<a href="\1" target="_blank">\1</a>', message['content']
             )
 
+            content_with_links = content_with_links.replace("\n", "<br>")
             sender_name = message['sender_name']
             avatar_name = message.get('avatar_name', 'avatar 10')
             avatar_file_path = self.avatar_loader.get_avatar(avatar_name) \
