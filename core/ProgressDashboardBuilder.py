@@ -27,22 +27,23 @@ class ProgressDashboardBuilder:
         self.assignment_repo = assignment_repo
 
     def progress_dashboard(self, user_id):
-        tracks = self.get_tracks(user_id)
-        if len(tracks) == 0:
-            st.info("Please wait for lessons to be available.")
-            return
-        # Assignment stats
-        self.show_assignment_stats(user_id)
-        # Recording stats
-        self.show_recording_stats(tracks)
-        # Display the line graphs for duration, tracks, and average scores
-        self.show_track_count_and_duration_trends(user_id)
-        # Display practice logs line graph
-        self.show_practice_trends(user_id)
-        # bar graph for average score comparison
-        self.show_score_graph_by_track(tracks)
-        # bar graph for attempts comparison
-        self.show_attempt_graph_by_track(tracks)
+        with st.spinner("Please wait.."):
+            tracks = self.get_tracks(user_id)
+            if len(tracks) == 0:
+                st.info("Please wait for lessons to be available.")
+                return
+            # Assignment stats
+            self.show_assignment_stats(user_id)
+            # Recording stats
+            self.show_recording_stats(tracks)
+            # Display the line graphs for duration, tracks, and average scores
+            self.show_track_count_and_duration_trends(user_id)
+            # Display practice logs line graph
+            self.show_practice_trends(user_id)
+            # bar graph for average score comparison
+            self.show_score_graph_by_track(tracks)
+            # bar graph for attempts comparison
+            self.show_attempt_graph_by_track(tracks)
 
     def show_assignment_stats(self, user_id):
         # Retrieve assignment stats for the specific user
