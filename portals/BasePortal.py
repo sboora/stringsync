@@ -8,6 +8,7 @@ import streamlit as st
 
 from core.AvatarLoader import AvatarLoader
 from core.ListBuilder import ListBuilder
+from core.NotificationsDashboardBuilder import NotificationsDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, SettingType
@@ -52,6 +53,7 @@ class BasePortal(ABC):
         self.assignment_repo = None
         self.message_repo = None
         self.avatar_loader = None
+        self.notifications_dashboard = None
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
@@ -77,6 +79,8 @@ class BasePortal(ABC):
         self.message_repo = MessageRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
         self.avatar_loader = AvatarLoader(self.storage_repo, self.user_repo)
+        self.notifications_dashboard = NotificationsDashboardBuilder(
+            self.user_session_repo, self.portal_repo)
 
     @abstractmethod
     def get_portal(self):
@@ -93,15 +97,11 @@ class BasePortal(ABC):
         self.cache_badges()
         self.avatar_loader.cache_avatars()
         self.set_app_layout()
-        self.show_app_title()
-        if self.user_logged_in() and self.is_avatar_assigned():
+        if self.user_logged_in():
             user = self.user_repo.get_user(self.get_user_id())
             st.session_state['group_id'] = user['group_id']
-            left_column, right_column = st.columns([11, 1])
-            with left_column:
-                self.show_introduction()
-            with right_column:
-                self.show_avatar(st.session_state["avatar"])
+            self.show_notifications()
+            self.user_session_repo.update_last_activity_time(self.get_session_id())
         else:
             self.show_introduction()
 
@@ -115,8 +115,14 @@ class BasePortal(ABC):
         self.show_copyright()
         self.clean_up()
 
+    def show_notifications(self):
+        last_activity = self.user_session_repo.get_last_activity_time(
+            self.get_session_id())
+        self.notifications_dashboard.notify(
+            self.get_user_id(), self.get_group_id(), self.get_session_id())
+
     def show_avatar(self, avatar):
-        st.image(self.avatar_loader.get_avatar(avatar), width=100)
+        st.image(self.avatar_loader.get_avatar(avatar), width=75)
 
     def cache_badges(self):
         # Directory where badges are stored locally
@@ -184,16 +190,27 @@ class BasePortal(ABC):
             """
         st.markdown(custom_css, unsafe_allow_html=True)
 
-        # Create columns for header and logout button
-        col1, col2 = st.columns([8.5, 1.5])  # Adjust the ratio as needed
-
-        with col1:
-            self.show_app_header()
-        with col2:
-            if self.user_logged_in():
+        if self.user_logged_in():
+            self.show_app_header(150)
+            col1, col2, col3 = st.columns([1.5, 8.5, 1.5])
+            with col1:
+                if self.is_avatar_assigned():
+                    self.show_avatar(st.session_state["avatar"])
+            with col2:
+                self.show_app_title()
+            with col3:
                 self.show_user_menu()
+        else:
+            col1, col2 = st.columns([8.5, 1.5])
 
-    def show_app_header(self):
+            with col1:
+                self.show_app_header()
+
+            self.show_app_title()
+
+        st.write("")
+
+    def show_app_header(self, width=0):
         st.markdown("""
                 <style>
                        .block-container {
@@ -205,10 +222,15 @@ class BasePortal(ABC):
                 </style>
                 """, unsafe_allow_html=True)
 
-        left_column, center_column, right_column = st.columns([5.5, 10, 2.5])
-        with center_column:
-            image = self.storage_repo.download_blob_by_name(f"logo/{self.get_app_name()}.png")
-            st.image(image, use_column_width=True)
+        image = self.storage_repo.download_blob_by_name(f"logo/{self.get_app_name()}.png")
+        if width == 0:
+            left_column, center_column, right_column = st.columns([5.5, 10, 2.5])
+            with center_column:
+                st.image(image, use_column_width=True)
+        else:
+            left_column, center_column, right_column = st.columns([10.2, 10, 2.5])
+            with center_column:
+                st.image(image, width=width)
 
     @staticmethod
     def show_app_title():
@@ -233,7 +255,7 @@ class BasePortal(ABC):
         st.write("")
 
     def show_user_menu(self):
-        col2_1, col2_2 = st.columns([1, 3])  # Adjust the ratio as needed
+        col2_1, col2_2 = st.columns([1, 3])
         with col2_2:
             user_options = st.selectbox("", ["", "Logout"], index=0,
                                         format_func=lambda
@@ -275,7 +297,7 @@ class BasePortal(ABC):
             st.header("Login")
             is_authenticated = False
             password, username = self.show_login_screen()
-            col1, col2, col3, col4 = st.columns([3, 4, 20, 32])
+            col1, col2, col3, col4 = st.columns([4, 4, 20, 32])
             if col1.button("Login", type="primary"):
                 if username and password:
                     is_authenticated, user_id, org_id, group_id = \
@@ -679,22 +701,28 @@ class BasePortal(ABC):
             return
 
         # Build the header for the session listing
-        column_widths = [33.33, 33.33, 33.33]
+        column_widths = [25, 25, 25, 25]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
-            column_names=['Open Session Time', 'Close Session Time', 'Duration (minutes)'])
+            column_names=['Session Start', 'Last Activity', 'Session End', 'Duration (minutes)'])
 
         # Build rows for the session listing
         for session in session_details:
             open_time = session['open_session_time'].strftime('%-I:%M %p | %b %d') \
                 if isinstance(session['open_session_time'], datetime) else session['open_session_time']
+            last_activity_time = session['last_activity_time'].strftime('%-I:%M %p | %b %d') \
+                if isinstance(session['last_activity_time'], datetime) else session['last_activity_time']
             close_time = session['close_session_time'].strftime('%-I:%M %p | %b %d') \
                 if isinstance(session['close_session_time'], datetime) else session['close_session_time']
             # Convert the session duration from seconds to minutes
             duration_minutes = session['session_duration'] / 60
             list_builder.build_row(
-                row_data={'Open Session Time': open_time, 'Close Session Time': close_time,
-                          'Duration (minutes)': f'{duration_minutes:.2f}'})
+                row_data={
+                    'Session Start': open_time,
+                    'Last Activity': last_activity_time,
+                    'Session End': close_time,
+                    'Duration (minutes)': f'{duration_minutes:.2f}'
+                })
 
     def settings(self):
         settings = self.settings_repo.get_all_settings_by_portal(self.get_portal())
@@ -718,7 +746,8 @@ class BasePortal(ABC):
             if data_type == SettingType.INTEGER:
                 new_value = cols[1].number_input(key=setting_name, label='Value', value=int(setting_value))
             elif data_type == SettingType.FLOAT:
-                new_value = cols[1].number_input(key=setting_name, label='Value', value=float(setting_value), format="%f")
+                new_value = cols[1].number_input(key=setting_name, label='Value', value=float(setting_value),
+                                                 format="%f")
             elif data_type == SettingType.BOOL:
                 new_value = cols[1].checkbox(key=setting_name, label='Value', value=bool(setting_value))
             elif data_type == SettingType.COLOR:

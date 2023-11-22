@@ -9,6 +9,7 @@ from core.AudioProcessor import AudioProcessor
 from core.BadgeAwarder import BadgeAwarder
 from core.ListBuilder import ListBuilder
 from core.MessageDashboardBuilder import MessageDashboardBuilder
+from core.NotesDashboardBuilder import NotesDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
@@ -20,6 +21,7 @@ import streamlit as st
 import pandas as pd
 
 from enums.UserType import UserType
+from repositories.NotesRepository import NotesRepository
 
 
 class TeacherPortal(BasePortal, ABC):
@@ -38,7 +40,9 @@ class TeacherPortal(BasePortal, ABC):
         self.team_dashboard_builder = TeamDashboardBuilder(
             self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.message_dashboard_builder = MessageDashboardBuilder(
-            self.message_repo, self.avatar_loader)
+            self.message_repo, self.user_activity_repo, self.avatar_loader)
+        self.notes_repo = NotesRepository(self.get_connection())
+        self.notes_dashboard_builder = NotesDashboardBuilder(self.notes_repo)
 
     def get_portal(self):
         return Portal.TEACHER
@@ -52,13 +56,11 @@ class TeacherPortal(BasePortal, ABC):
     def get_tab_dict(self):
         tabs = [
             ("👥 Create a Team", self.create_team),
-            ("👥 List Teams", self.teams),
             ("👩‍🎓 Students", self.list_students),
             ("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
-            ("🎵 Remove Track", self.remove_track),
             ("📝 Assignments", self.assignment_management),
             ("🎵 Recordings", self.list_recordings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_RECORDINGS) else None,
@@ -66,6 +68,7 @@ class TeacherPortal(BasePortal, ABC):
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("👥 Team Dashboard", self.team_dashboard),
             ("🔗 Team Connect", self.team_connect),
+            ("🗒️ Notes", self.notes_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
                 Features.TEACHER_PORTAL_SETTINGS) else None,
             ("🗂️ Sessions", self.sessions) if self.is_feature_enabled(
@@ -108,10 +111,10 @@ class TeacherPortal(BasePortal, ABC):
                 else:
                     st.warning("Team name cannot be empty.")
 
+        st.write("")
+        self.teams()
+
     def teams(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 🏷️ Teams Listing 🏷️️ </h2>", unsafe_allow_html=True)
-        self.divider()
         # Fetch all groups
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
@@ -341,7 +344,7 @@ class TeacherPortal(BasePortal, ABC):
                 consolidated_assignments[assignment_id]['tracks'].add((detail['track_name'], detail['track_path']))
             if detail.get('resource_title'):
                 consolidated_assignments[assignment_id]['resources'].add((detail['resource_title'], detail['link']))
-            consolidated_assignments[assignment_id].update(detail)  # Add other assignment details
+            consolidated_assignments[assignment_id].update(detail)
 
         # If there are assignments with details, display them
         if consolidated_assignments:
@@ -912,7 +915,16 @@ class TeacherPortal(BasePortal, ABC):
         # Only show the message dashboard if a group is selected
         if selected_group != "Select a Team":
             selected_group_id = group_name_to_id[selected_group]
-            self.message_dashboard_builder.message_dashboard(self.get_user_id(), selected_group_id)
+            self.message_dashboard_builder.message_dashboard(
+                self.get_user_id(), selected_group_id, self.get_session_id())
+
+    def notes_dashboard(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 📝 Notes 📝</h2>", unsafe_allow_html=True)
+
+        self.divider()
+
+        self.notes_dashboard_builder.notes_dashboard(self.get_user_id())
 
     def award_weekly_badges(self, group_id):
         self.badge_awarder.auto_award_weekly_badges(group_id)

@@ -12,6 +12,7 @@ from streamlit_lottie import st_lottie
 
 from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
 from core.BadgeAwarder import BadgeAwarder
+from core.BadgesDashboardBuilder import BadgesDashboardBuilder
 from core.ListBuilder import ListBuilder
 from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
@@ -47,7 +48,9 @@ class StudentPortal(BasePortal, ABC):
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
         self.message_dashboard_builder = MessageDashboardBuilder(
-            self.message_repo, self.avatar_loader)
+            self.message_repo, self.user_activity_repo, self.avatar_loader)
+        self.badges_dashboard_builder = BadgesDashboardBuilder(
+            self.settings_repo, self.user_achievement_repo, self.storage_repo)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -80,31 +83,32 @@ class StudentPortal(BasePortal, ABC):
 
     def show_introduction(self):
         st.write("""
-                ### What Can You Do Here? 🎻
+            ### What Can You Do Here? 🎻
 
-                - **Explore & Learn**: Access a variety of musical tracks and educational resources.
-                - **Perform & Improve**: Record your music, submit assignments, and receive instant feedback.
-                - **Track & Grow**: Monitor your progress and celebrate achievements with badges.
-                - **Connect & Collaborate**: Join the community, share insights, and learn together.
-            """)
+            - **Explore & Learn**: Access a variety of musical tracks and educational resources.
+            - **Perform & Improve**: Record your music, submit assignments, and receive instant feedback.
+            - **Track & Grow**: Monitor your progress and celebrate achievements with badges.
+            - **Connect & Collaborate**: Join the community, share insights, and learn together.
+        """
+        )
 
-        if not self.user_logged_in():
-            st.write("""
-                ### Why Choose GuruShishya? 🌟
+        st.write("""
+            ### Why Choose GuruShishya? 🌟
 
-                - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
-                - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
-                - **Progress Tracking**: Visualize your growth over time with easy-to-understand charts and metrics.
-                - **Achievements and Badges**: Get rewarded for your hard work and dedication with exciting badges.
-                - **Comprehensive Recording**: Improve your skills by recording and reviewing your performances.
-                - **Organized Submissions**: Keep track of all your work and submissions in one place.
-                - **Diligent Practice Log**: Maintain a detailed log of your practice sessions to monitor your improvement.
-                - **Resource Library**: Access a wide range of resources to support your learning.
-                - **Structured Assignments**: Receive and submit assignments directly through the portal.
-                - **Detailed Progress Dashboard**: Gain insights into your learning progression with detailed analytics.
-                - **Collaborative Team Dashboard**: Engage with your peers and track team progress.
-                - **Networking with Team Connect**: Build connections and collaborate with fellow learners.
-            """)
+            - **Personalized Learning**: Customize your learning journey according to your preferences and skill level.
+            - **Instant Feedback**: Get real-time, data-driven feedback on your performances to know where you stand.
+            - **Progress Tracking**: Visualize your growth over time with easy-to-understand charts and metrics.
+            - **Achievements and Badges**: Get rewarded for your hard work and dedication with exciting badges.
+            - **Comprehensive Recording**: Improve your skills by recording and reviewing your performances.
+            - **Organized Submissions**: Keep track of all your work and submissions in one place.
+            - **Diligent Practice Log**: Maintain a detailed log of your practice sessions to monitor your improvement.
+            - **Resource Library**: Access a wide range of resources to support your learning.
+            - **Structured Assignments**: Receive and submit assignments directly through the portal.
+            - **Detailed Progress Dashboard**: Gain insights into your learning progression with detailed analytics.
+            - **Collaborative Team Dashboard**: Engage with your peers and track team progress.
+            - **Networking with Team Connect**: Build connections and collaborate with fellow learners.
+        """
+        )
 
         st.write(
             "Ready to dive into your musical journey? Register & Login to explore all the exciting features available "
@@ -134,6 +138,7 @@ class StudentPortal(BasePortal, ABC):
         with center_col:
             st_lottie(lottie_json, speed=1, width=400, height=200, loop=True, quality='high',
                       key="badge_awarded")
+            st.balloons()
 
     def recording_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -150,6 +155,7 @@ class StudentPortal(BasePortal, ABC):
         track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
         load_recordings = False
         badge_awarded = False
+
         col1, col2, col3 = st.columns([5, 5, 5])
         with col1:
             self.display_track_files(track_audio_path)
@@ -174,10 +180,11 @@ class StudentPortal(BasePortal, ABC):
                     self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE, timestamp)
         with col3:
             if is_success:
-                distance, score, analysis = self.display_student_performance(
+                with st.spinner("Please wait..."):
+                    distance, score, analysis = self.display_student_performance(
                         track_audio_path, recording_name, track_notes, track['offset'])
-                self.recording_repo.update_score_and_analysis(
-                    recording_id, distance, score, analysis)
+                    self.recording_repo.update_score_and_analysis(
+                        recording_id, distance, score, analysis)
         if badge_awarded:
             self.show_animations()
 
@@ -337,7 +344,7 @@ class StudentPortal(BasePortal, ABC):
         self.divider()
         if self.get_group_id():
             self.message_dashboard_builder.message_dashboard(
-                self.get_user_id(), self.get_group_id())
+                self.get_user_id(), self.get_group_id(), self.get_session_id())
         else:
             st.info("Please wait for your teacher to assign you to a team!!")
 
@@ -447,7 +454,8 @@ class StudentPortal(BasePortal, ABC):
                                                                        recording_data,
                                                                        original_timestamp,
                                                                        file_hash)
-                st.audio(recording_name, format='core/m4a')
+                with st.spinner("Please wait.."):
+                    st.audio(recording_name, format='core/m4a')
                 return recording_name, recording_id, True, original_timestamp
         return None, -1, False, datetime.datetime.now()
 
@@ -490,7 +498,7 @@ class StudentPortal(BasePortal, ABC):
         analysis, off_notes = self.audio_processor.generate_note_analysis(
             error_notes, missing_notes)
         new_score = self.display_score(score, off_notes)
-        #st.info(analysis)
+        # st.info(analysis)
         encouragement_message = ""
         """
         encouragement_message = self.generate_message(new_score)
@@ -529,62 +537,7 @@ class StudentPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
-        badges = self.user_achievement_repo.get_user_badges(self.get_user_id())
-        if badges:  # If there are badges
-            cols = st.columns(5)
-            for i, badge in enumerate(badges):
-                with cols[i % 5]:
-                    # Display the badge icon from the badge folder
-                    st.image(self.get_badge(badge), width=200)
-        else:  # If there are no badges
-            st.markdown("### No Badges Yet 🎖️")
-            st.markdown("""
-                **What Can You Do to Earn Badges?**
-
-                1. **Listen to Tracks**: The more you listen, the more you learn.
-                2. **Record Performances**: Every recording earns you points towards your next badge.
-                3. **Keep Practicing**: The more points you earn, the more badges you unlock.
-
-                Start by listening to a track and making your first recording today!
-            """)
-
-        st.write("")
-        self.divider()
-        st.markdown(f"""
-            <h2 style='text-align: center; color: {self.tab_heading_font_color}; font-size: 24px;'>
-                🌟 Discover the Treasure Trove of Badges! 🌟
-            </h2>
-            <p style='text-align: center; color: {self.tab_heading_font_color}; font-size: 18px;'>
-                🚀 Embark on an epic adventure and collect them all! 🚀
-            </p>
-            """, unsafe_allow_html=True)
-
-        # Display all badges in columns
-        badges_info = {
-            "First Note": "Celebrate your start by uploading your first recording.",
-            "2 Day Streak": "Keep the rhythm! Practice for 2 consecutive days.",
-            "3 Day Streak": "Harmonize your week with a 3-day practice streak.",
-            "5 Day Streak": "Show your dedication with a streak of practicing for 5 days.",
-            "7 Day Streak": "Demonstrate your commitment with a full week of practice.",
-            "10 Day Streak": "Set the bar high with a 10-day practice streak.",
-            "Practice Champ": "Top the charts with the most practice minutes in a week, starting at a minimum of 75 "
-                              "minutes.",
-            "Sound Sorcerer": "Cast a spell by recording the most minutes in a week, with a starting spell of 10 "
-                              "minutes.",
-            "Recording Kingpin": "Rule the studio by making the most recordings in a week, starting at a minimum of 5 "
-                                 "recordings.",
-            "Melody Master": "Hit the high score by earning the most points in a week, starting at 40 points.",
-            "Track Titan": "Be prolific! Record on the most number of different tracks in a week, starting at 3.",
-            "Badge Baron": "Be the ultimate achiever by earning the highest variety of badges."
-        }
-
-        # Create columns for badges
-        cols = st.columns(3)
-        for index, (badge_name, badge_criteria) in enumerate(badges_info.items()):
-            with cols[index % 3]:
-                st.markdown(f"### {badge_name}")
-                st.markdown(f"_{badge_criteria}_")
-                st.image(self.get_badge(badge_name), width=200)
+        self.badges_dashboard_builder.badges_dashboard(self.get_org_id(), self.get_user_id())
 
     def resources_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
