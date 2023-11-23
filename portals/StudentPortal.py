@@ -24,6 +24,7 @@ from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges
 from enums.Features import Features
 from enums.Settings import Portal
+from enums.SoundEffect import SoundEffect
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
 
@@ -140,18 +141,7 @@ class StudentPortal(BasePortal, ABC):
             st_lottie(lottie_json, speed=1, width=400, height=200, loop=True, quality='high',
                       key="badge_awarded")
             st.balloons()
-            self.play_sound_effect()
-
-    def play_sound_effect(self):
-        with open(self.get_sound_effect(), "rb") as f:
-            data = f.read()
-            b64 = base64.b64encode(data).decode()
-            md = f"""
-                <audio autoplay>
-                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-                </audio>
-                """
-            st.markdown(md, unsafe_allow_html=True)
+            self.play_sound_effect(SoundEffect.AWARD)
 
     def recording_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"

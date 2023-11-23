@@ -13,6 +13,7 @@ from core.NotesDashboardBuilder import NotesDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
+from enums.ActivityType import ActivityType
 from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
@@ -317,6 +318,15 @@ class TeacherPortal(BasePortal, ABC):
                     team_members = self.user_repo.get_users_by_org_id_group_and_type(
                         self.get_org_id(), team_id, UserType.STUDENT.value)
                     users_to_assign.update(member['id'] for member in team_members)
+                    for user_id in users_to_assign:
+                        additional_params = {
+                            "user_id": user_id,
+                            "assignment": assignment_title,
+                        }
+                        self.user_activity_repo.log_activity(self.get_user_id(),
+                                                             self.get_session_id(),
+                                                             ActivityType.CREATE_ASSIGNMENT,
+                                                             additional_params)
 
                 # Deduplicate and assign the assignment to each user
                 self.assignment_repo.assign_to_users(assignment_id, list(users_to_assign))
@@ -479,6 +489,13 @@ class TeacherPortal(BasePortal, ABC):
                         offset=offset,
                         track_hash=track_hash
                     )
+                    additional_params = {
+                        "Track": track_name,
+                    }
+                    self.user_activity_repo.log_activity(self.get_user_id(),
+                                                         self.get_session_id(),
+                                                         ActivityType.CREATE_TRACK,
+                                                         additional_params)
                     st.success("Track added successfully!")
 
     def list_tracks(self):
@@ -810,6 +827,14 @@ class TeacherPortal(BasePortal, ABC):
 
         if remarks and selected_badge != '--Select a badge--':
             self.recording_repo.update_remarks(submission["id"], remarks)
+            additional_params = {
+                "user_id": submission["user_id"],
+                "submission_id": submission["id"],
+            }
+            self.user_activity_repo.log_activity(self.get_user_id(),
+                                                 self.get_session_id(),
+                                                 ActivityType.REVIEW_SUBMISSION,
+                                                 additional_params)
             if selected_badge != 'N/A':
                 self.user_achievement_repo.award_track_badge(submission['user_id'],
                                                              submission['id'],

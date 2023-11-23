@@ -1,3 +1,4 @@
+import base64
 import random
 from datetime import datetime
 import os
@@ -13,6 +14,7 @@ from core.NotificationsDashboardBuilder import NotificationsDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, SettingType
+from enums.SoundEffect import SoundEffect
 from enums.UserType import UserType
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.DatabaseManager import DatabaseManager
@@ -102,7 +104,9 @@ class BasePortal(ABC):
         if self.user_logged_in():
             user = self.user_repo.get_user(self.get_user_id())
             st.session_state['group_id'] = user['group_id']
-            self.show_notifications()
+            last_activity_time = self.user_session_repo.get_last_activity_time(
+                self.get_session_id())
+            self.show_notifications(last_activity_time)
             self.user_session_repo.update_last_activity_time(self.get_session_id())
         else:
             self.show_introduction()
@@ -117,23 +121,35 @@ class BasePortal(ABC):
         self.show_copyright()
         self.clean_up()
 
-    def show_notifications(self):
-        last_activity = self.user_session_repo.get_last_activity_time(
-            self.get_session_id())
-        self.notifications_dashboard.notify(
-            self.get_user_id(), self.get_group_id(), self.get_session_id())
+    def show_notifications(self, last_activity_time):
+        messages = self.notifications_dashboard.notify(
+            self.get_user_id(), self.get_group_id(), last_activity_time)
+        if len(messages) > 0:
+            self.play_sound_effect(SoundEffect.NOTIFICATION)
+            for message in messages:
+                st.toast(message)
+
+    def play_sound_effect(self, effect_type: SoundEffect):
+        with open(self.get_sound_effect(effect_type), "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            md = f"""
+                <audio autoplay>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+                """
+            st.markdown(md, unsafe_allow_html=True)
 
     def show_avatar(self, avatar):
         st.image(self.avatar_loader.get_avatar(avatar), width=75)
 
-    def get_sound_effect(self):
+    def get_sound_effect(self, sound_effect: SoundEffect):
         # Directory where badges are stored locally
         local_directory = self.get_sound_effects_bucket()
 
         # Construct the local file path for the badge
-        sound_effects = ["award - 1.mp3", "award - 2.mp3", "award - 3.mp3"]
-        sound_effect = random.choice(sound_effects)
-        local_file_path = os.path.join(local_directory, sound_effect)
+        effect = random.choice(sound_effect.effects)
+        local_file_path = os.path.join(local_directory, effect)
 
         # Check if the badge exists locally
         if os.path.exists(local_file_path):
@@ -154,9 +170,9 @@ class BasePortal(ABC):
         if not os.path.exists(local_sound_effects_directory):
             os.makedirs(local_sound_effects_directory)
 
-        self._download_sound_effect_if_not_exists("award - 1", local_sound_effects_directory)
-        self._download_sound_effect_if_not_exists("award - 2", local_sound_effects_directory)
-        self._download_sound_effect_if_not_exists("award - 3", local_sound_effects_directory)
+        effects = SoundEffect.get_all_effects()
+        for effect in effects:
+            self._download_sound_effect_if_not_exists(effect, local_sound_effects_directory)
 
     def cache_badges(self):
         # Directory where badges are stored locally
@@ -186,12 +202,12 @@ class BasePortal(ABC):
 
     def _download_sound_effect_if_not_exists(self, name, directory):
         # Construct the local file path
-        local_file_path = os.path.join(directory, f"{name}.mp3")
+        local_file_path = os.path.join(directory, name)
 
         # Check if the badge exists locally
         if not os.path.exists(local_file_path):
             # If the badge doesn't exist locally, download it
-            remote_path = f"{self.get_sound_effects_bucket()}/{name}.mp3"
+            remote_path = f"{self.get_sound_effects_bucket()}/{name}"
             self.storage_repo.download_blob_and_save(remote_path, local_file_path)
 
     def get_badge(self, badge_name):
@@ -321,8 +337,18 @@ class BasePortal(ABC):
             success, user_id, org_id, group_id = self.user_repo.authenticate_user(username, password)
             if success:
                 self.set_session_state(user_id, org_id, username, group_id)
-                st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
+                st.session_state['session_id'], previous_session_id, previous_session_open = \
+                    self.user_session_repo.open_session(user_id)
                 self.user_activity_repo.log_activity(user_id, self.get_session_id(), ActivityType.LOG_IN)
+                if previous_session_id:
+                    # If the previous session was open and was closed then log activity
+                    if previous_session_open:
+                        self.user_activity_repo.log_activity(
+                            self.get_user_id(), previous_session_id, ActivityType.LOG_OUT)
+                    # Check for notifications after the last session
+                    last_activity_time = self.user_session_repo.get_last_activity_time(
+                        previous_session_id)
+                    self.show_notifications(last_activity_time)
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
@@ -344,9 +370,19 @@ class BasePortal(ABC):
                         self.user_repo.authenticate_user(username, password)
                     if is_authenticated:
                         self.set_session_state(user_id, org_id, username, group_id)
-                        st.session_state['session_id'] = self.user_session_repo.open_session(user_id)
+                        st.session_state['session_id'], previous_session_id, previous_session_open = \
+                            self.user_session_repo.open_session(user_id)
                         self.user_activity_repo.log_activity(
                             user_id, self.get_session_id(), ActivityType.LOG_IN)
+                        if previous_session_id:
+                            # If the previous session was open and was closed then log activity
+                            if previous_session_open:
+                                self.user_activity_repo.log_activity(
+                                    self.get_user_id(), previous_session_id, ActivityType.LOG_OUT)
+                            # Check for notifications after the last session
+                            last_activity_time = self.user_session_repo.get_last_activity_time(
+                                previous_session_id)
+                            self.show_notifications(last_activity_time)
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
