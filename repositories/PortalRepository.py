@@ -395,11 +395,12 @@ class PortalRepository:
                 usr.name AS user_name
             FROM user_activities act
             JOIN users usr ON act.user_id = usr.id
-            WHERE act.timestamp > %s 
-                AND usr.user_type = 'teacher'
+            WHERE act.timestamp > %s
+                AND act.activity_type NOT IN ('Log In', 'Log Out') 
+                AND usr.user_type = 'teacher'               
                 AND usr.org_id = (SELECT org_id FROM users WHERE id = %s)
                 AND usr.id != %s
-            ORDER BY act.timestamp ASC;
+            ORDER BY act.timestamp DESC;
             """
 
             # Execute the teacher query
@@ -416,10 +417,11 @@ class PortalRepository:
             FROM user_activities act
             JOIN users usr ON act.user_id = usr.id
             WHERE act.timestamp > %s 
+                AND act.activity_type NOT IN ('Log In', 'Log Out')            
                 AND usr.group_id = %s 
                 AND usr.user_type = 'student'
                 AND usr.id != %s
-            ORDER BY act.timestamp ASC
+            ORDER BY act.timestamp DESC
             LIMIT 5;
             """
 
