@@ -28,10 +28,6 @@ class UserActivityRepository:
         self.connection.commit()
 
     def log_activity(self, user_id, session_id, activity_type, additional_params=None):
-        # If the activity is a login, check for previous open sessions
-        if activity_type == ActivityType.LOG_IN:
-            self._check_and_close_previous_session(user_id, session_id)
-
         if additional_params is None:
             additional_params = {}
 
@@ -73,29 +69,5 @@ class UserActivityRepository:
             local_timestamp = utc_timestamp.astimezone(local_tz)
             activity['timestamp'] = local_timestamp
         return result
-
-    def _check_and_close_previous_session(self, user_id, session_id):
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = """
-            SELECT ua1.session_id
-            FROM user_activities AS ua1
-            WHERE ua1.user_id = %s
-            AND ua1.activity_type = 'Log In'
-            AND ua1.session_id != %s  -- Exclude the current session
-            AND NOT EXISTS (
-                SELECT 1
-                FROM user_activities AS ua2
-                WHERE ua2.user_id = ua1.user_id
-                AND ua2.session_id = ua1.session_id
-                AND ua2.activity_type = 'Log Out'
-            )
-            ORDER BY ua1.timestamp DESC
-            LIMIT 1;
-        """
-        cursor.execute(query, (user_id, session_id))
-        result = cursor.fetchone()
-        if result and result['session_id'] != session_id:
-            # There's an open session, log out from that session
-            self.log_activity(user_id, result['session_id'], ActivityType.LOG_OUT)
 
 

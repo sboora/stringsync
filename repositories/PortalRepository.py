@@ -385,25 +385,51 @@ class PortalRepository:
         return weekly_winners
 
     def get_notifications(self, user_id, group_id, last_activity_time):
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query for notifications from the teacher
+            teacher_query = """
+            SELECT 
+                act.activity_type, 
+                act.timestamp, 
+                act.additional_params as metadata, 
+                usr.name AS user_name
+            FROM user_activities act
+            JOIN users usr ON act.user_id = usr.id
+            WHERE act.timestamp > %s 
+                AND usr.user_type = 'teacher'
+                AND usr.org_id = (SELECT org_id FROM users WHERE id = %s)
+                AND usr.id != %s
+            ORDER BY act.timestamp ASC;
+            """
 
-        query = """
-        SELECT 
-            act.activity_type, 
-            act.timestamp, 
-            usr.name AS user_name 
-        FROM user_activities act
-        JOIN users usr ON act.user_id = usr.id
-        WHERE act.timestamp > %s 
-          AND usr.group_id = %s 
-          AND usr.id != %s
-        ORDER BY act.timestamp ASC;
-        """
+            # Execute the teacher query
+            cursor.execute(teacher_query, (last_activity_time, user_id, user_id))
+            teacher_notifications = list(cursor.fetchall())
 
-        # Execute the query with the provided parameters
-        cursor.execute(query, (last_activity_time, group_id, user_id))
+            # Query for notifications from team members (limited to 5)
+            student_query = """
+            SELECT 
+                act.activity_type, 
+                act.timestamp, 
+                act.additional_params as metadata, 
+                usr.name AS user_name
+            FROM user_activities act
+            JOIN users usr ON act.user_id = usr.id
+            WHERE act.timestamp > %s 
+                AND usr.group_id = %s 
+                AND usr.user_type = 'student'
+                AND usr.id != %s
+            ORDER BY act.timestamp ASC
+            LIMIT 5;
+            """
 
-        # Fetch all results
-        results = cursor.fetchall()
+            # Execute the student query
+            cursor.execute(student_query, (last_activity_time, group_id, user_id))
+            student_notifications = list(cursor.fetchall())
 
-        return results
+            # Combine the results, with teacher notifications on top
+            combined_notifications = teacher_notifications + student_notifications
+
+            return combined_notifications
+
+
