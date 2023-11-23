@@ -1,3 +1,4 @@
+import random
 from datetime import datetime
 import os
 import re
@@ -95,6 +96,7 @@ class BasePortal(ABC):
     def start(self, register=False):
         self.init_session()
         self.cache_badges()
+        self.cache_sound_effects()
         self.avatar_loader.cache_avatars()
         self.set_app_layout()
         if self.user_logged_in():
@@ -124,6 +126,38 @@ class BasePortal(ABC):
     def show_avatar(self, avatar):
         st.image(self.avatar_loader.get_avatar(avatar), width=75)
 
+    def get_sound_effect(self):
+        # Directory where badges are stored locally
+        local_directory = self.get_sound_effects_bucket()
+
+        # Construct the local file path for the badge
+        sound_effects = ["award - 1.mp3", "award - 2.mp3", "award - 3.mp3"]
+        sound_effect = random.choice(sound_effects)
+        local_file_path = os.path.join(local_directory, sound_effect)
+
+        # Check if the badge exists locally
+        if os.path.exists(local_file_path):
+            return local_file_path
+
+        # If badge not found locally, attempt to download from remote
+        remote_path = f"{self.get_sound_effects_bucket()}/{sound_effect}"
+        success = self.storage_repo.download_blob_and_save(remote_path, local_file_path)
+
+        if success:
+            return local_file_path
+
+    def cache_sound_effects(self):
+        # Directory where sound effects are stored locally
+        local_sound_effects_directory = self.get_sound_effects_bucket()
+
+        # Ensure the directory exists
+        if not os.path.exists(local_sound_effects_directory):
+            os.makedirs(local_sound_effects_directory)
+
+        self._download_sound_effect_if_not_exists("award - 1", local_sound_effects_directory)
+        self._download_sound_effect_if_not_exists("award - 2", local_sound_effects_directory)
+        self._download_sound_effect_if_not_exists("award - 3", local_sound_effects_directory)
+
     def cache_badges(self):
         # Directory where badges are stored locally
         local_badges_directory = self.get_badges_bucket()
@@ -131,10 +165,6 @@ class BasePortal(ABC):
         # Ensure the directory exists
         if not os.path.exists(local_badges_directory):
             os.makedirs(local_badges_directory)
-
-        # Check and download badges from UserBadges enum
-        for badge in UserBadges:
-            self._download_badge_if_not_exists(badge.value, local_badges_directory)
 
         # Create a set to store all badge values (user and track)
         all_badges = set(badge.value for badge in UserBadges) | \
@@ -153,6 +183,16 @@ class BasePortal(ABC):
             # If the badge doesn't exist locally, download it
             remote_badge_path = f"{self.get_badges_bucket()}/{badge_name}.png"
             self.storage_repo.download_blob_and_save(remote_badge_path, local_file_path)
+
+    def _download_sound_effect_if_not_exists(self, name, directory):
+        # Construct the local file path
+        local_file_path = os.path.join(directory, f"{name}.mp3")
+
+        # Check if the badge exists locally
+        if not os.path.exists(local_file_path):
+            # If the badge doesn't exist locally, download it
+            remote_path = f"{self.get_sound_effects_bucket()}/{name}.mp3"
+            self.storage_repo.download_blob_and_save(remote_path, local_file_path)
 
     def get_badge(self, badge_name):
         # Directory where badges are stored locally
@@ -922,6 +962,10 @@ class BasePortal(ABC):
     @staticmethod
     def get_badges_bucket():
         return 'badges'
+
+    @staticmethod
+    def get_sound_effects_bucket():
+        return 'sound effects'
 
     @staticmethod
     def get_logo_bucket():

@@ -1,4 +1,5 @@
 # Standard library imports
+import base64
 import datetime
 import hashlib
 import json
@@ -139,6 +140,18 @@ class StudentPortal(BasePortal, ABC):
             st_lottie(lottie_json, speed=1, width=400, height=200, loop=True, quality='high',
                       key="badge_awarded")
             st.balloons()
+            self.play_sound_effect()
+
+    def play_sound_effect(self):
+        with open(self.get_sound_effect(), "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            md = f"""
+                <audio autoplay>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+                """
+            st.markdown(md, unsafe_allow_html=True)
 
     def recording_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
