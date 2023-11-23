@@ -9,6 +9,9 @@ class ActivityType(enum.Enum):
     REGISTER_TUTOR = ("Register Tutor", "registered a tutor", "👨‍🏫")
     REGISTER_SCHOOL = ("Register School", "registered a school", "🏫")
     POST_MESSAGE = ("Post Message", "posted a message", "✉️")
+    CREATE_TRACK = ("Create Track", "created a track", "🎵")
+    CREATE_ASSIGNMENT = ("Create Assignment", "created an assignment for you", "📝")
+    REVIEW_SUBMISSION = ("Review Submission", "reviewed your submissions", "🔍")
 
     @classmethod
     def from_value(cls, value):
