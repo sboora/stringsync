@@ -26,7 +26,11 @@ class MessageDashboardBuilder:
 
             if submit_message and message_content:
                 self.message_repo.post_message(user_id, group_id, message_content)
-                self.user_activity_repo.log_activity(user_id, session_id, ActivityType.POST_MESSAGE)
+                additional_params = {
+                    "group_id": group_id,
+                }
+                self.user_activity_repo.log_activity(
+                    user_id, session_id, ActivityType.POST_MESSAGE, additional_params)
                 st.success("Your message has been posted 🌟")
                 st.rerun()
 

@@ -12,16 +12,20 @@ class NotificationsDashboardBuilder:
         self.user_session_repo = user_session_repo
         self.portal_repo = portal_repo
 
-    def notify(self, user_id, group_id, last_activity_time):
+    def notify(self, user_id, group_id, org_id, last_activity_time):
         # Fetch new notifications since the last activity time
-        notifications = self.portal_repo.get_notifications(user_id, group_id, last_activity_time)
-
+        notifications = self.portal_repo.get_notifications(
+            user_id, group_id, org_id, last_activity_time)
+        print(notifications)
         # Display each notification
         messages = []
         for notification in notifications:
             metadata = json.loads(notification.get('metadata', '{}'))
             # If metadata contains a user_id, skip if it doesn't match the current user_id
             if 'user_id' in metadata and metadata['user_id'] != user_id:
+                continue
+
+            if 'group_id' in metadata and metadata['group_id'] != group_id:
                 continue
 
             # Get the user-friendly message and icon for the activity type
