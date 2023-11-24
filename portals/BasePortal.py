@@ -123,7 +123,7 @@ class BasePortal(ABC):
 
     def show_notifications(self, last_activity_time):
         messages = self.notifications_dashboard.notify(
-            self.get_user_id(), self.get_group_id(), last_activity_time)
+            self.get_user_id(), self.get_group_id(), self.get_org_id(), last_activity_time)
         if len(messages) > 0:
             self.play_sound_effect(SoundEffect.NOTIFICATION)
             for message in messages:
