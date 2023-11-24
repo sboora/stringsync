@@ -709,7 +709,7 @@ class TeacherPortal(BasePortal, ABC):
         st.write("")
         st.write("")
         audio_data = self.storage_repo.download_blob_by_url(url)
-        st.audio(audio_data, format='core/m4a')
+        st.audio(audio_data, format='audio/mp4')
 
     def list_recordings(self):
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")

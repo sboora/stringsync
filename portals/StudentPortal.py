@@ -424,7 +424,7 @@ class StudentPortal(BasePortal, ABC):
 
     @staticmethod
     def display_track_files(track_file):
-        st.audio(track_file, format='core/m4a')
+        st.audio(track_file, format='audio/mp4')
 
     def handle_file_upload(self, user_id, track_id):
         with st.form("recording_uploader_form", clear_on_submit=True):
@@ -460,7 +460,7 @@ class StudentPortal(BasePortal, ABC):
                                                                            original_timestamp,
                                                                            file_hash)
 
-                    st.audio(recording_name, format='core/m4a')
+                    st.audio(recording_name, format='audio/mp4')
                 return recording_name, recording_id, True, original_timestamp
         return None, -1, False, datetime.datetime.now()
 
