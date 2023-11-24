@@ -155,7 +155,8 @@ class StudentPortal(BasePortal, ABC):
         self.create_track_headers()
 
         # Download and save the audio files to temporary locations
-        track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
+        with st.spinner("Please wait.."):
+            track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
         load_recordings = False
         badge_awarded = False
 
@@ -443,21 +444,22 @@ class StudentPortal(BasePortal, ABC):
                 else:
                     original_timestamp = datetime.datetime.now()
 
-                recording_data = uploaded_student_file.getbuffer()
-                file_hash = self.calculate_file_hash(recording_data)
-
-                # Check for duplicates
-                if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
-                    st.error("You have already uploaded this recording.")
-                    return "", -1, False, original_timestamp
-
-                # Upload the recording to storage repo and recording repo
-                recording_name, url, recording_id = self.add_recording(user_id,
-                                                                       track_id,
-                                                                       recording_data,
-                                                                       original_timestamp,
-                                                                       file_hash)
                 with st.spinner("Please wait.."):
+                    recording_data = uploaded_student_file.getbuffer()
+                    file_hash = self.calculate_file_hash(recording_data)
+
+                    # Check for duplicates
+                    if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
+                        st.error("You have already uploaded this recording.")
+                        return "", -1, False, original_timestamp
+
+                    # Upload the recording to storage repo and recording repo
+                    recording_name, url, recording_id = self.add_recording(user_id,
+                                                                           track_id,
+                                                                           recording_data,
+                                                                           original_timestamp,
+                                                                           file_hash)
+
                     st.audio(recording_name, format='core/m4a')
                 return recording_name, recording_id, True, original_timestamp
         return None, -1, False, datetime.datetime.now()
@@ -486,7 +488,8 @@ class StudentPortal(BasePortal, ABC):
         student_notes = self.get_filtered_student_notes(student_path)
         error_notes, missing_notes = self.audio_processor.error_and_missing_notes(
             track_notes, student_notes)
-        score = self.audio_processor.distance_to_score(offset_corrected_distance)
+        score = self.audio_processor.distance_to_score(
+            offset_corrected_distance, 0, 2*offset_distance)
         analysis, score = self.display_score_and_analysis(score, error_notes, missing_notes)
         return distance, score, analysis
 
