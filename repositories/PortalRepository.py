@@ -104,9 +104,9 @@ class PortalRepository:
             return cursor.fetchall()
 
     def get_unremarked_recordings(self, group_id=None, user_id=None, track_id=None):
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         query = """
-            SELECT r.id, r.blob_name, r.blob_url, t.track_path, r.timestamp, r.duration,
+            SELECT r.id, r.blob_name, r.blob_url, t.name as track_name, t.track_path, r.timestamp, r.duration,
                    r.track_id, r.score, r.analysis, r.remarks, r.user_id, u.name as user_name                  
             FROM recordings r
             JOIN tracks t ON r.track_id = t.id
@@ -132,24 +132,7 @@ class PortalRepository:
         params = tuple(filter(None, [group_id, user_id, track_id]))
 
         cursor.execute(query, params)
-        result = cursor.fetchall()
-        self.connection.commit()
-        recordings = [{
-            'id': row[0],
-            'blob_name': row[1],
-            'blob_url': row[2],
-            'track_path': row[3],
-            'timestamp': row[4],
-            'duration': row[5],
-            'track_id': row[6],
-            'score': row[7],
-            'analysis': row[8],
-            'remarks': row[9],
-            'user_id': row[10],
-            'user_name': row[11]
-        } for row in result]
-
-        return recordings
+        return cursor.fetchall()
 
     def get_submissions_by_user_id(self, user_id, limit=20, timezone='America/Los_Angeles'):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
