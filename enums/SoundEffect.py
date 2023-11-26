@@ -1,5 +1,6 @@
 import enum
 
+
 class SoundEffect(enum.Enum):
     AWARD = ("Award", ["award - 1.mp3", "award - 2.mp3", "award - 3.mp3"])
     NOTIFICATION = ("Notification", ["notification.mp3"])
