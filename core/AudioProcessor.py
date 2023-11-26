@@ -112,12 +112,19 @@ class AudioProcessor:
         missing_dict = self.group_notes_by_first_letter(missing_notes)
 
         message = ""
-        error_count = 0
         if error_dict == missing_dict:
             message += "Your recording had all the notes that the track had.\n"
-        else:
-            msg, error_count = self.correlate_notes(error_dict, missing_dict)
-            message += msg
+            return message, 0
+
+        message_parts = []
+        if error_dict:
+            message_parts.append(f"Errors in notes: {error_dict}")
+        if missing_dict:
+            message_parts.append(f"Missing notes: {missing_dict}")
+
+        message = "\n".join(message_parts)
+        error_count = len(error_dict) + len(missing_dict)
+
         return message, error_count
 
     @staticmethod
