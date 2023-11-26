@@ -783,7 +783,7 @@ class TeacherPortal(BasePortal, ABC):
         df = pd.DataFrame(recordings)
         list_builder = ListBuilder(column_widths=[14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28])
         list_builder.build_header(
-            column_names=["Name", "Track", "Recording", "Score", "System Analysis", "Remarks", "Badges"])
+            column_names=["Name", "Track Name", "Track", "Recording", "Score", "Remarks", "Badges"])
         # Display each recording
         for index, recording in df.iterrows():
             self.display_submission_row(recording)
@@ -797,27 +797,27 @@ class TeacherPortal(BasePortal, ABC):
             unsafe_allow_html=True)
 
         col2.write("")
-        if submission['track_path']:
-            filename = self.storage_repo.download_blob_by_url(submission['track_path'])
-            col2.audio(filename, format='core/m4a')
-        else:
-            col2.write("No core data available.")
+        col2.markdown(
+            f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('track_name', 'N/A')}</div>",
+            unsafe_allow_html=True)
 
         col3.write("")
-        if submission['blob_url']:
-            filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
+        if submission['track_path']:
+            filename = self.storage_repo.download_blob_by_url(submission['track_path'])
             col3.audio(filename, format='core/m4a')
         else:
             col3.write("No core data available.")
 
-        score = col4.text_input("", key=f"score_{submission['id']}", value=submission['score'])
+        col4.write("")
+        if submission['blob_url']:
+            filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
+            col4.audio(filename, format='core/m4a')
+        else:
+            col4.write("No core data available.")
+
+        score = col5.text_input("", key=f"score_{submission['id']}", value=submission['score'])
         if score:
             self.recording_repo.update_score(submission["id"], score)
-
-        col5.write("", style={"fontSize": "5px"})
-        col5.markdown(
-            f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('analysis', 'N/A')}</div>",
-            unsafe_allow_html=True)
 
         remarks = col6.text_area("", key=f"remarks_{submission['id']}")
 

@@ -172,7 +172,8 @@ class BasePortal(ABC):
 
         effects = SoundEffect.get_all_effects()
         for effect in effects:
-            self._download_sound_effect_if_not_exists(effect, local_sound_effects_directory)
+            self._download_if_not_exist(
+                self.get_sound_effects_bucket(), effect, local_sound_effects_directory)
 
     def cache_badges(self):
         # Directory where badges are stored locally
@@ -187,28 +188,19 @@ class BasePortal(ABC):
                      set(badge.value for badge in TrackBadges)
 
         # Now, iterate over all badges and download them if they don't exist
-        for badge_value in all_badges:
-            self._download_badge_if_not_exists(badge_value, local_badges_directory)
+        for badge in all_badges:
+            self._download_if_not_exist(
+                self.get_badges_bucket(), f"{badge}.png", local_badges_directory)
 
-    def _download_badge_if_not_exists(self, badge_name, local_badges_directory):
+    def _download_if_not_exist(self, bucket, filename, directory):
         # Construct the local file path
-        local_file_path = os.path.join(local_badges_directory, f"{badge_name}.png")
+        local_path = os.path.join(directory, filename)
 
         # Check if the badge exists locally
-        if not os.path.exists(local_file_path):
+        if not os.path.exists(local_path):
             # If the badge doesn't exist locally, download it
-            remote_badge_path = f"{self.get_badges_bucket()}/{badge_name}.png"
-            self.storage_repo.download_blob_and_save(remote_badge_path, local_file_path)
-
-    def _download_sound_effect_if_not_exists(self, name, directory):
-        # Construct the local file path
-        local_file_path = os.path.join(directory, name)
-
-        # Check if the badge exists locally
-        if not os.path.exists(local_file_path):
-            # If the badge doesn't exist locally, download it
-            remote_path = f"{self.get_sound_effects_bucket()}/{name}"
-            self.storage_repo.download_blob_and_save(remote_path, local_file_path)
+            remote_path = f"{bucket}/{filename}"
+            self.storage_repo.download_blob_and_save(remote_path, local_path)
 
     def get_badge(self, badge_name):
         # Directory where badges are stored locally

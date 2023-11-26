@@ -186,7 +186,7 @@ class StudentPortal(BasePortal, ABC):
             if is_success:
                 with st.spinner("Please wait..."):
                     distance, score, analysis = self.display_student_performance(
-                        track_audio_path, recording_name, track_notes, track['offset'])
+                        track_audio_path, recording_name, track_notes, track)
                     self.recording_repo.update_score_and_analysis(
                         recording_id, distance, score, analysis)
         if badge_awarded:
@@ -479,19 +479,27 @@ class StudentPortal(BasePortal, ABC):
         return recording_name, blob_url, recording_id
 
     def display_student_performance(
-            self, track_file, student_path, track_notes, offset_distance):
+            self, track_file, student_path, track_notes, track):
         if not student_path:
             return -1, ""
 
+        offset = self.get_offset(track)
         distance = self.get_audio_distance(track_file, student_path)
-        offset_corrected_distance = distance - offset_distance
+        offset_corrected_distance = distance - offset
         student_notes = self.get_filtered_student_notes(student_path)
         error_notes, missing_notes = self.audio_processor.error_and_missing_notes(
             track_notes, student_notes)
         score = self.audio_processor.distance_to_score(
-            offset_corrected_distance, 0, 2*offset_distance)
+            offset_corrected_distance, 0, offset)
         analysis, score = self.display_score_and_analysis(score, error_notes, missing_notes)
         return distance, score, analysis
+
+    @staticmethod
+    def get_offset(track):
+        # TODO: control it via settings
+        base = 1.2
+        multiplier = base ** (track['level'])
+        return int(round(multiplier * track['offset']))
 
     def get_audio_distance(self, track_file, student_path):
         return self.audio_processor.compare_audio(track_file, student_path)
