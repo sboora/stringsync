@@ -14,16 +14,16 @@ class UserAssessmentRepository:
         """Creates the user_assessments table in the database."""
         with self.connection.cursor() as cursor:
             cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_assessments (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                assessment_text TEXT NOT NULL,
-                timestamp DATETIME NOT NULL,
-                assessment_start_date DATE NOT NULL,
-                assessment_end_date DATE NOT NULL,
-                status ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
+                CREATE TABLE IF NOT EXISTS user_assessments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    assessment_text TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                    timestamp DATETIME NOT NULL,
+                    assessment_start_date DATE NOT NULL,
+                    assessment_end_date DATE NOT NULL,
+                    status ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
             self.connection.commit()
 
@@ -85,16 +85,16 @@ class UserAssessmentRepository:
             self.connection.commit()
             return cursor.rowcount  # Return the number of rows affected
 
-    def update_assessment(self, assessment_id, new_assessment_text, start_date, end_date):
+    def update_assessment(self, assessment_id, assessment):
         """Updates an existing assessment with draft status."""
         timestamp = datetime.now()  # Current date and time
         with self.connection.cursor() as cursor:
             query = """
             UPDATE user_assessments
-            SET assessment_text = %s, timestamp = %s, assessment_start_date = %s, assessment_end_date = %s
-            WHERE id = %s AND status = 'draft';
+            SET assessment_text = %s, timestamp = %s
+            WHERE id = %s;
             """
-            cursor.execute(query, (new_assessment_text, timestamp, start_date, end_date, assessment_id))
+            cursor.execute(query, (assessment, timestamp, assessment_id))
             self.connection.commit()
             return cursor.rowcount  # Return the number of rows affected
 
