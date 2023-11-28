@@ -894,6 +894,9 @@ class TeacherPortal(BasePortal, ABC):
         else:
             return
 
+        st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
+        self.student_assessment_dashboard_builder.show_assessment(selected_user_id)
+        self.divider(5)
         self.progress_dashboard_builder.progress_dashboard(selected_user_id)
         st.markdown("<h1 style='font-size: 20px;'>Practice Logs</h1>", unsafe_allow_html=True)
         self.practice_dashboard_builder.practice_dashboard(selected_user_id)
@@ -915,8 +918,9 @@ class TeacherPortal(BasePortal, ABC):
         selected_group = st.selectbox(
             "Select a Team", group_options, key="assessments_group_selector")
         if selected_group != "--Select a Team--":
+            llm = self.load_llm(0)
             self.student_assessment_dashboard_builder.show_assessments(
-                group_name_to_id[selected_group])
+                group_name_to_id[selected_group], llm)
         else:
             st.info("Please select a group to continue..")
 
@@ -985,9 +989,10 @@ class TeacherPortal(BasePortal, ABC):
                 selected_group_id = group_name_to_id[selected_group]
 
                 if st.button("Weekly Assessments", type='primary'):
-                    llm = self.load_llm(0.9)
-                    self.student_assessment_dashboard_builder.generate_assessments(
-                        selected_group_id, llm, time_frame)
+                    llm = self.load_llm(0)
+                    with st.spinner("Please wait.."):
+                        self.student_assessment_dashboard_builder.generate_assessments(
+                            selected_group_id, llm, time_frame)
 
         if selected_group != "--Select a Team--":
             # Show dashboard
