@@ -133,7 +133,7 @@ class StudentAssessmentDashboardBuilder:
 
         self.show_assessment(user_id)
 
-    def show_assessments(self, group_id):
+    def show_assessments(self, group_id, llm):
         with st.spinner("Please wait.."):
             options = [time_frame for time_frame in TimeFrame]
 
@@ -165,7 +165,11 @@ class StudentAssessmentDashboardBuilder:
                 user_id = assessment['user_id']
                 user_name = assessment['user_name']
                 assessment_id = assessment['id']
-                assessment_text = assessment['assessment_text']
+                report_key = f"{user_id}-report"
+                if report_key in st.session_state:
+                    assessment_text = st.session_state[report_key]
+                else:
+                    assessment_text = assessment['assessment_text']
                 stats = student_stats.get(user_id, {})
 
                 with st.expander(f"Assessment for {user_name}"):
@@ -188,13 +192,44 @@ class StudentAssessmentDashboardBuilder:
 
                     # Streamlit text area for displaying and editing the assessment text
                     edited_text = st.text_area("Edit Assessment:",
-                                               value=assessment_text, height=150, key=f"textarea_{user_id}")
+                                               value=assessment_text,
+                                               height=150,
+                                               key=f"textarea_{user_id}")
 
-                    if st.button("Publish", key=f"publish_{user_id}"):  # Ensure the key is unique to each user
-                        # Update the assessment in the database
-                        self.user_assessment_repo.publish_assessment(
-                            assessment_id)
-                        st.success(f"Assessment published for {user_name}!")
+                    # Create a container for buttons
+                    col1, col2, col3, col4 = st.columns([1, 1, 3, 12])
+                    message_type = None
+                    message = None
+                    with col1:
+                        if st.button("Update", key=f"update_{user_id}", type="primary"):
+                            # Update the assessment text in the database
+                            self.user_assessment_repo.update_assessment(
+                                assessment_id, edited_text)
+                            message, message_type = f"Assessment updated for {user_name}!", "success"
+                            # Clear the session key
+                            if report_key in st.session_state:
+                                del st.session_state[report_key]
+
+                    with col2:
+                        if st.button("Publish", key=f"publish_{user_id}", type="primary"):
+                            # Update the assessment status to 'published'
+                            self.user_assessment_repo.publish_assessment(assessment_id)
+                            message, message_type = f"Assessment published for {user_name}!", "success"
+
+                    with col3:
+                        if st.button("Regenerate Report", key=f"regenrate-report-{user_id}", type="primary"):
+                            data = self.get_student_data(user_id, time_frame)
+                            formatted_data = f"Student Name: {user_name}\nMusic Data:\n{data}"
+
+                            if formatted_data:
+                                st.session_state[report_key] = llm(
+                                    prompts.PROGRESS_REPORT_GENERATION_PROMPT.format(data=formatted_data))
+                                st.rerun()
+
+                    if message_type == "success":
+                        st.success(message)
+                    elif message_type == "info":
+                        st.info(message)
 
     def show_assessment(self, user_id):
         with st.spinner("Please wait.."):
@@ -215,7 +250,7 @@ class StudentAssessmentDashboardBuilder:
             if selected_range == "--Select a date range--":
                 st.info("Please select a date range to view the report card..")
                 return
-            
+
             # Find the selected assessment
             for assessment in assessments:
                 start_date = assessment['assessment_start_date'].strftime('%Y-%m-%d')
