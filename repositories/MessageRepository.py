@@ -14,7 +14,7 @@ class MessageRepository:
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     sender_id INT,
                     group_id INT,
-                    content TEXT,
+                    content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (sender_id) REFERENCES `users`(id),
                     FOREIGN KEY (group_id) REFERENCES `user_groups`(id)
