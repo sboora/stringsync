@@ -11,6 +11,8 @@ google-cloud-storage
 plotly
 streamlit-toggle-switch
 streamlit-lottie
+langchain
+openai
 
 
 
