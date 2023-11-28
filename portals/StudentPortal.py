@@ -19,12 +19,14 @@ from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
 from core.ResourceDashboardBuilder import ResourceDashboardBuilder
+from core.StudentAssessmentDashboardBuilder import StudentAssessmentDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges
 from enums.Features import Features
 from enums.Settings import Portal
 from enums.SoundEffect import SoundEffect
+from enums.TimeFrame import TimeFrame
 from portals.BasePortal import BasePortal
 from core.AudioProcessor import AudioProcessor
 
@@ -53,6 +55,10 @@ class StudentPortal(BasePortal, ABC):
             self.message_repo, self.user_activity_repo, self.avatar_loader)
         self.badges_dashboard_builder = BadgesDashboardBuilder(
             self.settings_repo, self.user_achievement_repo, self.storage_repo)
+        self.student_assessment_dashboard_builder = StudentAssessmentDashboardBuilder(
+            self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
+            self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
+            self.portal_repo)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -172,8 +178,8 @@ class StudentPortal(BasePortal, ABC):
                 self.handle_file_upload(self.get_user_id(), track['id'])
             if is_success:
                 additional_params = {
-                    "Track": track['track_name'],
-                    "Recording": recording_name,
+                    "track_name": track['track_name'],
+                    "recording_name": recording_name,
                 }
                 self.user_activity_repo.log_activity(self.get_user_id(),
                                                      self.get_session_id(),
@@ -330,15 +336,31 @@ class StudentPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
         self.divider()
-
+        st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
+        self.student_assessment_dashboard_builder.show_assessment(self.get_user_id())
+        self.divider(5)
         self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
 
     def team_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 👥 Team Performance & Collaboration 👥</h2>", unsafe_allow_html=True)
         self.divider()
+        options = [time_frame for time_frame in TimeFrame]
+
+        # Find the index for 'CURRENT_WEEK' to set as default
+        default_index = next((i for i, time_frame in enumerate(TimeFrame)
+                              if time_frame == TimeFrame.CURRENT_WEEK), 0)
+
+        # Create the select box with the default set to 'Current Week'
+        time_frame = st.selectbox(
+            'Select a time frame:',
+            options,
+            index=default_index,
+            format_func=lambda x: x.value
+        )
+
         if self.get_group_id():
-            self.team_dashboard_builder.team_dashboard(self.get_group_id())
+            self.team_dashboard_builder.team_dashboard(self.get_group_id(), time_frame)
         else:
             st.info("Please wait for your teacher to assign you to a team!!")
 
@@ -387,7 +409,7 @@ class StudentPortal(BasePortal, ABC):
     def log_track_selection_change(self, selected_track_name):
         user_id = self.get_user_id()
         additional_params = {
-            "Track": selected_track_name,
+            "track_name": selected_track_name,
         }
         self.user_activity_repo.log_activity(
             user_id, self.get_session_id(), ActivityType.PLAY_TRACK, additional_params)
@@ -613,6 +635,13 @@ class StudentPortal(BasePortal, ABC):
                         practice_datetime = datetime.datetime.combine(practice_date, practice_time)
                         self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
                         st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
+                        additional_params = {
+                            "minutes": practice_minutes,
+                        }
+                        self.user_activity_repo.log_activity(self.get_user_id(),
+                                                             self.get_session_id(),
+                                                             ActivityType.LOG_PRACTICE,
+                                                             additional_params)
                         badge_awarded = self.badge_awarder.auto_award_badge(
                             self.get_user_id(), practice_date)
                     st.session_state.form_submitted = True

@@ -7,6 +7,7 @@ import tempfile
 import time
 from abc import ABC, abstractmethod
 import streamlit as st
+from langchain.llms.openai import AzureOpenAI
 
 from core.AvatarLoader import AvatarLoader
 from core.ListBuilder import ListBuilder
@@ -29,6 +30,7 @@ from repositories.TenantRepository import TenantRepository
 from repositories.TrackRepository import TrackRepository
 from repositories.UserAchievementRepository import UserAchievementRepository
 from repositories.UserActivityRepository import UserActivityRepository
+from repositories.UserAssessmentRepository import UserAssessmentRepository
 from repositories.UserPracticeLogRepository import UserPracticeLogRepository
 from repositories.UserRepository import UserRepository
 from repositories.OrganizationRepository import OrganizationRepository
@@ -55,6 +57,7 @@ class BasePortal(ABC):
         self.resource_repo = None
         self.assignment_repo = None
         self.message_repo = None
+        self.assessment_repo = None
         self.avatar_loader = None
         self.notifications_dashboard = None
         self.set_env()
@@ -80,6 +83,7 @@ class BasePortal(ABC):
         self.resource_repo = ResourceRepository(self.get_connection())
         self.assignment_repo = AssignmentRepository(self.get_connection())
         self.message_repo = MessageRepository(self.get_connection())
+        self.assessment_repo = UserAssessmentRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
         self.avatar_loader = AvatarLoader(self.storage_repo, self.user_repo)
         self.notifications_dashboard = NotificationsDashboardBuilder(
@@ -693,7 +697,6 @@ class BasePortal(ABC):
         tab_names = list(tab_dict.keys())
         tab_functions = list(tab_dict.values())
         tabs = st.tabs(tab_names)
-
         for tab, tab_function in zip(tabs, tab_functions):
             with tab:
                 tab_function()
@@ -1003,7 +1006,9 @@ class BasePortal(ABC):
     def set_env():
         env_vars = ['ROOT_USER', 'ROOT_PASSWORD', 'ADMIN_PASSWORD',
                     'SQL_SERVER', 'SQL_DATABASE', 'SQL_USERNAME', 'SQL_PASSWORD',
-                    'MYSQL_CONNECTION_STRING', 'EMAIL_ID', 'EMAIL_PASSWORD']
+                    'MYSQL_CONNECTION_STRING', 'EMAIL_ID', 'EMAIL_PASSWORD',
+                    'OPENAI_API_TYPE', 'OPENAI_API_BASE', 'OPENAI_API_KEY',
+                    'OPENAI_API_VERSION', 'MODEL_NAME', 'DEPLOYMENT_NAME']
         for var in env_vars:
             os.environ[var] = st.secrets[var]
         os.environ["GOOGLE_APP_CRED"] = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
@@ -1027,3 +1032,15 @@ class BasePortal(ABC):
     @abstractmethod
     def get_tab_dict(self):
         pass
+
+    @staticmethod
+    def load_llm(temperature):
+        os.environ["OPENAI_API_TYPE"] = st.secrets["OPENAI_API_TYPE"]
+        os.environ["OPENAI_API_BASE"] = st.secrets["OPENAI_API_BASE"]
+        os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+        os.environ["DEPLOYMENT_NAME"] = st.secrets["DEPLOYMENT_NAME"]
+        os.environ["OPENAI_API_VERSION"] = st.secrets["OPENAI_API_VERSION"]
+        os.environ["MODEL_NAME"] = st.secrets["MODEL_NAME"]
+        return AzureOpenAI(temperature=temperature,
+                           deployment_name=os.environ["DEPLOYMENT_NAME"],
+                           model_name=os.environ["MODEL_NAME"])

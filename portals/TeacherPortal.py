@@ -4,6 +4,9 @@ import hashlib
 import os
 from abc import ABC
 from collections import defaultdict
+from prompts import prompts
+
+from langchain.llms.openai import AzureOpenAI
 
 from core.AudioProcessor import AudioProcessor
 from core.BadgeAwarder import BadgeAwarder
@@ -12,11 +15,13 @@ from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.NotesDashboardBuilder import NotesDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
+from core.StudentAssessmentDashboardBuilder import StudentAssessmentDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import TrackBadges
 from enums.Features import Features
 from enums.Settings import Portal
+from enums.TimeFrame import TimeFrame
 from portals.BasePortal import BasePortal
 import streamlit as st
 import pandas as pd
@@ -44,6 +49,22 @@ class TeacherPortal(BasePortal, ABC):
             self.message_repo, self.user_activity_repo, self.avatar_loader)
         self.notes_repo = NotesRepository(self.get_connection())
         self.notes_dashboard_builder = NotesDashboardBuilder(self.notes_repo)
+        self.student_assessment_dashboard_builder = StudentAssessmentDashboardBuilder(
+            self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
+            self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
+            self.portal_repo)
+
+    @staticmethod
+    def load_llm(temperature):
+        os.environ["OPENAI_API_TYPE"] = st.secrets["OPENAI_API_TYPE"]
+        os.environ["OPENAI_API_BASE"] = st.secrets["OPENAI_API_BASE"]
+        os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+        os.environ["DEPLOYMENT_NAME"] = st.secrets["DEPLOYMENT_NAME"]
+        os.environ["OPENAI_API_VERSION"] = st.secrets["OPENAI_API_VERSION"]
+        os.environ["MODEL_NAME"] = st.secrets["MODEL_NAME"]
+        return AzureOpenAI(temperature=temperature,
+                           deployment_name=os.environ["DEPLOYMENT_NAME"],
+                           model_name=os.environ["MODEL_NAME"])
 
     def get_portal(self):
         return Portal.TEACHER
@@ -67,6 +88,7 @@ class TeacherPortal(BasePortal, ABC):
                 Features.TEACHER_PORTAL_RECORDINGS) else None,
             ("📥 Submissions", self.submissions),
             ("📊 Progress Dashboard", self.progress_dashboard),
+            ("📋 Assessments", self.assessments),
             ("👥 Team Dashboard", self.team_dashboard),
             ("🔗 Team Connect", self.team_connect),
             ("🗒️ Notes", self.notes_dashboard),
@@ -490,7 +512,7 @@ class TeacherPortal(BasePortal, ABC):
                         track_hash=track_hash
                     )
                     additional_params = {
-                        "Track": track_name,
+                        "track_name": track_name,
                     }
                     self.user_activity_repo.log_activity(self.get_user_id(),
                                                          self.get_session_id(),
@@ -876,6 +898,28 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown("<h1 style='font-size: 20px;'>Practice Logs</h1>", unsafe_allow_html=True)
         self.practice_dashboard_builder.practice_dashboard(selected_user_id)
 
+    def assessments(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 24px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
+        self.divider()
+
+        groups = self.user_repo.get_all_groups(self.get_org_id())
+
+        if not groups:
+            st.info("Please create a team to get started.")
+            return
+
+        group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
+        group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
+
+        selected_group = st.selectbox(
+            "Select a Team", group_options, key="assessments_group_selector")
+        if selected_group != "--Select a Team--":
+            self.student_assessment_dashboard_builder.show_assessments(
+                group_name_to_id[selected_group])
+        else:
+            st.info("Please select a group to continue..")
+
     def team_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 🤝 Team Performance & Collaboration 🤝 </h2>", unsafe_allow_html=True)
@@ -889,13 +933,28 @@ class TeacherPortal(BasePortal, ABC):
         group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 0.5, 1, 1, 1, 1])
 
         with col1:
             selected_group = st.selectbox(
                 "Select a Team", group_options, key="team_dashboard_group_selector")
 
-        with col3:
+        with col2:
+            options = [time_frame for time_frame in TimeFrame]
+
+            # Find the index for 'CURRENT_WEEK' to set as default
+            default_index = next((i for i, time_frame in enumerate(TimeFrame)
+                                  if time_frame == TimeFrame.CURRENT_WEEK), 0)
+
+            # Create the select box with the default set to 'Current Week'
+            time_frame = st.selectbox(
+                'Select a time frame:',
+                options,
+                index=default_index,
+                format_func=lambda x: x.value
+            )
+
+        with col4:
             st.write("")
             st.write("")
             if selected_group != "--Select a Team--":
@@ -903,7 +962,7 @@ class TeacherPortal(BasePortal, ABC):
                 if st.button("Award Weekly Badges", type='primary'):
                     self.badge_awarder.auto_award_weekly_badges(selected_group_id)
 
-        with col4:
+        with col5:
             st.write("")
             st.write("")
             if selected_group != "--Select a Team--":
@@ -911,7 +970,7 @@ class TeacherPortal(BasePortal, ABC):
                 if st.button("Award Monthly Badges", type='primary'):
                     self.badge_awarder.auto_award_monthly_badges(selected_group_id)
 
-        with col5:
+        with col6:
             st.write("")
             st.write("")
             if selected_group != "--Select a Team--":
@@ -919,9 +978,22 @@ class TeacherPortal(BasePortal, ABC):
                 if st.button("Award Yearly Badges", type='primary'):
                     self.badge_awarder.auto_award_yearly_badges(selected_group_id)
 
+        with col7:
+            st.write("")
+            st.write("")
+            if selected_group != "--Select a Team--":
+                selected_group_id = group_name_to_id[selected_group]
+
+                if st.button("Weekly Assessments", type='primary'):
+                    llm = self.load_llm(0.9)
+                    self.student_assessment_dashboard_builder.generate_assessments(
+                        selected_group_id, llm, time_frame)
+
         if selected_group != "--Select a Team--":
             # Show dashboard
-            self.team_dashboard_builder.team_dashboard(selected_group_id)
+            self.team_dashboard_builder.team_dashboard(selected_group_id, time_frame)
+        else:
+            st.info("Please select a team to continue..")
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
@@ -964,3 +1036,5 @@ class TeacherPortal(BasePortal, ABC):
         if 11 <= (n % 100) <= 13:
             suffix = 'th'
         return str(n) + suffix
+
+
