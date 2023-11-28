@@ -1,6 +1,8 @@
 import pymysql.cursors
 import pytz
 
+from enums.TimeFrame import TimeFrame
+
 
 class RecordingRepository:
     def __init__(self, connection):
@@ -186,3 +188,21 @@ class RecordingRepository:
                 day['avg_score'] = 0
 
         return result
+
+    def get_submissions_by_timeframe(self, user_id, time_frame: TimeFrame = TimeFrame.PREVIOUS_WEEK):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+        SELECT r.timestamp, t.name AS track_name, r.blob_url AS recording_audio_url, 
+               t.track_path AS track_audio_url,  
+               r.remarks AS teacher_remarks, r.score, t.id as track_id, r.id as recording_id
+        FROM recordings r
+        JOIN tracks t ON r.track_id = t.id
+        WHERE r.user_id = %s AND r.timestamp between %s and %s
+        ORDER BY r.timestamp DESC
+        """
+        start_date, end_date = time_frame.get_date_range()
+        cursor.execute(query, (user_id, start_date, end_date))
+        results = cursor.fetchall()
+        return list(results) if results else []
+
+

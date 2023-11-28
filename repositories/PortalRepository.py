@@ -431,5 +431,3 @@ class PortalRepository:
             return combined_notifications
 
 
-
-

@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import pymysql
 import pytz
 
+from enums.TimeFrame import TimeFrame
+
 
 class UserSessionRepository:
     def __init__(self, connection):
@@ -199,4 +201,13 @@ class UserSessionRepository:
             # Move to the next day
             current_date += timedelta(days=1)
         return all_days_data
+
+    def get_user_sessions_by_timeframe(
+            self, user_id, time_frame: TimeFrame = TimeFrame.PREVIOUS_WEEK):
+        cursor = self.connection.cursor()
+        start_date, end_date = time_frame.get_date_range()
+        cursor.execute("SELECT * FROM user_sessions "
+                       "WHERE user_id = %s AND open_session_time BETWEEN %s AND %s",
+                       (user_id, start_date, end_date))
+        return cursor.fetchall()
 

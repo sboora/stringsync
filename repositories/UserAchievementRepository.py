@@ -1,5 +1,5 @@
 import datetime
-
+import pymysql.cursors
 from enums.Badges import UserBadges, TrackBadges
 from enums.TimeFrame import TimeFrame
 
@@ -125,3 +125,13 @@ class UserAchievementRepository:
             return badge[0]
 
         return None
+
+    def get_user_achievements_by_timeframe(
+            self, user_id, time_frame: TimeFrame = TimeFrame.PREVIOUS_WEEK):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        start_date, end_date = time_frame.get_date_range()
+        cursor.execute("SELECT * FROM user_achievements "
+                       "WHERE user_id = %s AND timestamp BETWEEN %s AND %s",
+                       (user_id, start_date, end_date))
+        results = cursor.fetchall()
+        return list(results) if results else []

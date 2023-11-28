@@ -326,6 +326,15 @@ class UserRepository:
                   'email': row[3], 'group_name': row[4]} for row in result]
         return users
 
+    def get_users_by_group(self, group_id):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        get_users_query = """SELECT u.id as user_id, u.name, u.username, u.email, g.name AS group_name 
+                             FROM users u
+                             LEFT JOIN user_groups g ON u.group_id = g.id
+                             WHERE u.group_id = %s;"""
+        cursor.execute(get_users_query, group_id)
+        return cursor.fetchall()
+
     def get_admin_users_by_org_id(self, org_id):
         cursor = self.connection.cursor()
         get_users_query = """SELECT id, username, email FROM users WHERE org_id = %s AND user_type = 'admin';"""

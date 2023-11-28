@@ -3,6 +3,7 @@ import pytz
 import pymysql
 
 from enums.ActivityType import ActivityType
+from enums.TimeFrame import TimeFrame
 
 
 class UserActivityRepository:
@@ -69,5 +70,16 @@ class UserActivityRepository:
             local_timestamp = utc_timestamp.astimezone(local_tz)
             activity['timestamp'] = local_timestamp
         return result
+
+    def get_user_activities_by_timeframe(
+            self, user_id, time_frame: TimeFrame = TimeFrame.PREVIOUS_WEEK):
+        cursor = self.connection.cursor()
+        start_date, end_date = time_frame.get_date_range()
+        cursor.execute("SELECT * FROM user_activities "
+                       "WHERE user_id = %s AND timestamp BETWEEN %s AND %s",
+                       (user_id, start_date, end_date))
+        return cursor.fetchall()
+
+
 
 
