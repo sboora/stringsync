@@ -21,23 +21,29 @@ class NotificationsDashboardBuilder:
         messages = []
         for notification in notifications:
             metadata = json.loads(notification.get('metadata', '{}'))
-            # If metadata contains a user_id, skip if it doesn't match the current user_id
+            # Skip notifications that do not belong to the current user or group
             if 'user_id' in metadata and metadata['user_id'] != user_id:
                 continue
-
             if 'group_id' in metadata and metadata['group_id'] != group_id:
                 continue
 
             # Get the user-friendly message and icon for the activity type
-            activity_type = ActivityType.from_value(notification['activity_type'])
-            activity_message = activity_type.message
-            activity_icon = activity_type.icon
+            activity_type = notification['activity_type']
+            activity_message = ActivityType.from_value(activity_type).message
+            activity_icon = ActivityType.from_value(activity_type).icon
 
             # Construct the display message
             message = f"{activity_icon} {notification['user_name']} {activity_message}"
+
+            # If the activity type is PLAY_TRACK or CREATE_TRACK, append the track name
+            if activity_type in ('Play Track', 'Create Track') and 'track_name' in metadata:
+                message += f" - {metadata['track_name']}"
+
             messages.append(message)
 
         return messages
+
+
 
 
 

@@ -21,27 +21,13 @@ class TeamDashboardBuilder:
         self.badge_awarder = badge_awarder
         self.avatar_loader = avatar_loader
 
-    def team_dashboard(self, group_id):
+    def team_dashboard(self, group_id, time_frame):
         with st.spinner("Please wait.."):
             self.show_last_week_winners(group_id)
             st.write("")
-            options = [time_frame for time_frame in TimeFrame]
-
-            # Find the index for 'CURRENT_WEEK' to set as default
-            default_index = next((i for i, time_frame in enumerate(TimeFrame)
-                                  if time_frame == TimeFrame.CURRENT_WEEK), 0)
-
-            # Create the select box with the default set to 'Current Week'
-            time_frame_selected = st.selectbox(
-                'Select a time frame:',
-                options,
-                index=default_index,
-                format_func=lambda x: x.value
-            )
-
             # Fetch the dashboard data for the selected time frame
             dashboard_data = self.portal_repo.fetch_team_dashboard_data(
-                group_id, time_frame_selected)
+                group_id, time_frame)
 
             column_widths = [1.5, 11, 12.5, 12.5, 12.5, 12.5, 13, 14, 10.5]
             list_builder = ListBuilder(column_widths)
@@ -53,7 +39,7 @@ class TeamDashboardBuilder:
             # Display each team and its member count in a row
             for data in dashboard_data:
                 user_id = data['user_id']
-                badges = self.user_achievement_repo.get_user_badges(user_id, time_frame_selected)
+                badges = self.user_achievement_repo.get_user_badges(user_id, time_frame)
                 avatar = data.get('avatar')
                 avatar_file_path = self.avatar_loader.get_avatar(avatar) if avatar else None
 
