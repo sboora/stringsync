@@ -339,6 +339,11 @@ class StudentPortal(BasePortal, ABC):
         st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
         self.student_assessment_dashboard_builder.show_assessment(self.get_user_id())
         self.divider(5)
+        col1, col2, col3 = st.columns([2.5, 2, 1])
+        with col2:
+            if not st.button("Load Statistics", type="primary"):
+                return
+
         self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
 
     def team_dashboard(self):

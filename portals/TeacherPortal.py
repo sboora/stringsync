@@ -135,7 +135,10 @@ class TeacherPortal(BasePortal, ABC):
                     st.warning("Team name cannot be empty.")
 
         st.write("")
-        self.teams()
+        col1, col2, col3 = st.columns([2.6, 2, 1])
+        with col2:
+            if st.button("Load Teams", type="primary"):
+                self.teams()
 
     def teams(self):
         # Fetch all groups
@@ -164,6 +167,11 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
         self.divider()
+        col1, col2, col3 = st.columns([2.6, 2, 1])
+        with col2:
+            if not st.button("Load Students", type="primary"):
+                return
+
         students = self.user_repo.get_users_by_org_id_and_type(self.get_org_id(), UserType.STUDENT.value)
 
         if not students:
@@ -197,6 +205,12 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
         self.divider()
+
+        col1, col2, col3 = st.columns([2.4, 2, 1])
+        with col2:
+            if not st.button("Load Team Assignments", type="primary"):
+                return
+
         groups = self.user_repo.get_all_groups(self.get_org_id())
         if not groups:
             st.info("Please create a team to get started.")
@@ -271,8 +285,10 @@ class TeacherPortal(BasePortal, ABC):
                     link=resource_link
                 )
 
-        # Part for listing existing resources
-        self.list_resources()
+        col1, col2, col3 = st.columns([2.6, 2, 1])
+        with col2:
+            if st.button("Load Resources", type="primary"):
+                self.list_resources()
 
     def assignment_management(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -357,7 +373,8 @@ class TeacherPortal(BasePortal, ABC):
             else:
                 st.error("Please provide a title for the assignment.")
 
-        self.list_assignments()
+        if st.button("Load Assignments", type="primary"):
+            self.list_assignments()
 
     def list_assignments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -524,6 +541,11 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
         self.divider()
+
+        col1, col2, col3 = st.columns([2.6, 2, 1])
+        with col2:
+            if not st.button("Load Tracks", type="primary"):
+                return
 
         ragas = self.raga_repo.get_all_ragas()
         filter_options = self.fetch_filter_options(ragas)
@@ -734,6 +756,15 @@ class TeacherPortal(BasePortal, ABC):
         st.audio(audio_data, format='audio/mp4')
 
     def list_recordings(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+                    "font-size: 24px;'> 🎙️ Recordings 🎙️️ </h2>", unsafe_allow_html=True)
+        self.divider()
+
+        col1, col2, col3 = st.columns([2.6, 2, 1])
+        with col2:
+            if not st.button("Load Recordings", type="primary"):
+                return
+
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
         if user_id is None or track_id is None:
             return
@@ -919,8 +950,8 @@ class TeacherPortal(BasePortal, ABC):
             "Select a Team", group_options, key="assessments_group_selector")
         if selected_group != "--Select a Team--":
             llm = self.load_llm(0)
-            self.student_assessment_dashboard_builder.show_assessments(
-                group_name_to_id[selected_group], llm)
+            self.student_assessment_dashboard_builder.publish_assessments(
+                self.get_user_id(), self.get_session_id(), group_name_to_id[selected_group], llm)
         else:
             st.info("Please select a group to continue..")
 
@@ -965,6 +996,12 @@ class TeacherPortal(BasePortal, ABC):
                 selected_group_id = group_name_to_id[selected_group]
                 if st.button("Award Weekly Badges", type='primary'):
                     self.badge_awarder.auto_award_weekly_badges(selected_group_id)
+                    additional_params = {
+                        "group_id": selected_group_id,
+                    }
+                    # Log activity
+                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
+                                                         ActivityType.AWARD_WEEKLY_BADGES, additional_params)
 
         with col5:
             st.write("")
@@ -973,6 +1010,12 @@ class TeacherPortal(BasePortal, ABC):
                 selected_group_id = group_name_to_id[selected_group]
                 if st.button("Award Monthly Badges", type='primary'):
                     self.badge_awarder.auto_award_monthly_badges(selected_group_id)
+                    additional_params = {
+                        "group_id": selected_group_id,
+                    }
+                    # Log activity
+                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
+                                                         ActivityType.AWARD_MONTHLY_BADGES, additional_params)
 
         with col6:
             st.write("")
@@ -981,6 +1024,12 @@ class TeacherPortal(BasePortal, ABC):
                 selected_group_id = group_name_to_id[selected_group]
                 if st.button("Award Yearly Badges", type='primary'):
                     self.badge_awarder.auto_award_yearly_badges(selected_group_id)
+                    additional_params = {
+                        "group_id": selected_group_id,
+                    }
+                    # Log activity
+                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
+                                                         ActivityType.AWARD_YEARLY_BADGES, additional_params)
 
         with col7:
             st.write("")
@@ -1041,5 +1090,3 @@ class TeacherPortal(BasePortal, ABC):
         if 11 <= (n % 100) <= 13:
             suffix = 'th'
         return str(n) + suffix
-
-
