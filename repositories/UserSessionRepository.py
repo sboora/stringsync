@@ -171,7 +171,14 @@ class UserSessionRepository:
 
         # Determine the earliest session date and the last day of the current month
         start_date = result[0]['date']
-        end_date = datetime(datetime.now().year, datetime.now().month + 1, 1).date() - timedelta(days=1)
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+
+        # Handle December separately for the end date
+        if current_month == 12:
+            end_date = datetime(current_year + 1, 1, 1).date() - timedelta(days=1)
+        else:
+            end_date = datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
 
         # Initialize an empty list to hold the time series data
         all_days_data = []

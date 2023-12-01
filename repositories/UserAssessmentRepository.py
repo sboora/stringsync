@@ -27,9 +27,10 @@ class UserAssessmentRepository:
             """)
             self.connection.commit()
 
-    def create_assessment(self, user_id, assessment_text, start_date, end_date):
+    def create_assessment(self, user_id, assessment_text, time_frame: TimeFrame):
         """Stores a new assessment in the repository."""
         timestamp = datetime.now()  # Current date and time
+        start_date, end_date = time_frame.get_date_range()
         with self.connection.cursor() as cursor:
             query = """
             INSERT INTO user_assessments (user_id, assessment_text, timestamp, assessment_start_date, assessment_end_date)
@@ -38,6 +39,22 @@ class UserAssessmentRepository:
             cursor.execute(query, (user_id, assessment_text, timestamp, start_date, end_date))
             self.connection.commit()
             return cursor.lastrowid  # Return the ID of the new assessment record
+
+    def exists_assessment(self, user_id, time_frame: TimeFrame):
+        """Checks if an assessment exists for a given user within a specific timeframe in the repository."""
+        start_date, end_date = time_frame.get_date_range()
+        with self.connection.cursor() as cursor:
+            query = """
+            SELECT EXISTS(
+                SELECT 1 FROM user_assessments 
+                WHERE user_id = %s AND 
+                      assessment_start_date >= %s AND 
+                      assessment_end_date <= %s
+            );
+            """
+            cursor.execute(query, (user_id, start_date, end_date))
+            result = cursor.fetchone()
+            return result[0] == 1
 
     def get_assessments_by_group(self, group_id, time_frame: TimeFrame):
         """Retrieves all assessments for users in a given group and timeframe."""

@@ -28,7 +28,7 @@ class UserActivityRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def log_activity(self, user_id, session_id, activity_type, additional_params=None):
+    def log_activity(self, user_id, session_id, activity_type: ActivityType, additional_params=None):
         if additional_params is None:
             additional_params = {}
 
@@ -42,7 +42,9 @@ class UserActivityRepository:
         """
         # Convert the additional_params dictionary to a JSON string
         additional_params_json = json.dumps(additional_params)
-        cursor.execute(insert_activity_query, (user_id, session_id, activity_type.value, additional_params_json))
+        print(user_id, session_id, activity_type.value, additional_params_json)
+        cursor.execute(insert_activity_query,
+                       (user_id, session_id, activity_type.value, additional_params_json))
         self.connection.commit()
 
     def get_user_activities(self, user_id, timezone='America/Los_Angeles', limit=50):
