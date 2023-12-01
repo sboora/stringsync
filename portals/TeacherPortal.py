@@ -20,7 +20,7 @@ from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
 from enums.Badges import TrackBadges
 from enums.Features import Features
-from enums.Settings import Portal
+from enums.Settings import Portal, Settings
 from enums.TimeFrame import TimeFrame
 from portals.BasePortal import BasePortal
 import streamlit as st
@@ -137,8 +137,10 @@ class TeacherPortal(BasePortal, ABC):
         st.write("")
         col1, col2, col3 = st.columns([2.6, 2, 1])
         with col2:
-            if st.button("Load Teams", type="primary"):
-                self.teams()
+            load = st.button("Load Teams", type="primary")
+
+        if load:
+            self.teams()
 
     def teams(self):
         # Fetch all groups
@@ -205,11 +207,6 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
         self.divider()
-
-        col1, col2, col3 = st.columns([2.4, 2, 1])
-        with col2:
-            if not st.button("Load Team Assignments", type="primary"):
-                return
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
         if not groups:
@@ -287,8 +284,10 @@ class TeacherPortal(BasePortal, ABC):
 
         col1, col2, col3 = st.columns([2.6, 2, 1])
         with col2:
-            if st.button("Load Resources", type="primary"):
-                self.list_resources()
+            load = st.button("Load Resources", type="primary")
+
+        if load:
+            self.list_resources()
 
     def assignment_management(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -373,13 +372,13 @@ class TeacherPortal(BasePortal, ABC):
             else:
                 st.error("Please provide a title for the assignment.")
 
-        if st.button("Load Assignments", type="primary"):
-            self.list_assignments()
+        self.list_assignments()
 
     def list_assignments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
                     f"-size: 24px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
         self.divider()
+
         # Retrieve all assignments with their details from the repository
         assignments_with_details = self.assignment_repo.get_all_assignments_with_details()
 
@@ -398,21 +397,29 @@ class TeacherPortal(BasePortal, ABC):
         # If there are assignments with details, display them
         if consolidated_assignments:
             for assignment_id, assignment_details in consolidated_assignments.items():
-                # Display assignment information
-                st.write(f"**{assignment_details['title']}**")
-                st.write(
-                    f"Description: {assignment_details['description']},  Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
+                with st.expander(f"**{assignment_details['title']}**"):
+                    st.write(f"Description: {assignment_details['description']}")
+                    st.write(
+                        f"Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
 
-                # Display the consolidated track names and resources
-                track_links = [f"{name}" for name, path in assignment_details['tracks']]
-                resource_links = [f"[{title}]({link})" for title, link in assignment_details['resources']]
+                    # Display the consolidated track names and resources
+                    track_links = [f"{name}" for name, path in assignment_details['tracks']]
+                    resource_links = [f"[{title}]({link})" for title, link in assignment_details['resources']]
 
-                if track_links:
-                    st.write(f"Tracks: {', '.join(track_links)}")
-                if resource_links:
-                    st.write(f"Resources: {', '.join(resource_links)}")
+                    if track_links:
+                        st.write(f"Tracks: {', '.join(track_links)}")
+                    if resource_links:
+                        st.write(f"Resources: {', '.join(resource_links)}")
 
-                st.markdown("---")  # Adding a separator line
+                    st.markdown("---")  # Adding a separator line
+                css = """
+                <style>
+                    [data-testid="stExpander"] {
+                        background: #D5E9F3;
+                    }
+                </style>
+                """
+                st.write(css, unsafe_allow_html=True)
         else:
             st.write("No assignments found.")
 
@@ -450,14 +457,17 @@ class TeacherPortal(BasePortal, ABC):
                         st.markdown(f"[Resource Link]({resource['link']})")
                     else:
                         data = self.storage_repo.download_blob_by_url(resource['file_url'])
-                        st.download_button(
-                            label="Download",
-                            data=data,
-                            file_name=resource['title'],
-                            mime='application/octet-stream'
-                        )
-                    if st.button(f"Delete {resource['title']}", key=f"delete_{resource['id']}"):
-                        self.delete_resource(resource['id'])
+                        col1, col2, col3 = st.columns([1, 3, 10])
+                        with col1:
+                            st.download_button(
+                                label="Download",
+                                data=data,
+                                file_name=resource['title'],
+                                mime='application/octet-stream'
+                            )
+                        with col2:
+                            if st.button(f"Delete", key=f"delete_{resource['id']}"):
+                                self.delete_resource(resource['id'])
         else:
             st.info("No resources found. Upload a resource to get started.")
 
@@ -541,11 +551,6 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
                     "font-size: 24px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
         self.divider()
-
-        col1, col2, col3 = st.columns([2.6, 2, 1])
-        with col2:
-            if not st.button("Load Tracks", type="primary"):
-                return
 
         ragas = self.raga_repo.get_all_ragas()
         filter_options = self.fetch_filter_options(ragas)
@@ -760,11 +765,6 @@ class TeacherPortal(BasePortal, ABC):
                     "font-size: 24px;'> 🎙️ Recordings 🎙️️ </h2>", unsafe_allow_html=True)
         self.divider()
 
-        col1, col2, col3 = st.columns([2.6, 2, 1])
-        with col2:
-            if not st.button("Load Recordings", type="primary"):
-                return
-
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
         if user_id is None or track_id is None:
             return
@@ -775,44 +775,30 @@ class TeacherPortal(BasePortal, ABC):
             st.info("No recordings found.")
             return
 
-        # Create a DataFrame to hold the recording data
-        df = pd.DataFrame(recordings)
+        for recording in recordings:
+            with st.expander(
+                    f"Recording ID {recording['id']} - {recording['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"):
+                if recording['blob_url']:
+                    filename = self.storage_repo.download_blob_by_url(recording['blob_url'])
+                    st.audio(filename, format='core/m4a')
+                else:
+                    st.write("No core data available.")
 
-        # Create a table header
-        list_builder = ListBuilder(column_widths=[20, 20, 20, 20, 20])
-        header_html = list_builder.build_header(
-            column_names=["Recording", "Score", "System Analysis", "Remarks", "Timestamp"])
-        st.markdown(header_html, unsafe_allow_html=True)
+                # Create a form for score, remarks, and timestamp
+                with st.form(f"recording_form_{recording['id']}"):
+                    score = st.text_input("Score", value=recording['score'],
+                                          key=f"recording_score_{recording['id']}")
+                    remarks = st.text_area("Remarks", value=recording.get('remarks', ''),
+                                           key=f"recording_remarks_{recording['id']}")
 
-        # Loop through each recording and create a table row
-        for index, recording in df.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+                    # Display the timestamp, but it's not editable
+                    timestamp = recording['timestamp'].strftime('%-I:%M %p | %b %d')
+                    st.write(timestamp)
 
-            if recording['blob_url']:
-                filename = self.storage_repo.download_blob_by_url(recording['blob_url'])
-                col1.audio(filename, format='core/m4a')
-            else:
-                col1.write("No core data available.")
-
-            # Use Markdown to make the text black and larger
-            col2.markdown(f"<div style='padding-top:10px;color:black;font-size:14px;'>{recording['score']}</div>",
-                          unsafe_allow_html=True)
-            col3.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{recording.get('analysis', 'N/A')}</div>",
-                unsafe_allow_html=True)
-
-            # Get the remarks, replacing new lines with <br> for HTML display
-            remarks_html = recording.get('remarks', 'N/A').replace("\n", "<br>")
-
-            # Now use markdown to display the remarks with HTML new lines
-            col4.markdown(
-                f"<div style='padding-top:5px;color:black;font-size:14px;'>{remarks_html}</div>",
-                unsafe_allow_html=True)
-
-            formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-                int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
-            col5.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
-                          unsafe_allow_html=True)
+                    # Submit button for the form
+                    if st.form_submit_button("Update", type="primary"):
+                        self.handle_remarks_and_badges(score, recording, remarks, 'N/A')
+                        st.success("Remarks/Score updated successfully.")
 
     def submissions(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -828,71 +814,75 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         # Fetch and sort recordings
-        recordings = self.portal_repo.get_unremarked_recordings(group_id, user_id, track_id)
-        if not recordings:
+        submissions = self.portal_repo.get_unremarked_recordings(group_id, user_id, track_id)
+        if not submissions:
             st.info("No submissions found.")
             return
 
-        df = pd.DataFrame(recordings)
-        list_builder = ListBuilder(column_widths=[14.28, 14.28, 14.28, 14.28, 14.28, 14.28, 14.28])
-        list_builder.build_header(
-            column_names=["Name", "Track Name", "Track", "Recording", "Score", "Remarks", "Badges"])
-        # Display each recording
+        df = pd.DataFrame(submissions)
+
+        # Display each recording in an expander
         for index, recording in df.iterrows():
-            self.display_submission_row(recording)
+            self.show_submission(recording)
 
-    def display_submission_row(self, submission):
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
+    def show_submission(self, submission):
+        expander_label = f"**{submission.get('user_name', 'N/A')} - " \
+                         f"{submission.get('track_name', 'N/A')} - " \
+                         f"{submission.get('timestamp', 'N/A')}**"
+        with st.expander(expander_label):
+            with st.form(key=f"submission_form_{submission['id']}"):
+                if submission['track_path']:
+                    filename = self.storage_repo.download_blob_by_url(submission['track_path'])
+                    st.markdown("<span style='font-size: 15px;'>Track:</span>", unsafe_allow_html=True)
+                    st.audio(filename, format='core/m4a')
+                else:
+                    st.write("No core data available.")
 
-        col1.write("", style={"fontSize": "5px"})
-        col1.markdown(
-            f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('user_name', 'N/A')}</div>",
-            unsafe_allow_html=True)
+                if submission['blob_url']:
+                    filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
+                    st.markdown("<span style='font-size: 15px;'>Submission:</span>", unsafe_allow_html=True)
+                    st.audio(filename, format='core/m4a')
+                else:
+                    st.write("No core data available.")
 
-        col2.write("")
-        col2.markdown(
-            f"<div style='padding-top:14px;color:black;font-size:14px;'>{submission.get('track_name', 'N/A')}</div>",
-            unsafe_allow_html=True)
+                score = st.text_input("Score", key=f"submission_score_{submission['id']}",
+                                      value=submission['score'])
+                remarks = st.text_area("Remarks", key=f"submission_remarks_{submission['id']}")
 
-        col3.write("")
-        if submission['track_path']:
-            filename = self.storage_repo.download_blob_by_url(submission['track_path'])
-            col3.audio(filename, format='core/m4a')
-        else:
-            col3.write("No core data available.")
+                badge_options = [badge.value for badge in TrackBadges]
+                selected_badge = st.selectbox("Select a badge", ['--Select a badge--', 'N/A'] + badge_options,
+                                              key=f"badge_{submission['id']}")
 
-        col4.write("")
-        if submission['blob_url']:
-            filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
-            col4.audio(filename, format='core/m4a')
-        else:
-            col4.write("No core data available.")
+                # Submit button for the form
+                if st.form_submit_button("Submit", type="primary"):
+                    # Check for required fields
+                    if not remarks:
+                        st.error("Please provide remarks.")
+                        return
+                    if selected_badge == '--Select a badge--':
+                        st.error("Please select a badge (or N/A).")
+                        return
 
-        score = col5.text_input("", key=f"score_{submission['id']}", value=submission['score'])
-        if score:
-            self.recording_repo.update_score(submission["id"], score)
+                    # Update logic
+                    self.handle_remarks_and_badges(score, submission, remarks, selected_badge)
+                    st.success("Remarks/Score/Badge updated successfully.")
 
-        remarks = col6.text_area("", key=f"remarks_{submission['id']}")
-
-        badge_options = [badge.value for badge in TrackBadges]
-        selected_badge = col7.selectbox("", ['--Select a badge--', 'N/A'] + badge_options,
-                                        key=f"badge_{submission['id']}")
-
-        if remarks and selected_badge != '--Select a badge--':
-            self.recording_repo.update_remarks(submission["id"], remarks)
-            additional_params = {
-                "user_id": submission["user_id"],
-                "submission_id": submission["id"],
-            }
-            self.user_activity_repo.log_activity(self.get_user_id(),
-                                                 self.get_session_id(),
-                                                 ActivityType.REVIEW_SUBMISSION,
-                                                 additional_params)
-            if selected_badge != 'N/A':
-                self.user_achievement_repo.award_track_badge(submission['user_id'],
-                                                             submission['id'],
-                                                             TrackBadges(selected_badge),
-                                                             submission['timestamp'])
+    def handle_remarks_and_badges(self, score, submission, remarks, badge):
+        self.recording_repo.update_score(submission["id"], score)
+        self.recording_repo.update_remarks(submission["id"], remarks)
+        additional_params = {
+            "user_id": submission["user_id"],
+            "submission_id": submission["id"],
+        }
+        self.user_activity_repo.log_activity(self.get_user_id(),
+                                             self.get_session_id(),
+                                             ActivityType.REVIEW_SUBMISSION,
+                                             additional_params)
+        if badge != 'N/A':
+            self.user_achievement_repo.award_track_badge(submission['user_id'],
+                                                         submission['id'],
+                                                         TrackBadges(badge),
+                                                         submission['timestamp'])
 
     def show_submissions_summary(self):
         submissions = self.portal_repo.get_unremarked_submissions()

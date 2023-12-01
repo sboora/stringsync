@@ -525,7 +525,7 @@ class StudentPortal(BasePortal, ABC):
     def get_offset(track):
         # TODO: control it via settings
         base = 1.2
-        multiplier = base ** (track['level'])
+        multiplier = base ** (track['level']-1)
         return int(round(multiplier * track['offset']))
 
     def get_audio_distance(self, track_file, student_path):

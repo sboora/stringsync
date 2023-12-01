@@ -228,6 +228,8 @@ class BasePortal(ABC):
             return None
 
     def set_app_layout(self):
+        background_color = self.settings_repo.get_setting(
+            self.get_org_id(), Settings.TAB_BACKGROUND_COLOR)
         st.set_page_config(
             page_title=self.get_title(),
             page_icon=self.get_icon(),
@@ -241,6 +243,23 @@ class BasePortal(ABC):
                 </style>
             """
         st.markdown(custom_css, unsafe_allow_html=True)
+
+        css = f"""
+        <style>
+            [data-testid="stForm"] {{
+                background: white;
+            }}
+        </style>
+        """
+        st.write(css, unsafe_allow_html=True)
+        css = """
+        <style>
+            [data-testid="stExpander"] {
+                background: #459DC6;
+            }
+        </style>
+        """
+        st.write(css, unsafe_allow_html=True)
 
         if self.user_logged_in():
             self.show_app_header(150)
