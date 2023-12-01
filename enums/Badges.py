@@ -13,6 +13,7 @@ class UserBadges(Enum):
     WEEKLY_MAX_PRACTICE_MINUTES = ("Practice Champ", 60)
     MONTHLY_MAX_PRACTICE_MINUTES = ("Monthly Star", 180)
     WEEKLY_MAX_RECORDING_MINUTES = ("Sound Sorcerer", 10)
+    WEEKLY_MAX_DAILY_PRACTICE_MINUTES = ("Practice Prodigy", 45)
     MONTHLY_MAX_RECORDING_MINUTES = ("Mic Champ", 30)
     WEEKLY_MAX_RECORDINGS = ("Recording Kingpin", 5)
     WEEKLY_MAX_SCORER = ("Melody Master", 40)
