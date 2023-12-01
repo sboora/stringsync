@@ -33,8 +33,8 @@ class TeamDashboardBuilder:
             list_builder = ListBuilder(column_widths)
             list_builder.build_header(
                 column_names=["Student", "Tracks", "Recs",
-                              "Recs Time", "Pracs (m)",
-                              "Max Daily Prac", "Score", "Badges"])
+                              "Recs Time (m)", "Pracs (m)",
+                              "Max Daily Prac (m)", "Score", "Badges"])
 
             # Display each team and its member count in a row
             for data in dashboard_data:
