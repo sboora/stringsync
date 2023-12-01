@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pandas as pd
 
+from enums.ActivityType import ActivityType
 from enums.TimeFrame import TimeFrame
 from enums.UserType import UserType
 from repositories.PortalRepository import PortalRepository
@@ -51,6 +52,10 @@ class StudentAssessmentDashboardBuilder:
             user_id = user['user_id']
             username = user['name']
 
+            # Assessment already generated?
+            if self.user_assessment_repo.exists_assessment(user_id, time_frame):
+                continue
+
             # Fetch data needed for the LLM to generate the assessment
             data = self.get_student_data(user_id, time_frame)
             data = f"Student Name: {username}\nMusic Data:\n{data}"
@@ -59,9 +64,7 @@ class StudentAssessmentDashboardBuilder:
             assessment = llm(prompts.PROGRESS_REPORT_GENERATION_PROMPT.format(data=data))
 
             # Create the assessment
-            start_date, end_date = time_frame.get_date_range()
-            self.user_assessment_repo.create_assessment(
-                user_id, assessment, start_date, end_date)
+            self.user_assessment_repo.create_assessment(user_id, assessment, time_frame)
             print(f"Assessment generated for user {user_id}.")
 
     def provide_feedback(self, llm, org_id):
@@ -133,7 +136,7 @@ class StudentAssessmentDashboardBuilder:
 
         self.show_assessment(user_id)
 
-    def show_assessments(self, group_id, llm):
+    def publish_assessments(self, publisher_id, publisher_session_id, group_id, llm):
         with st.spinner("Please wait.."):
             options = [time_frame for time_frame in TimeFrame]
 
@@ -182,10 +185,11 @@ class StudentAssessmentDashboardBuilder:
 
                         stats_df = pd.DataFrame([stats])
 
-                        # Apply left text alignment for all cells in the dataframe
                         df = stats_df.style.set_table_styles(
-                            [{'selector': 'th, td', 'props': [('text-align', 'left')]}]
+                            [{'selector': 'th, td', 'props': [('text-align', 'left')]},  # Align text to left
+                             {'selector': 'table', 'props': [('width', '100%')]}]  # Set table width to 100%
                         )
+
                         df.hide_index_names = True
                         # Render DataFrame with left-aligned text
                         st.write(df)
@@ -215,9 +219,16 @@ class StudentAssessmentDashboardBuilder:
                             # Update the assessment status to 'published'
                             self.user_assessment_repo.publish_assessment(assessment_id)
                             message, message_type = f"Assessment published for {user_name}!", "success"
+                            additional_params = {
+                                "user_id": user_id,
+                            }
+                            # Log Activity
+                            self.user_activity_repo.log_activity(publisher_id, publisher_session_id,
+                                                                 ActivityType.PUBLISH_PROGRESS_REPORT,
+                                                                 additional_params)
 
                     with col3:
-                        if st.button("Regenerate Report", key=f"regenrate-report-{user_id}", type="primary"):
+                        if st.button("Regenerate Report", key=f"regenerate-report-{user_id}", type="primary"):
                             data = self.get_student_data(user_id, time_frame)
                             formatted_data = f"Student Name: {user_name}\nMusic Data:\n{data}"
 

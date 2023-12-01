@@ -29,12 +29,12 @@ class TeamDashboardBuilder:
             dashboard_data = self.portal_repo.fetch_team_dashboard_data(
                 group_id, time_frame)
 
-            column_widths = [1.5, 11, 12.5, 12.5, 12.5, 12.5, 13, 14, 10.5]
+            column_widths = [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 10]
             list_builder = ListBuilder(column_widths)
             list_builder.build_header(
-                column_names=["", "Teammate", "Unique Tracks", "Recordings",
-                              "Badges Earned", "Recording Minutes", "Practice Minutes",
-                              "Score", "Badges"])
+                column_names=["Student", "Tracks", "Recs",
+                              "Recs Time", "Pracs (m)",
+                              "Max Daily Prac", "Score", "Badges"])
 
             # Display each team and its member count in a row
             for data in dashboard_data:
@@ -53,7 +53,7 @@ class TeamDashboardBuilder:
 
                 divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: lightblue;'>"
                 with st.container():
-                    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+                    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 1, 1, 1, 1, 0.5, 1.5])
                     col1.markdown(f"<div style='display: flex; align-items: center;'>{avatar_image_html}<span "
                                   f"style='padding-top:5px;color:black;font-size:14px;'>{data['teammate']}</span></div>",
                                   unsafe_allow_html=True)
@@ -67,15 +67,15 @@ class TeamDashboardBuilder:
                         unsafe_allow_html=True)
                     col4.write("")
                     col4.markdown(
-                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['badges_earned']}</div>",
+                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['recording_minutes']}</div>",
                         unsafe_allow_html=True)
                     col5.write("")
                     col5.markdown(
-                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['recording_minutes']}</div>",
+                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['practice_minutes']}</div>",
                         unsafe_allow_html=True)
                     col6.write("")
                     col6.markdown(
-                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['practice_minutes']}</div>",
+                        f"<div style='padding-top:5px;color:black;font-size:14px;'>{data['max_daily_practice_minutes']}</div>",
                         unsafe_allow_html=True)
                     col7.write("")
                     col7.markdown(
@@ -83,11 +83,17 @@ class TeamDashboardBuilder:
                         unsafe_allow_html=True)
                     with col8:
                         st.write("")
-                        cols = st.columns(3)
-                        for i, badge in enumerate(badges):
-                            with cols[i % 3]:
-                                # Display the badge icon from the badge folder
-                                st.image(self.badge_awarder.get_badge(badge), width=50)
+                        if badges:  # Check if the list of badges is not empty
+                            cols = st.columns(4)
+                            for i, badge in enumerate(badges):
+                                with cols[i % 4]:
+                                    # Display the badge icon from the badge folder
+                                    st.image(self.badge_awarder.get_badge(badge), width=55)
+                        else:
+                            _, center_column, _ = st.columns(3)
+                            with center_column:
+                                st.write("N/A")
+
                     st.write("")
                     st.markdown(f"{divider}", unsafe_allow_html=True)
 
@@ -176,7 +182,7 @@ class TeamDashboardBuilder:
 
                     # Join the winners' HTML snippets with commas and display them
                     col.markdown(
-                        f"<div style='padding-top:0px;color:black;font-size:18px;'> {''.join(winners_with_avatars)}</div>",
+                        f"<div style='padding-top:0px;padding-left:20px;color:black;font-size:18px;'> {''.join(winners_with_avatars)}</div>",
                         unsafe_allow_html=True
                     )
                 # Increment the badge count
