@@ -23,13 +23,11 @@ class TeamDashboardBuilder:
 
     def team_dashboard(self, group_id, time_frame):
         with st.spinner("Please wait.."):
-            self.show_last_week_winners(group_id)
-            st.write("")
             # Fetch the dashboard data for the selected time frame
             dashboard_data = self.portal_repo.fetch_team_dashboard_data(
                 group_id, time_frame)
 
-            column_widths = [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 10]
+            column_widths = [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 13.5, 10]
             list_builder = ListBuilder(column_widths)
             list_builder.build_header(
                 column_names=["Student", "Tracks", "Recs",
@@ -83,23 +81,51 @@ class TeamDashboardBuilder:
                         unsafe_allow_html=True)
                     with col8:
                         st.write("")
-                        if badges:  # Check if the list of badges is not empty
-                            cols = st.columns(4)
-                            for i, badge in enumerate(badges):
-                                with cols[i % 4]:
-                                    # Display the badge icon from the badge folder
-                                    st.image(self.badge_awarder.get_badge(badge), width=55)
+                        if badges:
+                            num_badges = len(badges)
+                            total_cols = 4
+                            max_badges_per_row = 5
+
+                            # If the number of badges is less than or equal to 4, center them
+                            if num_badges <= total_cols:
+                                padding_cols = (total_cols - num_badges) // 2
+                                cols = st.columns([1] * padding_cols + [1] * num_badges + [1] * padding_cols)
+                                for i, badge in enumerate(badges):
+                                    with cols[i + padding_cols]:
+                                        st.image(self.badge_awarder.get_badge(badge), width=55)
+                            else:
+                                # If there are more than 4 badges, display them in rows of up to 5 badges each
+                                for i in range(0, num_badges, max_badges_per_row):
+                                    row_badges = badges[i:i + max_badges_per_row]
+                                    row_padding = (max_badges_per_row - len(row_badges)) // 2
+                                    cols = st.columns([1] * row_padding + [1] * len(row_badges) + [1] * row_padding)
+                                    for j, badge in enumerate(row_badges):
+                                        with cols[j + row_padding]:
+                                            st.image(self.badge_awarder.get_badge(badge), width=55)
                         else:
-                            _, center_column, _ = st.columns(3)
+                            _, center_column, _ = st.columns([1, 0.5, 1])
                             with center_column:
                                 st.write("N/A")
 
                     st.write("")
                     st.markdown(f"{divider}", unsafe_allow_html=True)
 
-    def show_last_week_winners(self, group_id):
-        # Get the winners from the repository
-        winners = self.portal_repo.get_weekly_winners(group_id)
+    def show_winners(self, group_id, timeframe):
+        # Mapping of timeframes to badge types
+        timeframe_to_badge_type = {
+            TimeFrame.PREVIOUS_WEEK: 'Weekly',
+            TimeFrame.CURRENT_WEEK: 'Weekly',
+            TimeFrame.PREVIOUS_MONTH: 'Monthly',
+            TimeFrame.CURRENT_MONTH: 'Monthly',
+            TimeFrame.PREVIOUS_YEAR: 'Yearly',
+            TimeFrame.CURRENT_YEAR: 'Yearly'
+        }
+
+        # Determine the badge type based on the timeframe
+        badge_type = timeframe_to_badge_type.get(timeframe)
+
+        # Get the winners from the repository based on the specified timeframe
+        winners = self.portal_repo.get_winners(group_id, timeframe)
 
         # Create a divider line
         divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: lightblue;'>"
@@ -108,7 +134,7 @@ class TeamDashboardBuilder:
         if winners:
             st.markdown(
                 f"<div style='padding-top:5px;color:#287DAD;font-size:20px;text-align:left'><b>Congratulations</b> "
-                f"to all the <b>Weekly Badge Winners!!!</b>",
+                f"to all the <b>{badge_type} Badge Winners!!!</b>",
                 unsafe_allow_html=True)
             st.write("")
 

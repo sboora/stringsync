@@ -2,6 +2,7 @@ import os
 
 import streamlit as st
 
+from enums.Badges import UserBadges
 from enums.Settings import Settings
 from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
@@ -41,40 +42,21 @@ class BadgesDashboardBuilder:
             st.write("")
             self.divider()
             st.markdown(f"""
-                <h2 style='text-align: center; color: {self.tab_heading_font_color(org_id)}; font-size: 24px;'>
-                    🌟 Discover the Treasure Trove of Badges! 🌟
-                </h2>
-                <p style='text-align: center; color: {self.tab_heading_font_color(org_id)}; font-size: 18px;'>
-                    🚀 Embark on an epic adventure and collect them all! 🚀
-                </p>
-                """, unsafe_allow_html=True)
-
-            # Display all badges in columns
-            badges_info = {
-                "First Note": "Celebrate your start by uploading your first recording.",
-                "2 Day Streak": "Keep the rhythm! Practice for 2 consecutive days.",
-                "3 Day Streak": "Harmonize your week with a 3-day practice streak.",
-                "5 Day Streak": "Show your dedication with a streak of practicing for 5 days.",
-                "7 Day Streak": "Demonstrate your commitment with a full week of practice.",
-                "10 Day Streak": "Set the bar high with a 10-day practice streak.",
-                "Practice Champ": "Top the charts with the most practice minutes in a week, starting at a minimum of 75 "
-                                  "minutes.",
-                "Sound Sorcerer": "Cast a spell by recording the most minutes in a week, with a starting spell of 10 "
-                                  "minutes.",
-                "Recording Kingpin": "Rule the studio by making the most recordings in a week, starting at a minimum of 5 "
-                                     "recordings.",
-                "Melody Master": "Hit the high score by earning the most points in a week, starting at 40 points.",
-                "Track Titan": "Be prolific! Record on the most number of different tracks in a week, starting at 3.",
-                "Badge Baron": "Be the ultimate achiever by earning the highest variety of badges."
-            }
+                        <h2 style='text-align: center; color: {self.tab_heading_font_color(org_id)}; font-size: 24px;'>
+                            🌟 Discover the Treasure Trove of Badges! 🌟
+                        </h2>
+                        <p style='text-align: center; color: {self.tab_heading_font_color(org_id)}; font-size: 18px;'>
+                            🚀 Embark on an epic adventure and collect them all! 🚀
+                        </p>
+                        """, unsafe_allow_html=True)
 
             # Create columns for badges
             cols = st.columns(3)
-            for index, (badge_name, badge_criteria) in enumerate(badges_info.items()):
+            for index, badge in enumerate(UserBadges):
                 with cols[index % 3]:
-                    st.markdown(f"### {badge_name}")
-                    st.markdown(f"_{badge_criteria}_")
-                    st.image(self.get_badge(badge_name), width=200)
+                    st.markdown(f"### {badge.description}")
+                    st.markdown(f"_{badge.criteria}_")
+                    st.image(self.get_badge(badge.description), width=200)
 
     def get_badge(self, badge_name):
         # Directory where badges are stored locally
