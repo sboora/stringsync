@@ -4,6 +4,8 @@ import hashlib
 import os
 from abc import ABC
 from collections import defaultdict
+
+from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
 from prompts import prompts
 
 from langchain.llms.openai import AzureOpenAI
@@ -53,6 +55,8 @@ class TeacherPortal(BasePortal, ABC):
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
             self.portal_repo)
+        self.hall_of_fame_dashboard_builder = HallOfFameDashboardBuilder(
+            self.portal_repo, self.badge_awarder, self.avatar_loader)
 
     @staticmethod
     def load_llm(temperature):
@@ -77,9 +81,9 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
-            ("👥 Create a Team", self.create_team),
-            ("👩‍🎓 Students", self.list_students),
-            ("🔀 Team Assignments", self.team_assignments),
+            #("👥 Create a Team", self.create_team),
+            #("👩‍🎓 Students", self.list_students),
+            #("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
@@ -90,6 +94,7 @@ class TeacherPortal(BasePortal, ABC):
             ("📊 Progress Dashboard", self.progress_dashboard),
             ("📋 Assessments", self.assessments),
             ("👥 Team Dashboard", self.team_dashboard),
+            ("🏆 Hall of Fame", self.hall_of_fame),
             ("🔗 Team Connect", self.team_connect),
             ("🗒️ Notes", self.notes_dashboard),
             ("⚙️ Settings", self.settings) if self.is_feature_enabled(
@@ -1038,6 +1043,26 @@ class TeacherPortal(BasePortal, ABC):
             self.team_dashboard_builder.team_dashboard(selected_group_id, time_frame)
         else:
             st.info("Please select a team to continue..")
+
+    def hall_of_fame(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
+        groups = self.user_repo.get_all_groups(self.get_org_id())
+
+        if not groups:
+            st.info("Please create a team to get started.")
+            return
+
+        group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
+        group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
+        selected_group = st.selectbox(
+            "Select a Team", group_options, key="hall_of_fame_group_selector")
+        if selected_group != "--Select a Team--":
+            selected_group_id = group_name_to_id[selected_group]
+            self.hall_of_fame_dashboard_builder.show_winners(selected_group_id, TimeFrame.PREVIOUS_WEEK)
+            st.write("")
+            self.divider(3)
+            self.hall_of_fame_dashboard_builder.show_winners(selected_group_id, TimeFrame.PREVIOUS_MONTH)
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "

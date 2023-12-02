@@ -14,6 +14,7 @@ from streamlit_lottie import st_lottie
 from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
 from core.BadgeAwarder import BadgeAwarder
 from core.BadgesDashboardBuilder import BadgesDashboardBuilder
+from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
 from core.ListBuilder import ListBuilder
 from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
@@ -59,6 +60,8 @@ class StudentPortal(BasePortal, ABC):
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
             self.portal_repo)
+        self.hall_of_fame_dashboard_builder = HallOfFameDashboardBuilder(
+            self.portal_repo, self.badge_awarder, self.avatar_loader)
 
     def get_portal(self):
         return Portal.STUDENT
@@ -71,6 +74,7 @@ class StudentPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
+            ("🏆 Hall of Fame", self.hall_of_fame),
             ("🎤 Record", self.recording_dashboard),
             ("📥 Submissions", self.submissions_dashboard),
             ("⏲️ Practice Log", self.practice_dashboard),
@@ -148,6 +152,14 @@ class StudentPortal(BasePortal, ABC):
                       key="badge_awarded")
             st.balloons()
             self.play_sound_effect(SoundEffect.AWARD)
+
+    def hall_of_fame(self):
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+                    f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
+        self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_WEEK)
+        st.write("")
+        self.divider(3)
+        self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_MONTH)
 
     def recording_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
@@ -627,7 +639,7 @@ class StudentPortal(BasePortal, ABC):
                                               key="practice_time",
                                               step=300)
                 practice_minutes = st.selectbox("Minutes Practiced",
-                                                [i for i in range(10, 61, 5)],
+                                                [i for i in range(10, 121, 5)],
                                                 key="practice_minutes")
                 submit = st.form_submit_button("Log Practice", type="primary")
 
