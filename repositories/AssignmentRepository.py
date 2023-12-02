@@ -94,7 +94,6 @@ class AssignmentRepository:
         with self.connection.cursor() as cursor:
             # Assuming each assignment_detail object has an 'id' attribute
             values = [(detail['id'], user_id) for detail in assignment_details for user_id in user_ids]
-            print(values)
             cursor.executemany("""
                 INSERT INTO user_assignments (assignment_detail_id, user_id)
                 VALUES (%s, %s);

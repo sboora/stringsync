@@ -22,19 +22,16 @@ class UserAchievementRepository:
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def award_weekly_user_badge(self, user_id, badge: UserBadges):
+    def award_user_badge_by_time_frame(self, user_id, badge: UserBadges, time_frame: TimeFrame):
         cursor = self.connection.cursor()
 
-        # Calculate the start and end dates for the previous week
-        today = datetime.datetime.now().date()
-        end_of_last_week = today - datetime.timedelta(days=today.weekday() + 1)  # Last Sunday
-        start_of_last_week = end_of_last_week - datetime.timedelta(days=6)  # Previous Monday
+        start_date, end_date = time_frame.get_date_range()
 
         # Check for other weekly badges awarded for the previous week
         cursor.execute(
             "SELECT COUNT(*) FROM user_achievements "
             "WHERE user_id = %s AND badge = %s AND DATE(timestamp) BETWEEN %s AND %s",
-            (user_id, badge.value, start_of_last_week, end_of_last_week)
+            (user_id, badge.value, start_date, end_date)
         )
 
         existing_badges = cursor.fetchone()
@@ -44,10 +41,10 @@ class UserAchievementRepository:
             # Award the new badge with the timestamp of the end of the last week
             cursor.execute(
                 "INSERT INTO user_achievements (user_id, badge, timestamp) VALUES (%s, %s, %s)",
-                (user_id, badge.value, end_of_last_week)
+                (user_id, badge.value, end_date)
             )
             self.connection.commit()
-            return True, f"Awarded {badge.name} to user with ID {user_id} for the week ending {end_of_last_week}"
+            return True, f"Awarded {badge.name} to user with ID {user_id}"
         else:
             return False, f"User with ID {user_id} already has the {badge.name} badge for the previous week"
 

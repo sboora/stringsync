@@ -271,16 +271,12 @@ class PortalRepository:
 
         return dashboard_data
 
-    def get_weekly_winners(self, group_id):
+    def get_winners(self, group_id, time_frame: TimeFrame):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             # Calculate the start and end dates for the current week
-            start_of_week, end_of_week = TimeFrame.PREVIOUS_WEEK.get_date_range()
-
-            # Get the list of weekly badge names
-            weekly_badges = [badge.value for badge in UserBadges if 'WEEKLY' in badge.name]
-
-            # Format the list into a string for the SQL query (e.g., 'badge1', 'badge2', ...)
-            formatted_badges = ', '.join(f"'{badge}'" for badge in weekly_badges)
+            start_date, end_date = time_frame.get_date_range()
+            badges = self.get_badges_based_on_timeframe(time_frame)
+            formatted_badges = ', '.join(f"'{badge}'" for badge in badges)
 
             # Query to get the student name, the weekly badge they won, and their avatar name
             query = f"""
@@ -292,66 +288,85 @@ class PortalRepository:
                 AND DATE(ua.timestamp) BETWEEN %s AND %s
                 AND u.group_id = %s
             """
-            cursor.execute(query, (start_of_week, end_of_week, group_id))
+            cursor.execute(query, (start_date, end_date, group_id))
 
             # Fetch all the results
             results = cursor.fetchall()
             return results
 
+    @staticmethod
+    def get_badges_based_on_timeframe(timeframe):
+        # Mapping of timeframes to badge types
+        timeframe_to_badge_type = {
+            TimeFrame.PREVIOUS_WEEK: 'WEEKLY',
+            TimeFrame.CURRENT_WEEK: 'WEEKLY',
+            TimeFrame.PREVIOUS_MONTH: 'MONTHLY',
+            TimeFrame.CURRENT_MONTH: 'MONTHLY',
+            TimeFrame.PREVIOUS_YEAR: 'YEARLY',
+            TimeFrame.CURRENT_YEAR: 'YEARLY'
+        }
+
+        # Determine the badge type based on the timeframe
+        badge_type = timeframe_to_badge_type.get(timeframe)
+
+        # Fetch badges based on the determined badge type
+        badges = [badge.value for badge in UserBadges if badge_type in badge.name]
+        return badges
+
     def get_group_stats(self, group_id, timeframe=TimeFrame.PREVIOUS_WEEK):
         dashboard_data = self.fetch_team_dashboard_data(group_id, timeframe)
 
-        # Initialize a dictionary to store the maximum value for each category
-        max_values = {
-            UserBadges.WEEKLY_MAX_PRACTICE_MINUTES: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_RECORDINGS: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_BADGE_EARNER: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_RECORDING_MINUTES: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_TRACK_RECORDER: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_SCORER: {'value': 0, 'students': []},
-            UserBadges.WEEKLY_MAX_DAILY_PRACTICE_MINUTES: {'value': 0, 'students': []}
-        }
+        # Determine the badge type based on the timeframe
+        badge_type = 'WEEKLY' if timeframe in \
+                                 [TimeFrame.PREVIOUS_WEEK, TimeFrame.CURRENT_WEEK] else 'MONTHLY'
 
-        # Calculate statistics for each student and update the maximum value for each category
+        # Initialize a dictionary to store the maximum value for each category
+        max_values = {badge: {'value': 0, 'students': []} for badge in UserBadges
+                      if badge_type in badge.name}
+
+        # Calculate statistics for each student and update the maximum values
         for data in dashboard_data:
             student_id = data['user_id']
             student_name = data['teammate']
-            practice_minutes = data['practice_minutes']
-            recordings = data['recordings']
-            badges_earned = data['badges_earned']
-            recording_minutes = data['recording_minutes']
-            unique_tracks = data['unique_tracks']
-            score = data['score']
-            max_daily_practice_minutes = data['max_daily_practice_minutes']
 
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_PRACTICE_MINUTES,
-                         max_values, practice_minutes)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_DAILY_PRACTICE_MINUTES,
-                         max_values, max_daily_practice_minutes)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_RECORDINGS,
-                         max_values, recordings)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_BADGE_EARNER,
-                         max_values, badges_earned)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_RECORDING_MINUTES,
-                         max_values, recording_minutes)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_TRACK_RECORDER,
-                         max_values, unique_tracks)
-            self.set_max(student_id, student_name, UserBadges.WEEKLY_MAX_SCORER,
-                         max_values, score)
+            for badge in max_values:
+                if badge == UserBadges.WEEKLY_MAX_PRACTICE_MINUTES and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('practice_minutes', 0))
+                elif badge == UserBadges.MONTHLY_MAX_PRACTICE_MINUTES and badge_type == 'MONTHLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('practice_minutes', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_DAILY_PRACTICE_MINUTES and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('max_daily_practice_minutes', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_RECORDINGS and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('recordings', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_BADGE_EARNER and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('badges_earned', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_RECORDING_MINUTES and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('recording_minutes', 0))
+                elif badge == UserBadges.MONTHLY_MAX_RECORDING_MINUTES and badge_type == 'MONTHLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('recording_minutes', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_TRACK_RECORDER and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('unique_tracks', 0))
+
+                if badge == UserBadges.WEEKLY_MAX_SCORER and badge_type == 'WEEKLY':
+                    self.set_max(student_id, student_name, badge, max_values, data.get('score', 0))
 
         # Prepare the list of winners and badges to be awarded
-        weekly_winners = []
-
+        winners = []
         for badge, data in max_values.items():
             for student in data['students']:
-                weekly_winners.append({
+                winners.append({
                     'student_id': student['student_id'],
                     'student_name': student['student_name'],
                     'category': badge,
                     'value': data['value']
                 })
 
-        return weekly_winners
+        return winners
 
     @staticmethod
     def set_max(student_id, student_name, badge: UserBadges, max_values, value):

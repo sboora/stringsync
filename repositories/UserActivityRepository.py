@@ -42,7 +42,6 @@ class UserActivityRepository:
         """
         # Convert the additional_params dictionary to a JSON string
         additional_params_json = json.dumps(additional_params)
-        print(user_id, session_id, activity_type.value, additional_params_json)
         cursor.execute(insert_activity_query,
                        (user_id, session_id, activity_type.value, additional_params_json))
         self.connection.commit()
