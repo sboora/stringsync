@@ -3,6 +3,7 @@ import os
 
 from core.AvatarLoader import AvatarLoader
 from core.BadgeAwarder import BadgeAwarder
+from enums.Badges import UserBadges
 from enums.TimeFrame import TimeFrame
 from repositories.PortalRepository import PortalRepository
 import streamlit as st
@@ -44,7 +45,7 @@ class HallOfFameDashboardBuilder:
         # Check if there are any winners
         if winners:
             st.markdown(
-                f"<div style='padding-top:5px;color:#287DAD;font-size:22px;text-align:center'>"
+                f"<div style='padding-top:5px; color:#954444; font-size:24px; text-align:center; font-weight:bold;'>"
                 f"<b>{badge_type} Hall of Fame : {formatted_start_date} to {formatted_end_date}</b>",
                 unsafe_allow_html=True)
             st.write("")
@@ -55,66 +56,45 @@ class HallOfFameDashboardBuilder:
             # Group winners by badge
             for winner in winners:
                 badge = winner['weekly_badge']
-                avatar = winner['avatar']
-
-                # Get the avatar image file path
-                avatar_file_path = self.avatar_loader.get_avatar(
-                    avatar) if avatar else 'path_to_default_avatar'
-
-                # Convert the image to a base64 string for embedding
-                encoded_string = self.get_avatar_base64_string(avatar_file_path)
-
-                # Embed the base64 string into the HTML image tag
-                avatar_image_html = f'<img src="data:image/png;base64,{encoded_string}" alt="avatar" style="width: ' \
-                                    f'60px; height: 60px; border-radius: 50%; margin-right: 10px;"> '
-                winner['avatar_image_html'] = avatar_image_html
-
                 if badge not in winners_by_badge:
                     winners_by_badge[badge] = []
 
                 winners_by_badge[badge].append(winner)
 
-            # Create 3 columns with equal width
-            col1, col2, col3, col4, col5 = st.columns(5)
-
-            # Keep track of the number of badges processed
-            badge_count = 0
-
             # Iterate through badges and display the winners
             for badge, winners in winners_by_badge.items():
-                # Decide in which column to place the badge based on the count
-                col = col1
-                if badge_count % 5 == 1:
-                    col = col2
-                elif badge_count % 5 == 2:
-                    col = col3
-                elif badge_count % 5 == 3:
-                    col = col4
-                elif badge_count % 5 == 4:
-                    col = col5
+                badge_enum = UserBadges.from_value(badge)
+                appreciation_note = badge_enum.message
 
-                # Using the chosen column, display the badge and the winners
-                with col:
-                    col.image(self.badge_awarder.get_badge(badge), width=175)
+                # Accumulate names of all winners for the current badge
+                winner_names = [winner['student_name'] for winner in winners]
+                value = winners[0]['value']
 
-                    # Add congratulatory emojis next to each winner's name
-                    winners_with_avatars = []
-                    for winner in winners:
-                        # Get the winner's avatar and name
-                        avatar_image_html = winner['avatar_image_html']
-                        student_name = winner['student_name']
-                        # Create a HTML snippet for each winner
-                        winner_html = f"<span style='display: flex; align-items: center;'>{avatar_image_html}" \
-                                      f"<span style='margin-left: 0px; font-size:14px'>{student_name} 🎉</span></span> "
-                        winners_with_avatars.append(winner_html)
+                # Create a single congratulatory note for all winners of the badge
+                # Format the winner names as a comma-separated list with each name bolded
+                bolded_winner_names = ', '.join([f"<strong>{name}</strong>" for name in winner_names])
 
-                    # Join the winners' HTML snippets with commas and display them
-                    col.markdown(
-                        f"<div style='padding-top:0px;padding-left:20px;color:black;font-size:18px;'> {''.join(winners_with_avatars)}</div>",
-                        unsafe_allow_html=True
-                    )
-                # Increment the badge count
-                badge_count += 1
+                # Create the congratulatory note with bolded winner names
+                congratulatory_note = f"Congratulations {bolded_winner_names}!!! {appreciation_note}"
+
+                # Use columns to display the badge and congratulatory note side by side
+                col1, col2 = st.columns([1, 3])
+
+                with col1:
+                    # Display the badge image
+                    st.image(self.badge_awarder.get_badge(badge), width=175)
+
+                with col2:
+                    # Display the congratulatory note
+                    st.write("")
+                    st.write("")
+                    st.write("")
+                    st.markdown(f"<span style='font-size: 20px;color:#954444;'>{congratulatory_note}</span>",
+                                unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-size: 20px;color:#954444;'>{badge_enum.format_stats_info(value)}</span>",
+                                unsafe_allow_html=True)
+
+                st.write("")  # Add some space before the next badge
 
             st.write("")
 

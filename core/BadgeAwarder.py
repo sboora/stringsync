@@ -60,7 +60,7 @@ class BadgeAwarder:
                 print("Threshold met for ", badge_category)
                 # Award the weekly badges to the students if they meet the threshold
                 self.user_achievement_repo.award_user_badge_by_time_frame(
-                    stat['student_id'], badge_category, timeframe)
+                    stat['student_id'], badge_category, timeframe, stat['value'])
         return True
 
     def award_track_badge(self, org_id, user_id, recording_id, badge: TrackBadges,
