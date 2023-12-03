@@ -82,11 +82,10 @@ class HallOfFameDashboardBuilder:
 
                 with col1:
                     # Display the badge image
-                    st.image(self.badge_awarder.get_badge(badge), width=175)
+                    st.image(self.badge_awarder.get_badge(badge), width=150)
 
                 with col2:
                     # Display the congratulatory note
-                    st.write("")
                     st.write("")
                     st.write("")
                     st.markdown(f"<span style='font-size: 20px;color:#954444;'>{congratulatory_note}</span>",
