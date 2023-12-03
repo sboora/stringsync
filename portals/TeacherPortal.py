@@ -125,7 +125,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def create_team(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
         self.divider()
         with st.form(key='create_team_form', clear_on_submit=True):
             group_name = st.text_input("Team Name")
@@ -172,7 +172,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_students(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.6, 2, 1])
         with col2:
@@ -210,7 +210,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def team_assignments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
         self.divider()
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -266,7 +266,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def resource_management(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
         # Part for uploading new resources
@@ -296,7 +296,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def assignment_management(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
         assignment_title = st.text_input("Assignment Title", key="assignment_title")
         assignment_description = st.text_input("Assignment Description", key="assignment_desc")
@@ -381,7 +381,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_assignments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
         # Retrieve all assignments with their details from the repository
@@ -493,7 +493,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def create_track(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 🔊 Create Audio Tracks 🔊 </h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 🔊 Create Audio Tracks 🔊 </h2>", unsafe_allow_html=True)
         self.divider()
         with st.form(key='create_track_form', clear_on_submit=True):
             track_name = st.text_input("Track Name")
@@ -554,7 +554,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_tracks(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
         self.divider()
 
         ragas = self.raga_repo.get_all_ragas()
@@ -664,7 +664,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def remove_track(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 🗑️ Remove Tracks 🗑️ </h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 🗑️ Remove Tracks 🗑️ </h2>", unsafe_allow_html=True)
         self.divider()
         # Fetch all tracks
         all_tracks = self.track_repo.get_all_tracks()
@@ -767,7 +767,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def list_recordings(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 🎙️ Recordings 🎙️️ </h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 🎙️ Recordings 🎙️️ </h2>", unsafe_allow_html=True)
         self.divider()
 
         group_id, username, user_id, track_id, track_name = self.list_students_and_tracks("R")
@@ -807,7 +807,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def submissions(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
+                    f"-size: 28px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
                     unsafe_allow_html=True)
         self.divider()
         # Show submissions summary
@@ -900,7 +900,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def progress_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
         self.divider()
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
@@ -929,7 +929,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def assessments(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 24px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
         self.divider()
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -952,7 +952,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def team_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 🤝 Team Performance & Collaboration 🤝 </h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 🤝 Team Performance & Collaboration 🤝 </h2>", unsafe_allow_html=True)
         self.divider()
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
@@ -1046,7 +1046,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def hall_of_fame(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
-                    f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
+                    f"-size: 28px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
         if not groups:
@@ -1066,7 +1066,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 💼 Team Engagement & Insights 💼</h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 💼 Team Engagement & Insights 💼</h2>", unsafe_allow_html=True)
         self.divider()
 
         # Fetch all groups
@@ -1086,7 +1086,7 @@ class TeacherPortal(BasePortal, ABC):
 
     def notes_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
-                    "font-size: 24px;'> 📝 Notes 📝</h2>", unsafe_allow_html=True)
+                    "font-size: 28px;'> 📝 Notes 📝</h2>", unsafe_allow_html=True)
 
         self.divider()
 
