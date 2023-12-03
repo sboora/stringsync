@@ -536,7 +536,7 @@ class StudentPortal(BasePortal, ABC):
     @staticmethod
     def get_offset(track):
         # TODO: control it via settings
-        base = 1.2
+        base = 1.1
         multiplier = base ** (track['level']-1)
         return int(round(multiplier * track['offset']))
 
