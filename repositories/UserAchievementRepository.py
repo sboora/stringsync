@@ -17,36 +17,46 @@ class UserAchievementRepository:
                 user_id INT,
                 recording_id INT NULL,
                 badge VARCHAR(255),
+                value INT DEFAULT 0,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ); """
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def award_user_badge_by_time_frame(self, user_id, badge: UserBadges, time_frame: TimeFrame):
+    def award_user_badge_by_time_frame(self,
+                                       user_id,
+                                       badge: UserBadges,
+                                       time_frame: TimeFrame,
+                                       value=0):
         cursor = self.connection.cursor()
 
         start_date, end_date = time_frame.get_date_range()
 
-        # Check for other weekly badges awarded for the previous week
+        # Check if a badge record already exists for the given time frame
         cursor.execute(
             "SELECT COUNT(*) FROM user_achievements "
             "WHERE user_id = %s AND badge = %s AND DATE(timestamp) BETWEEN %s AND %s",
             (user_id, badge.value, start_date, end_date)
         )
 
-        existing_badges = cursor.fetchone()
+        existing_badges_count = cursor.fetchone()[0]
 
-        # If no existing badges for the previous week
-        if existing_badges[0] == 0:
-            # Award the new badge with the timestamp of the end of the last week
+        if existing_badges_count == 0:
+            # If no existing badge, insert a new record
             cursor.execute(
-                "INSERT INTO user_achievements (user_id, badge, timestamp) VALUES (%s, %s, %s)",
-                (user_id, badge.value, end_date)
+                "INSERT INTO user_achievements (user_id, badge, timestamp, value) VALUES (%s, %s, %s, %s)",
+                (user_id, badge.value, end_date, value)
             )
-            self.connection.commit()
-            return True, f"Awarded {badge.name} to user with ID {user_id}"
         else:
-            return False, f"User with ID {user_id} already has the {badge.name} badge for the previous week"
+            # If badge exists, update the record
+            cursor.execute(
+                "UPDATE user_achievements SET value = %s "
+                "WHERE user_id = %s AND badge = %s AND DATE(timestamp) BETWEEN %s AND %s",
+                (value, user_id, badge.value, start_date, end_date)
+            )
+
+        self.connection.commit()
+        return True, f"Awarded/Updated {badge.name} for user with ID {user_id} for {time_frame.name}"
 
     def award_user_badge(self, user_id, badge: UserBadges, timestamp=datetime.datetime.now()):
         cursor = self.connection.cursor()

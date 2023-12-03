@@ -280,7 +280,7 @@ class PortalRepository:
 
             # Query to get the student name, the weekly badge they won, and their avatar name
             query = f"""
-                SELECT u.name AS student_name, ua.badge AS weekly_badge, a.name AS avatar
+                SELECT u.name AS student_name, ua.badge AS weekly_badge, ua.value as value, a.name AS avatar
                 FROM users u
                 JOIN user_achievements ua ON u.id = ua.user_id
                 LEFT JOIN avatars a ON u.avatar_id = a.id
