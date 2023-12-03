@@ -132,6 +132,7 @@ class TrackBadges(Enum):
     SONG_BIRD = "Song Bird"
     MAESTRO = "Maestro"
     PERFECT_PITCH = "Perfect Pitch"
+    PERFECT_BEAT = "Perfect Beat"
     MUSIC_WIZARD = "Music Wizard"
     VIRTUOSO = "Virtuoso"
     PRACTICE_MAKES_PERFECT = "Practice Makes Perfect"
