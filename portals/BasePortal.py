@@ -63,8 +63,6 @@ class BasePortal(ABC):
         self.set_env()
         self.database_manager = DatabaseManager()
         self.init_repositories()
-        self.tab_heading_font_color = None
-        self.limit = None
 
     def init_repositories(self):
         self.tenant_repo = TenantRepository(self.get_connection())
@@ -228,8 +226,7 @@ class BasePortal(ABC):
             return None
 
     def set_app_layout(self):
-        background_color = self.settings_repo.get_setting(
-            self.get_org_id(), Settings.TAB_BACKGROUND_COLOR)
+        self.set_background_color()
         st.set_page_config(
             page_title=self.get_title(),
             page_icon=self.get_icon(),
@@ -280,6 +277,11 @@ class BasePortal(ABC):
             self.show_app_title()
 
         st.write("")
+
+    def set_background_color(self):
+        if "background_color" not in st.session_state:
+            st.session_state["background_color"] = self.settings_repo.get_setting(
+                self.get_org_id(), Settings.TAB_BACKGROUND_COLOR)
 
     def show_app_header(self, width=0):
         st.markdown("""
@@ -629,10 +631,18 @@ class BasePortal(ABC):
             st.session_state['feature_toggles'][feature_name] = is_enabled
 
     def load_settings(self):
-        self.tab_heading_font_color = self.settings_repo.get_setting(
-            self.get_org_id(), Settings.TAB_HEADING_FONT_COLOR)
-        self.limit = self.settings_repo.get_setting(
-            self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
+        self.set_tab_heading_font_color()
+        self.set_limit()
+
+    def set_limit(self):
+        if "limit" not in st.session_state:
+            st.session_state["limit"] = self.settings_repo.get_setting(
+                self.get_org_id(), Settings.MAX_ROW_COUNT_IN_LIST)
+
+    def set_tab_heading_font_color(self):
+        if "tab_heading_font_color" not in st.session_state:
+            st.session_state["tab_heading_font_color"] = self.settings_repo.get_setting(
+                self.get_org_id(), Settings.TAB_HEADING_FONT_COLOR)
 
     def set_session_state(self, user_id, org_id, username, group_id):
         st.session_state['user_logged_in'] = True
@@ -687,8 +697,6 @@ class BasePortal(ABC):
         st.markdown(footer_html, unsafe_allow_html=True)
 
     def build_tabs(self):
-        background_color = self.settings_repo.get_setting(
-            self.get_org_id(), Settings.TAB_BACKGROUND_COLOR)
         st.markdown(f"""
                 <style>
                     .stTabs [data-baseweb="tab-list"] {{
@@ -698,7 +706,7 @@ class BasePortal(ABC):
                     .stTabs [data-baseweb="tab"] {{
                         height: 30px;
                         white-space: pre-wrap;               
-                        background-color: {background_color};
+                        background-color: {self.get_tab_background_color()};
                         border-radius: 6px 6px 0px 0px;
                         gap: 5px;
                         padding-top: 10px;
@@ -1020,6 +1028,18 @@ class BasePortal(ABC):
     @staticmethod
     def get_logo_bucket():
         return 'logo'
+
+    @staticmethod
+    def get_tab_heading_font_color():
+        return st.session_state["tab_heading_font_color"]
+
+    @staticmethod
+    def get_tab_background_color():
+        return st.session_state["background_color"]
+
+    @staticmethod
+    def get_limit():
+        return st.session_state["limit"]
 
     @staticmethod
     def set_env():

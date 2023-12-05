@@ -122,7 +122,7 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def create_team(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
         self.divider()
         with st.form(key='create_team_form', clear_on_submit=True):
@@ -169,7 +169,7 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(row_data=row_data)
 
     def list_students(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.6, 2, 1])
@@ -207,7 +207,7 @@ class TeacherPortal(BasePortal, ABC):
                         margin-bottom: 5px;'> {avatar_image_html} </div>""")
 
     def team_assignments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -263,7 +263,7 @@ class TeacherPortal(BasePortal, ABC):
                             st.rerun()
 
     def resource_management(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -293,7 +293,7 @@ class TeacherPortal(BasePortal, ABC):
             self.list_resources()
 
     def assignment_management(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
         assignment_title = st.text_input("Assignment Title", key="assignment_title")
@@ -378,7 +378,7 @@ class TeacherPortal(BasePortal, ABC):
         self.list_assignments()
 
     def list_assignments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -490,7 +490,7 @@ class TeacherPortal(BasePortal, ABC):
             st.error("Resource not found.")
 
     def create_track(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 🔊 Create Audio Tracks 🔊 </h2>", unsafe_allow_html=True)
         self.divider()
         with st.form(key='create_track_form', clear_on_submit=True):
@@ -551,7 +551,7 @@ class TeacherPortal(BasePortal, ABC):
                     st.success("Track added successfully!")
 
     def list_tracks(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 🎶 Track Listing 🎶</h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -661,7 +661,7 @@ class TeacherPortal(BasePortal, ABC):
         return self.storage_repo.upload_blob(data, blob_path)
 
     def remove_track(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 🗑️ Remove Tracks 🗑️ </h2>", unsafe_allow_html=True)
         self.divider()
         # Fetch all tracks
@@ -764,7 +764,7 @@ class TeacherPortal(BasePortal, ABC):
         st.audio(audio_data, format='audio/mp4')
 
     def list_recordings(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 🎙️ Recordings 🎙️️ </h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -804,7 +804,7 @@ class TeacherPortal(BasePortal, ABC):
                         st.success("Remarks/Score updated successfully.")
 
     def submissions(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
                     unsafe_allow_html=True)
         self.divider()
@@ -897,7 +897,7 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(submission)
 
     def progress_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
         self.divider()
         users = self.user_repo.get_users_by_org_id_and_type(
@@ -926,7 +926,7 @@ class TeacherPortal(BasePortal, ABC):
         self.practice_dashboard_builder.practice_dashboard(selected_user_id)
 
     def assessments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -949,7 +949,7 @@ class TeacherPortal(BasePortal, ABC):
             st.info("Please select a group to continue..")
 
     def team_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 🤝 Team Performance & Collaboration 🤝 </h2>", unsafe_allow_html=True)
         self.divider()
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -1026,7 +1026,7 @@ class TeacherPortal(BasePortal, ABC):
                                              activity_type, additional_params)
 
     def hall_of_fame(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 28px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
@@ -1046,7 +1046,7 @@ class TeacherPortal(BasePortal, ABC):
             self.hall_of_fame_dashboard_builder.show_winners(selected_group_id, TimeFrame.PREVIOUS_MONTH)
 
     def team_connect(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 💼 Team Engagement & Insights 💼</h2>", unsafe_allow_html=True)
         self.divider()
 
@@ -1066,7 +1066,7 @@ class TeacherPortal(BasePortal, ABC):
                 self.get_user_id(), selected_group_id, self.get_session_id())
 
     def notes_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 28px;'> 📝 Notes 📝</h2>", unsafe_allow_html=True)
 
         self.divider()

@@ -128,11 +128,73 @@ class UserBadges(Enum):
 
 
 class TrackBadges(Enum):
-    FAST_LEARNER = "Fast Learner"
-    SONG_BIRD = "Song Bird"
-    MAESTRO = "Maestro"
-    PERFECT_PITCH = "Perfect Pitch"
-    PERFECT_BEAT = "Perfect Beat"
-    MUSIC_WIZARD = "Music Wizard"
-    VIRTUOSO = "Virtuoso"
-    PRACTICE_MAKES_PERFECT = "Practice Makes Perfect"
+    FAST_LEARNER = (
+        "Fast Learner", 1,
+        "Master a new track quicker than the rest.",
+        "You're a quick learner, mastering tracks at impressive speed!",
+        "You mastered a new track in record time!"
+    )
+    SONG_BIRD = (
+        "Song Bird", 3,
+        "Consistently hit the right notes in your performances.",
+        "Your ability to hit the right notes is simply melodious!",
+        "Your pitch-perfect performance earned you the Song Bird badge!"
+    )
+    MAESTRO = (
+        "Maestro", 5,
+        "Demonstrate exceptional skill and control in your performances.",
+        "Conduct your performance with the skill of a true Maestro!",
+        "Your exceptional performance skills have earned you the Maestro badge!"
+    )
+    PERFECT_PITCH = (
+        "Perfect Pitch", 2,
+        "Display an excellent sense of pitch in your recordings.",
+        "Your pitch is perfect, hitting every note just right!",
+        "Your pitch-perfect recordings have earned you the Perfect Pitch badge!"
+    )
+    PERFECT_BEAT = (
+        "Perfect Beat", 3,
+        "Keep the rhythm and timing flawless in your performances.",
+        "You've got the beat! Your sense of rhythm is unmatched.",
+        "Your impeccable timing has earned you the Perfect Beat badge!"
+    )
+    MUSIC_WIZARD = (
+        "Music Wizard", 4,
+        "Blend creativity and skill to create magical performances.",
+        "Like a wizard, you weave magic into your music!",
+        "Your creative and skillful performances make you a Music Wizard!"
+    )
+    VIRTUOSO = (
+        "Virtuoso", 5,
+        "Reach the pinnacle of musical skill and artistry.",
+        "Your performances reflect the skill of a true Virtuoso!",
+        "Your artistry and skill have earned you the Virtuoso badge!"
+    )
+    PRACTICE_MAKES_PERFECT = (
+        "Practice Makes Perfect", 10,
+        "Demonstrate dedication and improvement through consistent practice.",
+        "Your dedication to practice shows in your ever-improving performances!",
+        "Your commitment to practice has rightfully earned you the Practice Makes Perfect badge!"
+    )
+
+    def __init__(self, description, threshold, criteria, message, stats_info):
+        self._value_ = description
+        self.description = description
+        self.threshold = threshold
+        self.criteria = criteria
+        self.message = message
+        self.stats_info = stats_info
+
+    @classmethod
+    def from_value(cls, value):
+        for member in cls:
+            if member.value == value:
+                return member
+
+    @property
+    def value(self):
+        return self._value_
+
+    def format_stats_info(self, value):
+        return self.stats_info.format(value=value)
+

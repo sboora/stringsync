@@ -37,7 +37,7 @@ class HallOfFameDashboardBuilder:
         formatted_end_date = self.ordinal(int(end_date.strftime('%d'))) + end_date.strftime(' %b, %Y')
 
         # Get the winners from the repository based on the specified timeframe
-        winners = self.portal_repo.get_winners(group_id, timeframe)
+        winners = self.get_winners(group_id, timeframe)
 
         # Create a divider line
         divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: lightblue;'>"
@@ -96,6 +96,14 @@ class HallOfFameDashboardBuilder:
                 st.write("")  # Add some space before the next badge
 
             st.write("")
+
+    def get_winners(self, group_id, timeframe):
+        if "hall_of_fame_winners" not in st.session_state:
+            winners = self.portal_repo.get_winners(group_id, timeframe)
+            st.session_state["hall_of_fame_winners"] = winners
+        else:
+            winners = st.session_state["hall_of_fame_winners"]
+        return winners
 
     @staticmethod
     def get_avatar_base64_string(avatar_file_path):

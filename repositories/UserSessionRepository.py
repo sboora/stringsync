@@ -95,7 +95,6 @@ class UserSessionRepository:
         """
         cursor.execute(get_activity_time_query, (session_id,))
         result = cursor.fetchone()
-        self.connection.commit()
         # result will be None if there is no such session_id
         return result[0] if result else None
 

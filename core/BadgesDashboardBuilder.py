@@ -2,7 +2,7 @@ import os
 
 import streamlit as st
 
-from enums.Badges import UserBadges
+from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings
 from repositories.SettingsRepository import SettingsRepository
 from repositories.StorageRepository import StorageRepository
@@ -50,9 +50,11 @@ class BadgesDashboardBuilder:
                         </p>
                         """, unsafe_allow_html=True)
 
+            all_badges = list(UserBadges) + list(TrackBadges)
+
             # Create columns for badges
             cols = st.columns(3)
-            for index, badge in enumerate(UserBadges):
+            for index, badge in enumerate(all_badges):
                 with cols[index % 3]:
                     st.markdown(f"### {badge.description}")
                     st.markdown(f"_{badge.criteria}_")

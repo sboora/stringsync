@@ -153,7 +153,7 @@ class StudentPortal(BasePortal, ABC):
             self.play_sound_effect(SoundEffect.AWARD)
 
     def hall_of_fame(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
         self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_WEEK)
         st.write("")
@@ -161,7 +161,7 @@ class StudentPortal(BasePortal, ABC):
         self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_MONTH)
 
     def recording_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
         self.divider()
         track = self.filter_tracks()
@@ -283,7 +283,7 @@ class StudentPortal(BasePortal, ABC):
         return formatted_timestamp
 
     def submissions_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.4, 2, 1])
@@ -293,7 +293,7 @@ class StudentPortal(BasePortal, ABC):
 
         # Fetch submissions from the database
         submissions = self.portal_repo.get_submissions_by_user_id(
-            self.get_user_id(), limit=self.limit)
+            self.get_user_id(), limit=self.get_limit())
 
         if not submissions:
             st.info("No submissions found.")
@@ -344,7 +344,7 @@ class StudentPortal(BasePortal, ABC):
                 st.markdown("</div>", unsafe_allow_html=True)
 
     def progress_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
         self.divider()
         st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
@@ -358,7 +358,7 @@ class StudentPortal(BasePortal, ABC):
         self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
 
     def team_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 24px;'> 👥 Team Performance & Collaboration 👥</h2>", unsafe_allow_html=True)
         self.divider()
         options = [time_frame for time_frame in TimeFrame]
@@ -381,7 +381,7 @@ class StudentPortal(BasePortal, ABC):
             st.info("Please wait for your teacher to assign you to a team!!")
 
     def team_connect(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; "
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
                     "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
         self.divider()
         if self.get_group_id():
@@ -586,25 +586,33 @@ class StudentPortal(BasePortal, ABC):
             return "Excellent! You've mastered this track!"
 
     def badges_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
         self.badges_dashboard_builder.badges_dashboard(self.get_org_id(), self.get_user_id())
 
     def resources_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
         self.divider()
+        col1, col2, col3 = st.columns([2.4, 2, 1])
+        with col2:
+            if not st.button("Load Resources", key='load_resources', type='primary'):
+                return
         self.resource_dashboard_builder.resources_dashboard()
 
     def assignments_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
         self.divider()
+        col1, col2, col3 = st.columns([2.4, 2, 1])
+        with col2:
+            if not st.button("Load Assignments", key='load_assignments', type='primary'):
+                return
         self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
 
     def practice_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"
+        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
         self.divider()
         # Initialize session state variables if they aren't already
