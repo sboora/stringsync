@@ -1,2 +1,12 @@
 __pycache__/
+sound effects/
+student recordings/
+tracks/
+logo/
+badges/
+avatars/
+animations/
+.streamlit/
+.idea/
+.DS_Store
 
