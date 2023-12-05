@@ -81,7 +81,7 @@ class TeacherPortal(BasePortal, ABC):
         tabs = [
             #("👥 Create a Team", self.create_team),
             #("👩‍🎓 Students", self.list_students),
-            #("🔀 Team Assignments", self.team_assignments),
+            ("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),

@@ -22,7 +22,7 @@ class RecordingRepository:
             score INT,
             distance INT,
             analysis TEXT,
-            remarks TEXT,
+            remarks TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
             file_hash VARCHAR(32)  
         ); """
         cursor.execute(create_table_query)

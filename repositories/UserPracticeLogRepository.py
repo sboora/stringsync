@@ -76,26 +76,40 @@ class UserPracticeLogRepository:
 
     def get_streak(self, user_id, practice_date):
         cursor = self.connection.cursor()
+        # Query to get all practice dates for the user
         query = """
                 SELECT DISTINCT DATE(timestamp) as practice_date
                 FROM user_practice_logs
                 WHERE user_id = %s
-                ORDER BY DATE(timestamp) DESC 
+                ORDER BY DATE(timestamp)
             """
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
 
-        previous_date = practice_date
+        # Convert result to a list of dates for easier manipulation
+        practice_dates = [row[0] for row in result]
+
+        if practice_date not in practice_dates:
+            return None
+
+        # Find the index of the given practice date
+        index = practice_dates.index(practice_date)
+
+        # Check backwards
         streak = 1
-        for row in result:
-            current_date = row[0]
-            day_diff = (previous_date - current_date).days
-            if day_diff in [0, 1]:
-                if day_diff == 1:
-                    streak += 1
-                    previous_date = current_date
+        for i in range(index - 1, -1, -1):
+            if (practice_date - practice_dates[i]).days == streak:
+                streak += 1
             else:
                 break
+
+        # Check forwards
+        for i in range(index + 1, len(practice_dates)):
+            if (practice_dates[i] - practice_date).days == streak:
+                streak += 1
+            else:
+                break
+
         # Determine the streak badge
         if streak >= 10:
             return UserBadges.TEN_DAY_STREAK
