@@ -8,7 +8,7 @@ from enums.TimeFrame import TimeFrame
 class UserAssessmentRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_table()
+        #self.create_table()
 
     def create_table(self):
         """Creates the user_assessments table in the database."""

@@ -1,7 +1,7 @@
 class TenantRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_tenants_table()
+        #self.create_tenants_table()
 
     def create_tenants_table(self):
         cursor = self.connection.cursor()

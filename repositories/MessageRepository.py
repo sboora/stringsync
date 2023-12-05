@@ -5,7 +5,7 @@ import pytz
 class MessageRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_messages_table()
+        #self.create_messages_table()
 
     def create_messages_table(self):
         with self.connection.cursor() as cursor:

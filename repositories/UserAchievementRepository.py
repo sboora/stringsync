@@ -7,7 +7,7 @@ from enums.TimeFrame import TimeFrame
 class UserAchievementRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_achievements_table()
+        #self.create_achievements_table()
 
     def create_achievements_table(self):
         cursor = self.connection.cursor()

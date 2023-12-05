@@ -7,7 +7,7 @@ from enums.TimeFrame import TimeFrame
 class RecordingRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_recordings_table()
+        #self.create_recordings_table()
 
     def create_recordings_table(self):
         cursor = self.connection.cursor()

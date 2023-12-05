@@ -5,7 +5,7 @@ import pymysql.cursors
 class TrackRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_tables()
+        #self.create_tables()
 
     def create_tables(self):
         cursor = self.connection.cursor()

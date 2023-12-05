@@ -6,7 +6,7 @@ from enums.Settings import Settings, Portal, SettingType
 class SettingsRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_settings_table()
+        #self.create_settings_table()
         #self.create_seed_data()
 
     def create_settings_table(self):

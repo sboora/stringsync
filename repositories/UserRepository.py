@@ -9,9 +9,9 @@ from enums.UserType import UserType
 class UserRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_user_groups_table()
-        self.create_avatars_table()
-        self.create_users_table()
+        #self.create_user_groups_table()
+        #self.create_avatars_table()
+        #self.create_users_table()
         self.create_root_user()
         #self.create_avatars()
 

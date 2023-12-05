@@ -5,7 +5,7 @@ import pymysql.cursors
 class RagaRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_tables()
+        #self.create_tables()
         #self.create_seed_data()
 
     def create_tables(self):

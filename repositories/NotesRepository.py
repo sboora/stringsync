@@ -3,7 +3,7 @@ import pymysql.cursors
 class NotesRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_notes_table()
+        #self.create_notes_table()
 
     def create_notes_table(self):
         with self.connection.cursor() as cursor:

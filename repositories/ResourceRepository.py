@@ -6,7 +6,7 @@ import pymysql.cursors
 class ResourceRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_resource_table()
+        #self.create_resource_table()
 
     def create_resource_table(self):
         cursor = self.connection.cursor()

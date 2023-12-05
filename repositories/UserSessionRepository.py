@@ -9,7 +9,7 @@ from enums.TimeFrame import TimeFrame
 class UserSessionRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_sessions_table()
+        #self.create_sessions_table()
 
     def create_sessions_table(self):
         cursor = self.connection.cursor()

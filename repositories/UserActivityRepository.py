@@ -9,7 +9,7 @@ from enums.TimeFrame import TimeFrame
 class UserActivityRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_activities_table()
+        #self.create_activities_table()
 
     def create_activities_table(self):
         cursor = self.connection.cursor()

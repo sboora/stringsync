@@ -8,7 +8,7 @@ from enums.TimeFrame import TimeFrame
 class UserPracticeLogRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_practice_log_table()
+        #self.create_practice_log_table()
 
     def create_practice_log_table(self):
         cursor = self.connection.cursor()

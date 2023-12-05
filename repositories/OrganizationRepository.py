@@ -5,7 +5,7 @@ import string
 class OrganizationRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_organization_table()
+        #self.create_organization_table()
 
     def create_organization_table(self):
         cursor = self.connection.cursor()

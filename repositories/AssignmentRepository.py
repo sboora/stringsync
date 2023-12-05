@@ -4,9 +4,9 @@ import pymysql.cursors
 class AssignmentRepository:
     def __init__(self, connection):
         self.connection = connection
-        self.create_assignments_table()
-        self.create_assignment_details_table()
-        self.create_user_assignments_table()
+        #self.create_assignments_table()
+        #self.create_assignment_details_table()
+        #self.create_user_assignments_table()
 
     def create_assignments_table(self):
         with self.connection.cursor() as cursor:
