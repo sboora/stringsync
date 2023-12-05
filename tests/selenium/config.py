@@ -75,7 +75,7 @@ STUDENT_TEAM_ASSIGNMENTS = [
 ]
 
 TRACK_NAME = "Lesson 1"
-RECORDING_PATH = "/Users/csubramanian/Documents/streamlit/stringsync/student recordings/R off.m4a"
+RECORDING_PATH = "/student recordings/R off.m4a"
 
 
 
