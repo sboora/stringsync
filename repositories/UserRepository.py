@@ -13,7 +13,7 @@ class UserRepository:
         self.create_avatars_table()
         self.create_users_table()
         self.create_root_user()
-        self.create_avatars()
+        #self.create_avatars()
 
     def create_avatars_table(self):
         with self.connection.cursor() as cursor:

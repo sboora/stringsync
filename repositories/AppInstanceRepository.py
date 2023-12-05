@@ -2,7 +2,7 @@ class AppInstanceRepository:
     def __init__(self, connection):
         self.connection = connection
         self.create_instances_table()
-        self.create_seed_data()
+        #self.create_seed_data()
 
     def create_instances_table(self):
         cursor = self.connection.cursor()

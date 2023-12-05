@@ -5,7 +5,7 @@ class FeatureToggleRepository:
     def __init__(self, connection):
         self.connection = connection
         self.create_feature_toggle_table()
-        self.create_seed_data()
+        #self.create_seed_data()
 
     def create_feature_toggle_table(self):
         cursor = self.connection.cursor()
