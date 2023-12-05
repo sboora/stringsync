@@ -1,0 +1,20 @@
+delete from user_sessions where user_id in (select user_id from users where email = 'abc@gmail.com');
+delete from user_activities where user_id in (select user_id from users where email = 'abc@gmail.com');
+delete from users where email = 'abc@gmail.com';
+delete from organizations where name = 'ABC Corp';
+delete from tenants where name = 'ABC Corp';
+
+delete from user_sessions;
+delete from user_activities;
+delete from user_achievements;
+delete from user_practice_logs;
+delete from user_assignments;
+delete from resources;
+delete from messages;
+delete from users;
+delete from avatars;
+delete from user_groups;
+delete from recordings;
+delete from tracks;
+delete from organizations;
+delete from tenants;

@@ -1,12 +1,10 @@
 import base64
-import datetime
 import hashlib
 import os
 from abc import ABC
 from collections import defaultdict
 
 from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
-from prompts import prompts
 
 from langchain.llms.openai import AzureOpenAI
 
@@ -46,7 +44,7 @@ class TeacherPortal(BasePortal, ABC):
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo, self.assignment_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
-            self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
+            self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.message_dashboard_builder = MessageDashboardBuilder(
             self.message_repo, self.user_activity_repo, self.avatar_loader)
         self.notes_repo = NotesRepository(self.get_connection())
@@ -960,23 +958,21 @@ class TeacherPortal(BasePortal, ABC):
             st.info("Please create a team to get started.")
             return
 
-        group_options = ["--Select a Team--"] + [group['group_name'] for group in groups]
+        group_options = [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
         col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 0.5, 1, 1, 1, 1])
 
         with col1:
-            selected_group = st.selectbox(
-                "Select a Team", group_options, key="team_dashboard_group_selector")
+            selected_groups = st.multiselect(
+                "Select Teams", group_options, key="team_dashboard_group_selector")
+
+        selected_group_ids = [group_name_to_id[group] for group in selected_groups]
 
         with col2:
             options = [time_frame for time_frame in TimeFrame]
-
-            # Find the index for 'CURRENT_WEEK' to set as default
             default_index = next((i for i, time_frame in enumerate(TimeFrame)
                                   if time_frame == TimeFrame.CURRENT_WEEK), 0)
-
-            # Create the select box with the default set to 'Current Week'
             time_frame = st.selectbox(
                 'Select a time frame:',
                 options,
@@ -984,65 +980,50 @@ class TeacherPortal(BasePortal, ABC):
                 format_func=lambda x: x.value
             )
 
-        with col4:
-            st.write("")
-            st.write("")
-            if selected_group != "--Select a Team--":
-                selected_group_id = group_name_to_id[selected_group]
+        # Apply actions to all selected groups
+        if selected_groups:
+            with col4:
+                st.write("")
+                st.write("")
                 if st.button("Award Weekly Badges", type='primary'):
-                    self.badge_awarder.auto_award_weekly_badges(selected_group_id)
-                    additional_params = {
-                        "group_id": selected_group_id,
-                    }
-                    # Log activity
-                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
-                                                         ActivityType.AWARD_WEEKLY_BADGES, additional_params)
+                    for group_id in selected_group_ids:
+                        self.badge_awarder.auto_award_weekly_badges(group_id)
+                        self.log_activity(ActivityType.AWARD_WEEKLY_BADGES, group_id)
 
-        with col5:
-            st.write("")
-            st.write("")
-            if selected_group != "--Select a Team--":
-                selected_group_id = group_name_to_id[selected_group]
+            with col5:
+                st.write("")
+                st.write("")
                 if st.button("Award Monthly Badges", type='primary'):
-                    self.badge_awarder.auto_award_monthly_badges(selected_group_id)
-                    additional_params = {
-                        "group_id": selected_group_id,
-                    }
-                    # Log activity
-                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
-                                                         ActivityType.AWARD_MONTHLY_BADGES, additional_params)
+                    for group_id in selected_group_ids:
+                        self.badge_awarder.auto_award_monthly_badges(group_id)
+                        self.log_activity(ActivityType.AWARD_MONTHLY_BADGES, group_id)
 
-        with col6:
-            st.write("")
-            st.write("")
-            if selected_group != "--Select a Team--":
-                selected_group_id = group_name_to_id[selected_group]
+            with col6:
+                st.write("")
+                st.write("")
                 if st.button("Award Yearly Badges", type='primary'):
-                    self.badge_awarder.auto_award_yearly_badges(selected_group_id)
-                    additional_params = {
-                        "group_id": selected_group_id,
-                    }
-                    # Log activity
-                    self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
-                                                         ActivityType.AWARD_YEARLY_BADGES, additional_params)
+                    for group_id in selected_group_ids:
+                        self.badge_awarder.auto_award_yearly_badges(group_id)
+                        self.log_activity(ActivityType.AWARD_YEARLY_BADGES, group_id)
 
-        with col7:
-            st.write("")
-            st.write("")
-            if selected_group != "--Select a Team--":
-                selected_group_id = group_name_to_id[selected_group]
-
+            with col7:
+                st.write("")
+                st.write("")
                 if st.button("Weekly Assessments", type='primary'):
                     llm = self.load_llm(0)
                     with st.spinner("Please wait.."):
-                        self.student_assessment_dashboard_builder.generate_assessments(
-                            selected_group_id, llm, time_frame)
+                        for group_id in selected_group_ids:
+                            self.student_assessment_dashboard_builder.generate_assessments(group_id, llm, time_frame)
 
-        if selected_group != "--Select a Team--":
-            # Show dashboard
-            self.team_dashboard_builder.team_dashboard(selected_group_id, time_frame)
+            st.write("")
+            self.team_dashboard_builder.team_dashboard(selected_group_ids, time_frame)
         else:
             st.info("Please select a team to continue..")
+
+    def log_activity(self, activity_type, group_id):
+        additional_params = {"group_id": group_id}
+        self.user_activity_repo.log_activity(self.get_user_id(), self.get_session_id(),
+                                             activity_type, additional_params)
 
     def hall_of_fame(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.tab_heading_font_color}; font"

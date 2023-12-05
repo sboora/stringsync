@@ -297,6 +297,16 @@ class UserRepository:
             users = [{'user_id': row[0], 'username': row[1]} for row in result]
         return users
 
+    def get_group(self, group_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            get_group_query = """
+                    SELECT id, name
+                    FROM user_groups 
+                    WHERE id = %s;
+                    """
+            cursor.execute(get_group_query, (group_id,))
+            return cursor.fetchone()
+
     def get_all_groups(self, org_id):
         cursor = self.connection.cursor()
         get_groups_query = """

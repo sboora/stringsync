@@ -58,12 +58,32 @@ class SettingsRepository:
     def upsert_setting(self, org_id, setting: Settings, setting_value, portal: Portal):
         cursor = self.connection.cursor()
         serialized_value = self.serialize_value(setting_value, setting.data_type)
-        query = """
+
+        # Check if the setting already exists for the org_id and portal
+        select_query = """
+            SELECT COUNT(*)
+            FROM settings
+            WHERE org_id = %s AND setting_name = %s AND portal = %s
+        """
+        cursor.execute(select_query, (org_id, setting.description, portal.value))
+        exists = cursor.fetchone()[0] > 0
+
+        # If the setting exists, update it
+        if exists:
+            update_query = """
+            UPDATE settings
+            SET setting_value = %s
+            WHERE org_id = %s AND setting_name = %s AND portal = %s
+            """
+            cursor.execute(update_query, (serialized_value, org_id, setting.description, portal.value))
+        # If the setting does not exist, insert it
+        else:
+            insert_query = """
             INSERT INTO settings (org_id, setting_name, setting_value, portal)
             VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE setting_value = %s;
-        """
-        cursor.execute(query, (org_id, setting.description, serialized_value, portal.value, serialized_value))
+            """
+            cursor.execute(insert_query, (org_id, setting.description, serialized_value, portal.value))
+
         self.connection.commit()
 
     def get_setting(self, org_id, setting: Settings, portal: Portal = None):

@@ -57,7 +57,6 @@ class BadgeAwarder:
             # Check if the category from stat is a valid badge and has a threshold
             badge_category = stat['category']
             if badge_category and stat['value'] >= badge_category.threshold:
-                print("Threshold met for ", badge_category)
                 # Award the weekly badges to the students if they meet the threshold
                 self.user_achievement_repo.award_user_badge_by_time_frame(
                     stat['student_id'], badge_category, timeframe, stat['value'])

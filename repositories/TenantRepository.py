@@ -40,3 +40,13 @@ class TenantRepository:
         tenants = [{'id': row[0], 'name': row[1]} for row in result]
         return tenants
 
+    def get_tenant_by_name(self, name):
+        cursor = self.connection.cursor()
+        get_tenant_query = """SELECT id, name FROM tenants WHERE name = %s;"""
+        cursor.execute(get_tenant_query, (name,))
+        result = cursor.fetchone()
+        if result:
+            tenant = {'id': result[0], 'name': result[1]}
+            return tenant
+        else:
+            return None

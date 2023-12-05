@@ -1,5 +1,4 @@
 # Standard library imports
-import base64
 import datetime
 import hashlib
 import json
@@ -48,7 +47,7 @@ class StudentPortal(BasePortal, ABC):
         self.practice_dashboard_builder = PracticeDashboardBuilder(
             self.user_practice_log_repo)
         self.team_dashboard_builder = TeamDashboardBuilder(
-            self.portal_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
+            self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
         self.assignment_dashboard_builder = AssignmentDashboardBuilder(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
@@ -377,7 +376,7 @@ class StudentPortal(BasePortal, ABC):
         )
 
         if self.get_group_id():
-            self.team_dashboard_builder.team_dashboard(self.get_group_id(), time_frame)
+            self.team_dashboard_builder.team_dashboard([self.get_group_id()], time_frame)
         else:
             st.info("Please wait for your teacher to assign you to a team!!")
 
