@@ -81,7 +81,7 @@ class TeacherPortal(BasePortal, ABC):
         tabs = [
             #("👥 Create a Team", self.create_team),
             #("👩‍🎓 Students", self.list_students),
-            ("🔀 Team Assignments", self.team_assignments),
+            #("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
@@ -986,25 +986,31 @@ class TeacherPortal(BasePortal, ABC):
                 st.write("")
                 st.write("")
                 if st.button("Award Weekly Badges", type='primary'):
-                    for group_id in selected_group_ids:
-                        self.badge_awarder.auto_award_weekly_badges(group_id)
-                        self.log_activity(ActivityType.AWARD_WEEKLY_BADGES, group_id)
+                    with st.spinner("Please wait.."):
+                        for group_id in selected_group_ids:
+                            self.badge_awarder.auto_award_weekly_badges(group_id)
+                            self.log_activity(ActivityType.AWARD_WEEKLY_BADGES, group_id)
+                    self.hall_of_fame_dashboard_builder.clear_cache()
 
             with col5:
                 st.write("")
                 st.write("")
                 if st.button("Award Monthly Badges", type='primary'):
-                    for group_id in selected_group_ids:
-                        self.badge_awarder.auto_award_monthly_badges(group_id)
-                        self.log_activity(ActivityType.AWARD_MONTHLY_BADGES, group_id)
+                    with st.spinner("Please wait.."):
+                        for group_id in selected_group_ids:
+                            self.badge_awarder.auto_award_monthly_badges(group_id)
+                            self.log_activity(ActivityType.AWARD_MONTHLY_BADGES, group_id)
+                    self.hall_of_fame_dashboard_builder.clear_cache()
 
             with col6:
                 st.write("")
                 st.write("")
                 if st.button("Award Yearly Badges", type='primary'):
-                    for group_id in selected_group_ids:
-                        self.badge_awarder.auto_award_yearly_badges(group_id)
-                        self.log_activity(ActivityType.AWARD_YEARLY_BADGES, group_id)
+                    with st.spinner("Please wait.."):
+                        for group_id in selected_group_ids:
+                            self.badge_awarder.auto_award_yearly_badges(group_id)
+                            self.log_activity(ActivityType.AWARD_YEARLY_BADGES, group_id)
+                    self.hall_of_fame_dashboard_builder.clear_cache()
 
             with col7:
                 st.write("")

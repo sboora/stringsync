@@ -39,9 +39,6 @@ class HallOfFameDashboardBuilder:
         # Get the winners from the repository based on the specified timeframe
         winners = self.get_winners(group_id, timeframe)
 
-        # Create a divider line
-        divider = "<hr style='height:1px; margin-top: 0; border-width:0; background: lightblue;'>"
-
         # Check if there are any winners
         if winners:
             st.markdown(
@@ -104,6 +101,11 @@ class HallOfFameDashboardBuilder:
         else:
             winners = st.session_state["hall_of_fame_winners"]
         return winners
+
+    @staticmethod
+    def clear_cache():
+        if 'hall_of_fame_winners' in st.session_state:
+            st.session_state.pop('hall_of_fame_winners')
 
     @staticmethod
     def get_avatar_base64_string(avatar_file_path):
