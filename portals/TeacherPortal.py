@@ -961,7 +961,7 @@ class TeacherPortal(BasePortal, ABC):
         group_options = [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 0.5, 1, 1, 1, 1])
+        col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 1, 2])
 
         with col1:
             selected_groups = st.multiselect(
@@ -973,58 +973,60 @@ class TeacherPortal(BasePortal, ABC):
             options = [time_frame for time_frame in TimeFrame]
             default_index = next((i for i, time_frame in enumerate(TimeFrame)
                                   if time_frame == TimeFrame.CURRENT_WEEK), 0)
-            time_frame = st.selectbox(
+            timeframe = st.selectbox(
                 'Select a time frame:',
                 options,
                 index=default_index,
                 format_func=lambda x: x.value
             )
-
+        error_message = None
         # Apply actions to all selected groups
         if selected_groups:
             with col4:
                 st.write("")
                 st.write("")
-                if st.button("Award Weekly Badges", type='primary'):
-                    with st.spinner("Please wait.."):
-                        for group_id in selected_group_ids:
-                            self.badge_awarder.auto_award_weekly_badges(group_id)
-                            self.log_activity(ActivityType.AWARD_WEEKLY_BADGES, group_id)
+                if st.button("Award Badges", type='primary'):
+                    if timeframe not in (
+                            TimeFrame.PREVIOUS_WEEK,
+                            TimeFrame.PREVIOUS_MONTH,
+                            TimeFrame.PREVIOUS_YEAR):
+                        error_message = "Badges cannot be awarded for the current Week, Month or Year."
+                    else:
+                        with st.spinner("Please wait.."):
+                            for group_id in selected_group_ids:
+                                self.badge_awarder.auto_award_badges(self.get_group_id(), timeframe)
+                                self.log_activity(self.get_activity_type(timeframe), group_id)
                     self.hall_of_fame_dashboard_builder.clear_cache()
 
             with col5:
                 st.write("")
                 st.write("")
-                if st.button("Award Monthly Badges", type='primary'):
-                    with st.spinner("Please wait.."):
-                        for group_id in selected_group_ids:
-                            self.badge_awarder.auto_award_monthly_badges(group_id)
-                            self.log_activity(ActivityType.AWARD_MONTHLY_BADGES, group_id)
-                    self.hall_of_fame_dashboard_builder.clear_cache()
-
-            with col6:
-                st.write("")
-                st.write("")
-                if st.button("Award Yearly Badges", type='primary'):
-                    with st.spinner("Please wait.."):
-                        for group_id in selected_group_ids:
-                            self.badge_awarder.auto_award_yearly_badges(group_id)
-                            self.log_activity(ActivityType.AWARD_YEARLY_BADGES, group_id)
-                    self.hall_of_fame_dashboard_builder.clear_cache()
-
-            with col7:
-                st.write("")
-                st.write("")
-                if st.button("Weekly Assessments", type='primary'):
-                    llm = self.load_llm(0)
-                    with st.spinner("Please wait.."):
-                        for group_id in selected_group_ids:
-                            self.student_assessment_dashboard_builder.generate_assessments(group_id, llm, time_frame)
-
+                if st.button("GenerateAssessments", type='primary'):
+                    if timeframe not in (
+                            TimeFrame.PREVIOUS_WEEK,
+                            TimeFrame.PREVIOUS_MONTH,
+                            TimeFrame.PREVIOUS_YEAR):
+                        error_message = "Assessments cannot be generated for the current Week, Month or Year."
+                    else:
+                        llm = self.load_llm(0)
+                        with st.spinner("Please wait.."):
+                            for group_id in selected_group_ids:
+                                self.student_assessment_dashboard_builder.generate_assessments(group_id, llm, timeframe)
+            if error_message:
+                st.error(error_message)
             st.write("")
-            self.team_dashboard_builder.team_dashboard(selected_group_ids, time_frame)
+            self.team_dashboard_builder.team_dashboard(selected_group_ids, timeframe)
         else:
             st.info("Please select a team to continue..")
+
+    @staticmethod
+    def get_activity_type(timeframe):
+        if timeframe == TimeFrame.PREVIOUS_WEEK:
+            return ActivityType.AWARD_WEEKLY_BADGES
+        elif timeframe == TimeFrame.PREVIOUS_MONTH:
+            return ActivityType.AWARD_MONTHLY_BADGES
+        elif timeframe == TimeFrame.PREVIOUS_YEAR:
+            return ActivityType.AWARD_YEARLY_BADGES
 
     def log_activity(self, activity_type, group_id):
         additional_params = {"group_id": group_id}
