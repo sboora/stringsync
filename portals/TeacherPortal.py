@@ -884,7 +884,7 @@ class TeacherPortal(BasePortal, ABC):
         if badge != 'N/A':
             self.user_achievement_repo.award_track_badge(submission['user_id'],
                                                          submission['id'],
-                                                         TrackBadges(badge),
+                                                         TrackBadges.from_value(badge),
                                                          submission['timestamp'])
 
     def show_submissions_summary(self):
