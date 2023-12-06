@@ -605,10 +605,6 @@ class StudentPortal(BasePortal, ABC):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
                     f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
         self.divider()
-        col1, col2, col3 = st.columns([2.4, 2, 1])
-        with col2:
-            if not st.button("Load Assignments", key='load_assignments', type='primary'):
-                return
         self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
 
     def practice_dashboard(self):
