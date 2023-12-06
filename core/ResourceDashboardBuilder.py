@@ -51,13 +51,5 @@ class ResourceDashboardBuilder:
                                     st.video(resource['file_url'])
                                 elif resource['type'] == 'Audio':
                                     st.audio(resource['file_url'])
-                            css = """
-                                <style>
-                                    [data-testid="stExpander"] {
-                                        background: #D5E9F3;
-                                    }
-                                </style>
-                                """
-                            st.write(css, unsafe_allow_html=True)
             else:
                 st.info("No resources found.")
