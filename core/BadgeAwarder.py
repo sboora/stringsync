@@ -35,15 +35,6 @@ class BadgeAwarder:
 
         return badge_awarded
 
-    def auto_award_weekly_badges(self, group_id):
-        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_WEEK)
-
-    def auto_award_monthly_badges(self, group_id):
-        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_MONTH)
-
-    def auto_award_yearly_badges(self, group_id):
-        self.auto_award_badges(group_id, TimeFrame.PREVIOUS_YEAR)
-
     def auto_award_badges(self, group_id, timeframe=TimeFrame.PREVIOUS_WEEK):
         # Retrieve weekly stats for all users in the group within the date range
         stats = self.portal_repo.get_group_stats(group_id, timeframe)
