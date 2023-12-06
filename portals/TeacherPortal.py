@@ -4,6 +4,7 @@ import os
 from abc import ABC
 from collections import defaultdict
 
+from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
 from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
 
 from langchain.llms.openai import AzureOpenAI
@@ -15,6 +16,7 @@ from core.MessageDashboardBuilder import MessageDashboardBuilder
 from core.NotesDashboardBuilder import NotesDashboardBuilder
 from core.PracticeDashboardBuilder import PracticeDashboardBuilder
 from core.ProgressDashboardBuilder import ProgressDashboardBuilder
+from core.ResourceDashboardBuilder import ResourceDashboardBuilder
 from core.StudentAssessmentDashboardBuilder import StudentAssessmentDashboardBuilder
 from core.TeamDashboardBuilder import TeamDashboardBuilder
 from enums.ActivityType import ActivityType
@@ -55,6 +57,11 @@ class TeacherPortal(BasePortal, ABC):
             self.portal_repo)
         self.hall_of_fame_dashboard_builder = HallOfFameDashboardBuilder(
             self.portal_repo, self.badge_awarder, self.avatar_loader)
+        self.resource_dashboard_builder = ResourceDashboardBuilder(
+            self.resource_repo, self.storage_repo)
+        self.assignment_dashboard_builder = AssignmentDashboardBuilder(
+            self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
+            self.resource_dashboard_builder)
 
     @staticmethod
     def load_llm(temperature):
@@ -382,49 +389,19 @@ class TeacherPortal(BasePortal, ABC):
                     f"-size: 28px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
-        # Retrieve all assignments with their details from the repository
-        assignments_with_details = self.assignment_repo.get_all_assignments_with_details()
+        groups = self.user_repo.get_all_groups(self.get_org_id())
+        group_options = {group['group_name']: group['group_id'] for group in groups}
+        selected_group_name = st.selectbox(key=f"assignments-group", label="Select a team:",
+                                           options=['--Select a team--'] + list(group_options.keys()))
 
-        # Structure to hold the consolidated assignments
-        consolidated_assignments = defaultdict(lambda: {'tracks': set(), 'resources': set()})
+        # Filter users by the selected group
+        selected_group_id = None
+        if selected_group_name == '--Select a team--':
+            st.info("Please select a team to view assignments..")
+            return
 
-        # Consolidate tracks and resources by assignment
-        for detail in assignments_with_details:
-            assignment_id = detail['assignment_id']
-            if detail.get('track_name'):
-                consolidated_assignments[assignment_id]['tracks'].add((detail['track_name'], detail['track_path']))
-            if detail.get('resource_title'):
-                consolidated_assignments[assignment_id]['resources'].add((detail['resource_title'], detail['link']))
-            consolidated_assignments[assignment_id].update(detail)
-
-        # If there are assignments with details, display them
-        if consolidated_assignments:
-            for assignment_id, assignment_details in consolidated_assignments.items():
-                with st.expander(f"**{assignment_details['title']}**"):
-                    st.write(f"Description: {assignment_details['description']}")
-                    st.write(
-                        f"Due Date: {assignment_details['due_date'].strftime('%Y-%m-%d') if assignment_details['due_date'] else 'N/A'}")
-
-                    # Display the consolidated track names and resources
-                    track_links = [f"{name}" for name, path in assignment_details['tracks']]
-                    resource_links = [f"[{title}]({link})" for title, link in assignment_details['resources']]
-
-                    if track_links:
-                        st.write(f"Tracks: {', '.join(track_links)}")
-                    if resource_links:
-                        st.write(f"Resources: {', '.join(resource_links)}")
-
-                    st.markdown("---")  # Adding a separator line
-                css = """
-                <style>
-                    [data-testid="stExpander"] {
-                        background: #D5E9F3;
-                    }
-                </style>
-                """
-                st.write(css, unsafe_allow_html=True)
-        else:
-            st.write("No assignments found.")
+        selected_group_id = group_options[selected_group_name]
+        self.assignment_dashboard_builder.group_assignments_dashboard(selected_group_id)
 
     def handle_resource_upload(self, title, description, file, rtype, link):
         if rtype != "Link" and not file:

@@ -132,6 +132,42 @@ class AssignmentRepository:
             # Return the list of assignments with tracks and resources
             return assignments_with_details
 
+    def get_all_assignments_by_group(self, group_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Query to select all unique assignments for a specific group
+            cursor.execute("""
+                SELECT 
+                    a.id as assignment_id, 
+                    a.title, 
+                    a.description, 
+                    a.due_date,
+                    GROUP_CONCAT(DISTINCT CONCAT(t.id, ':', t.name, ':', t.track_path) SEPARATOR ';') as tracks,
+                    GROUP_CONCAT(DISTINCT CONCAT(r.id, ':', r.title, ':', r.link) SEPARATOR ';') as resources
+                FROM user_assignments ua
+                INNER JOIN assignment_details ad ON ua.assignment_detail_id = ad.id
+                INNER JOIN assignments a ON ad.assignment_id = a.id
+                LEFT JOIN tracks t ON ad.track_id = t.id
+                LEFT JOIN resources r ON ad.resource_id = r.id
+                INNER JOIN users u ON ua.user_id = u.id
+                WHERE u.group_id = %s
+                GROUP BY a.id
+                ORDER BY a.timestamp DESC;
+            """, (group_id,))
+
+            # Fetch all results
+            assignments_with_details = cursor.fetchall()
+
+            # Process and return the list of assignments with tracks and resources for the specific group
+            processed_assignments = []
+            for assignment in assignments_with_details:
+                assignment['tracks'] = [track.split(':') for track in assignment['tracks'].split(';')] if assignment[
+                    'tracks'] else []
+                assignment['resources'] = [resource.split(':') for resource in assignment['resources'].split(';')] if \
+                assignment['resources'] else []
+                processed_assignments.append(assignment)
+
+            return processed_assignments
+
     def get_assigned_tracks(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
@@ -143,6 +179,16 @@ class AssignmentRepository:
             """, (assignment_id, user_id))
             return cursor.fetchall()
 
+    def get_assigned_tracks_by_id(self, assignment_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("""
+                SELECT t.id, t.name, ad.description, t.track_path, ad.id AS assignment_detail_id
+                FROM assignment_details ad
+                JOIN tracks t ON ad.track_id = t.id
+                WHERE ad.assignment_id = %s and ad.track_id IS NOT NULL;
+            """, (assignment_id,))
+            return cursor.fetchall()
+
     def get_assigned_resources(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
@@ -152,6 +198,16 @@ class AssignmentRepository:
                 JOIN user_assignments ua ON ad.id = ua.assignment_detail_id
                 WHERE ad.assignment_id = %s AND ua.user_id = %s AND ad.resource_id IS NOT NULL;
             """, (assignment_id, user_id))
+            return cursor.fetchall()
+
+    def get_assigned_resources_by_id(self, assignment_id):
+        with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("""
+                SELECT r.id, r.title, ad.description, r.link, ad.id AS assignment_detail_id
+                FROM assignment_details ad
+                JOIN resources r ON ad.resource_id = r.id
+                WHERE ad.assignment_id = %s AND ad.resource_id IS NOT NULL;
+            """, (assignment_id,))
             return cursor.fetchall()
 
     def get_detail_status(self, assignment_detail_id, user_id):

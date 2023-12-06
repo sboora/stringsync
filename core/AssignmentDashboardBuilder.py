@@ -65,6 +65,45 @@ class AssignmentDashboardBuilder:
                     self._display_status_update(resource['assignment_detail_id'], user_id)
             st.write("")
 
+    def group_assignments_dashboard(self, group_id):
+        # Retrieve assignments for the specific user
+        user_assignments = self.assignment_repo.get_all_assignments_by_group(group_id)
+        if not user_assignments:
+            st.info("No assignments available.")
+            return
+
+        # Loop through assignments and display them
+        for assignment in user_assignments:
+            st.markdown(f"""
+                <h3 style='font-weight: bold; font-size: 20px; text-align: left; margin-bottom: 0;'>
+                    {assignment['title']} - Due: {assignment['due_date'].strftime('%Y-%m-%d')}
+                </h3>
+                <hr style="height:2px;border-width:0;color:gray;background-color:gray;margin-top: 0;">
+                """, unsafe_allow_html=True)
+            st.write(assignment['description'])
+
+            # Display assigned tracks with their own expanders and status updates
+            assigned_tracks = self.assignment_repo.get_assigned_tracks_by_id(
+                assignment['assignment_id'])
+            for track in assigned_tracks:
+                with st.expander(f"**Track**: {track['name']}"):
+                    st.write(f"**Instructions**: {track['description']}")
+                    # Add a button to load the audio track
+                    if st.button(f"Load Track", key=f"load_group_{track['assignment_detail_id']}"):
+                        # Assume self.storage_repo has a method to get the audio URL directly
+                        audio_url = self.storage_repo.download_blob_by_url(track['track_path'])
+                        st.audio(audio_url, format='audio/m4a')
+
+            # Display assigned resources with their own expanders and status updates
+            assigned_resources = self.assignment_repo.get_assigned_resources_by_id(
+                assignment['assignment_id'])
+            for resource in assigned_resources:
+                with st.expander(f"Resource: {resource['title']} - Details"):
+                    st.write(f"Description: {resource['description']}")
+                    if resource.get('link'):
+                        st.markdown(f"[Watch the video]({resource['link']})")
+            st.write("")
+
     def _display_status_update(self, assignment_detail_id, user_id):
         # Fetch current status from the database
         current_status = self.assignment_repo.get_detail_status(assignment_detail_id, user_id)
