@@ -80,12 +80,13 @@ class UserAssessmentRepository:
         return self._get_assessments_by_user(user_id, AssessmentStatus.DRAFT)
 
     def _get_assessments_by_user(self, user_id, status: AssessmentStatus = AssessmentStatus.PUBLISHED):
-        """Retrieves all assessments for a given user."""
+        """Retrieves all assessments for a given user, sorted by most recent first."""
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             query = """
             SELECT id, assessment_text, timestamp, assessment_start_date, assessment_end_date
             FROM user_assessments
-            WHERE user_id = %s and status = %s;
+            WHERE user_id = %s and status = %s
+            ORDER BY timestamp DESC;
             """
             cursor.execute(query, (user_id, status.value))
             return cursor.fetchall()
