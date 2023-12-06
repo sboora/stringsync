@@ -512,7 +512,7 @@ class TeacherPortal(BasePortal, ABC):
             if new_tags:
                 new_tags = [tag.strip() for tag in new_tags.split(",")]
                 selected_tags.extend(new_tags)
-            level = st.selectbox("Select Level", [1, 2, 3, 4, 5])
+            level = st.selectbox("Select Level", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
             if st.form_submit_button("Submit", type="primary"):
                 if self.validate_inputs(track_name, track_file, ref_track_file):
