@@ -961,7 +961,7 @@ class TeacherPortal(BasePortal, ABC):
         group_options = [group['group_name'] for group in groups]
         group_name_to_id = {group['group_name']: group['group_id'] for group in groups}
 
-        col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 1, 2])
+        col1, col2, col3, col4, col5, col6 = st.columns([2, 1, 0.3, 1, 2, 1.5])
 
         with col1:
             selected_groups = st.multiselect(
