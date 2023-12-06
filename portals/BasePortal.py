@@ -249,11 +249,11 @@ class BasePortal(ABC):
         </style>
         """
         st.write(css, unsafe_allow_html=True)
-        css = """
+        css = f"""
         <style>
-            [data-testid="stExpander"] {
-                background: #459DC6;
-            }
+            [data-testid="stExpander"] {{
+                background: {self.get_tab_background_color()};
+            }}
         </style>
         """
         st.write(css, unsafe_allow_html=True)
