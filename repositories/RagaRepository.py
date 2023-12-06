@@ -136,6 +136,13 @@ class RagaRepository:
             aarohanam='S R2 G3 P D2 S',
             avarohanam='S N3 D2 P M1 G3 R2 S'
         )
+        self.add_raga(
+            name='Mohanam',
+            is_melakarta=False,
+            parent_raga="Kalyani",
+            aarohanam='S R2 G3 P D2 S',
+            avarohanam='S D2 P G3 R2 S'
+        )
 
 
 
