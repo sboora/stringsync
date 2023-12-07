@@ -5,6 +5,7 @@ import os
 
 # Third-party imports
 import pandas as pd
+import pytz
 import streamlit as st
 from abc import ABC
 from streamlit_lottie import st_lottie
@@ -517,18 +518,23 @@ class StudentPortal(BasePortal, ABC):
         self.get_assignment_dashboard().build(
             self.get_session_id(), self.get_org_id(), self.get_user_id(), self.get_recordings_bucket())
 
-    def practice_dashboard(self):
+    def practice_dashboard(self, timezone='America/Los_Angeles'):
         st.markdown(
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
         self.divider()
+        # Convert timezone string to a pytz timezone object
+        local_tz = pytz.timezone(timezone)
+        # Get the current datetime in the local timezone
+        local_time = datetime.datetime.now(local_tz)
+        local_date = local_time.date()
         # Initialize session state variables if they aren't already
         if 'form_submitted' not in st.session_state:
             st.session_state.form_submitted = False
         if 'badge_awarded_in_last_run' not in st.session_state:
             st.session_state.badge_awarded_in_last_run = False
         if 'practice_time' not in st.session_state:
-            st.session_state.practice_time = datetime.datetime.now()
+            st.session_state.practice_time = local_time
         if 'practice_minutes' not in st.session_state:
             st.session_state.practice_minutes = 15
 
@@ -539,32 +545,30 @@ class StudentPortal(BasePortal, ABC):
             st.write("")
             st.write("")
             with st.form("log_practice_time_form"):
-                # Use the session_state to remember the previously selected practice date
-                practice_date = datetime.date.today() \
-                    if 'practice_date' not in st.session_state else st.session_state.practice_date
-                practice_time = datetime.datetime.now() \
-                    if 'practice_time' not in st.session_state else st.session_state.practice_time
+                # Set default practice date and time based on the local timezone
+                practice_date = st.session_state.practice_date \
+                    if 'practice_date' in st.session_state else local_date
+                practice_time = st.session_state.practice_time \
+                    if 'practice_time' in st.session_state else local_time.time()
 
-                practice_date = st.date_input("Practice Date",
-                                              value=practice_date,
-                                              key="practice_date")
-                practice_time = st.time_input("Practice Time",
-                                              value=practice_time,
-                                              key="practice_time",
-                                              step=300)
-                practice_minutes = st.selectbox("Minutes Practiced",
-                                                [i for i in range(10, 121, 5)],
+                # Create date and time inputs
+                practice_date = st.date_input("Practice Date", value=practice_date, key="practice_date")
+                practice_time = st.time_input("Practice Time", value=practice_time, key="practice_time", step=300)
+                practice_minutes = st.selectbox("Minutes Practiced", [i for i in range(10, 121, 5)],
                                                 key="practice_minutes")
                 submit = st.form_submit_button("Log Practice", type="primary")
 
                 if submit and not st.session_state.form_submitted:
-                    # Validate if the practice_date is not in the future
-                    if practice_date > datetime.date.today():
-                        st.error("The practice date cannot be in the future.")
+                    practice_datetime = local_tz.localize(
+                        datetime.datetime.combine(practice_date, practice_time), is_dst=None)
+                    if practice_datetime > local_time:
+                        st.error("The practice time cannot be in the future.")
                     else:
                         user_id = self.get_user_id()
-                        practice_datetime = datetime.datetime.combine(practice_date, practice_time)
-                        self.user_practice_log_repo.log_practice(user_id, practice_datetime, practice_minutes)
+                        practice_datetime = datetime.datetime.combine(
+                            practice_date, practice_time, local_tz)
+                        self.user_practice_log_repo.log_practice(
+                            user_id, practice_datetime, practice_minutes)
                         st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
                         additional_params = {
                             "minutes": practice_minutes,
