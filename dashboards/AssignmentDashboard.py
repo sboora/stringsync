@@ -1,3 +1,4 @@
+import os
 import tempfile
 from datetime import datetime
 
@@ -92,6 +93,10 @@ class AssignmentDashboard:
                     self._display_status_update(track['assignment_detail_id'], user_id)
                     self._display_remarks_and_score_for_recordings(
                         user_id, track['id'], selected_assignment['id'], timezone)
+                    if recording_path:
+                        os.remove(recording_path)
+                    if recording_name:
+                        os.remove(recording_name)
                     st.write("")
 
             st.divider()
