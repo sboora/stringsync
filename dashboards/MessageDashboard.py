@@ -4,13 +4,13 @@ import re
 from datetime import datetime
 import streamlit as st
 
-from core.AvatarLoader import AvatarLoader
+from components.AvatarLoader import AvatarLoader
 from enums.ActivityType import ActivityType
 from repositories.MessageRepository import MessageRepository
 from repositories.UserActivityRepository import UserActivityRepository
 
 
-class MessageDashboardBuilder:
+class MessageDashboard:
     def __init__(self, message_repo: MessageRepository,
                  user_activity_repo: UserActivityRepository,
                  avatar_loader: AvatarLoader):

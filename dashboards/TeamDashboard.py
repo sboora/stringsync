@@ -1,16 +1,17 @@
 import base64
 import os
 
-from core.AvatarLoader import AvatarLoader
-from core.BadgeAwarder import BadgeAwarder
-from core.ListBuilder import ListBuilder
+from components.AvatarLoader import AvatarLoader
+from components.BadgeAwarder import BadgeAwarder
+from components.ListBuilder import ListBuilder
 from enums.TimeFrame import TimeFrame
 from repositories.PortalRepository import PortalRepository
 from repositories.UserAchievementRepository import UserAchievementRepository
 from repositories.UserRepository import UserRepository
 import streamlit as st
 
-class TeamDashboardBuilder:
+
+class TeamDashboard:
     def __init__(self,
                  portal_repo: PortalRepository,
                  user_repo: UserRepository,

@@ -9,9 +9,9 @@ from abc import ABC, abstractmethod
 import streamlit as st
 from langchain.llms.openai import AzureOpenAI
 
-from core.AvatarLoader import AvatarLoader
-from core.ListBuilder import ListBuilder
-from core.NotificationsDashboardBuilder import NotificationsDashboardBuilder
+from components.AvatarLoader import AvatarLoader
+from components.ListBuilder import ListBuilder
+from dashboards.NotificationsDashboard import NotificationsDashboard
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges, TrackBadges
 from enums.Settings import Settings, SettingType
@@ -84,7 +84,7 @@ class BasePortal(ABC):
         self.assessment_repo = UserAssessmentRepository(self.get_connection())
         self.storage_repo = StorageRepository('melodymaster')
         self.avatar_loader = AvatarLoader(self.storage_repo, self.user_repo)
-        self.notifications_dashboard = NotificationsDashboardBuilder(
+        self.notifications_dashboard = NotificationsDashboard(
             self.user_session_repo, self.portal_repo)
 
     @abstractmethod

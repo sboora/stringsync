@@ -1,13 +1,10 @@
-import base64
 import json
-import time
 
-import streamlit as st
 
 from enums.ActivityType import ActivityType
 
 
-class NotificationsDashboardBuilder:
+class NotificationsDashboard:
     def __init__(self, user_session_repo, portal_repo):
         self.user_session_repo = user_session_repo
         self.portal_repo = portal_repo

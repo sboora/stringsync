@@ -2,7 +2,7 @@ from abc import ABC
 
 import streamlit as st
 
-from core.ListBuilder import ListBuilder
+from components.ListBuilder import ListBuilder
 from enums.ActivityType import ActivityType
 from enums.Features import Features
 from enums.Settings import Portal
@@ -48,7 +48,7 @@ class AdminPortal(BasePortal, ABC):
 
             **Your Comprehensive Dashboard for Educational Management**
 
-            This portal is designed to provide a centralized platform for seamless administration of your educational organization. Here are the core functionalities you can leverage:
+            This portal is designed to provide a centralized platform for seamless administration of your educational organization. Here are the dashboards functionalities you can leverage:
             - 🏫 **Register Schools**: Incorporate new educational institutions into your organizational network, ensuring each school has a unique identifier and profile.
             - 👩‍🏫 **Register Tutors**: Onboard new tutors effortlessly, collecting essential information and credentials for future reference.
             - 📝 **Assign Tutors to Schools**: Allocate tutors to specific schools optimally, ensuring a balanced distribution of resources for academic excellence.

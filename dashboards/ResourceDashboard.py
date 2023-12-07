@@ -4,10 +4,11 @@ from repositories.ResourceRepository import ResourceRepository
 from repositories.StorageRepository import StorageRepository
 
 
-class ResourceDashboardBuilder:
-    def __init__(self, resource_repo: ResourceRepository, storage_repo: StorageRepository):
-        self.resource_repo = resource_repo
-        self.storage_repo = storage_repo
+class ResourceDashboard:
+    def __init__(self, resource_repo: ResourceRepository,
+                 storage_repo: StorageRepository):
+                self.resource_repo = resource_repo
+                self.storage_repo = storage_repo
 
     def resources_dashboard(self, resource_ids=None):
         with st.spinner("Please wait.."):

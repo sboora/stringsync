@@ -1,22 +1,19 @@
-import tempfile
-
 import streamlit as st
 
-from core.ListBuilder import ListBuilder
-from core.ResourceDashboardBuilder import ResourceDashboardBuilder
+from dashboards.ResourceDashboard import ResourceDashboard
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.ResourceRepository import ResourceRepository
 from repositories.StorageRepository import StorageRepository
 from repositories.TrackRepository import TrackRepository
 
 
-class AssignmentDashboardBuilder:
+class AssignmentDashboard:
     def __init__(self,
                  resource_repo: ResourceRepository,
                  track_repo: TrackRepository,
                  assignment_repo: AssignmentRepository,
                  storage_repo: StorageRepository,
-                 resource_dashboard_builder: ResourceDashboardBuilder):
+                 resource_dashboard_builder: ResourceDashboard):
         self.resource_repo = resource_repo
         self.track_repo = track_repo
         self.assignment_repo = assignment_repo

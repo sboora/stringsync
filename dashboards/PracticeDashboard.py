@@ -5,7 +5,7 @@ import streamlit as st
 from repositories.UserPracticeLogRepository import UserPracticeLogRepository
 
 
-class PracticeDashboardBuilder:
+class PracticeDashboard:
     def __init__(self,
                  user_practice_log_repo: UserPracticeLogRepository):
         self.user_practice_log_repo = user_practice_log_repo

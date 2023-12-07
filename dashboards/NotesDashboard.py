@@ -4,7 +4,7 @@ from datetime import datetime
 from repositories.NotesRepository import NotesRepository
 
 
-class NotesDashboardBuilder:
+class NotesDashboard:
     def __init__(self, notes_repo: NotesRepository):
         self.notes_repo = notes_repo
 

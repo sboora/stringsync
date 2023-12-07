@@ -10,17 +10,18 @@ import streamlit as st
 from abc import ABC
 from streamlit_lottie import st_lottie
 
-from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
-from core.BadgeAwarder import BadgeAwarder
-from core.BadgesDashboardBuilder import BadgesDashboardBuilder
-from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
-from core.ListBuilder import ListBuilder
-from core.MessageDashboardBuilder import MessageDashboardBuilder
-from core.PracticeDashboardBuilder import PracticeDashboardBuilder
-from core.ProgressDashboardBuilder import ProgressDashboardBuilder
-from core.ResourceDashboardBuilder import ResourceDashboardBuilder
-from core.StudentAssessmentDashboardBuilder import StudentAssessmentDashboardBuilder
-from core.TeamDashboardBuilder import TeamDashboardBuilder
+from components.BadgeAwarder import BadgeAwarder
+from components.ListBuilder import ListBuilder
+from components.RecordingUploader import RecordingUploader
+from dashboards.AssignmentDashboard import AssignmentDashboard
+from dashboards.BadgesDashboard import BadgesDashboard
+from dashboards.HallOfFameDashboard import HallOfFameDashboard
+from dashboards.MessageDashboard import MessageDashboard
+from dashboards.PracticeDashboard import PracticeDashboard
+from dashboards.ProgressDashboard import ProgressDashboard
+from dashboards.ResourceDashboard import ResourceDashboard
+from dashboards.StudentAssessmentDashboard import StudentAssessmentDashboard
+from dashboards.TeamDashboard import TeamDashboard
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges
 from enums.Features import Features
@@ -28,7 +29,7 @@ from enums.Settings import Portal
 from enums.SoundEffect import SoundEffect
 from enums.TimeFrame import TimeFrame
 from portals.BasePortal import BasePortal
-from core.AudioProcessor import AudioProcessor
+from components.AudioProcessor import AudioProcessor
 
 
 class StudentPortal(BasePortal, ABC):
@@ -39,27 +40,27 @@ class StudentPortal(BasePortal, ABC):
             self.settings_repo, self.recording_repo,
             self.user_achievement_repo, self.user_practice_log_repo,
             self.portal_repo, self.storage_repo)
-        self.progress_dashboard_builder = ProgressDashboardBuilder(
+        self.progress_dashboard_builder = ProgressDashboard(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo, self.assignment_repo)
-        self.resource_dashboard_builder = ResourceDashboardBuilder(
+        self.resource_dashboard_builder = ResourceDashboard(
             self.resource_repo, self.storage_repo)
-        self.practice_dashboard_builder = PracticeDashboardBuilder(
+        self.practice_dashboard_builder = PracticeDashboard(
             self.user_practice_log_repo)
-        self.team_dashboard_builder = TeamDashboardBuilder(
+        self.team_dashboard_builder = TeamDashboard(
             self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
-        self.assignment_dashboard_builder = AssignmentDashboardBuilder(
+        self.assignment_dashboard_builder = AssignmentDashboard(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
-        self.message_dashboard_builder = MessageDashboardBuilder(
+        self.message_dashboard_builder = MessageDashboard(
             self.message_repo, self.user_activity_repo, self.avatar_loader)
-        self.badges_dashboard_builder = BadgesDashboardBuilder(
+        self.badges_dashboard_builder = BadgesDashboard(
             self.settings_repo, self.user_achievement_repo, self.storage_repo)
-        self.student_assessment_dashboard_builder = StudentAssessmentDashboardBuilder(
+        self.student_assessment_dashboard_builder = StudentAssessmentDashboard(
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
             self.portal_repo)
-        self.hall_of_fame_dashboard_builder = HallOfFameDashboardBuilder(
+        self.hall_of_fame_dashboard_builder = HallOfFameDashboard(
             self.portal_repo, self.badge_awarder, self.avatar_loader)
 
     def get_portal(self):
@@ -101,7 +102,7 @@ class StudentPortal(BasePortal, ABC):
             - **Track & Grow**: Monitor your progress and celebrate achievements with badges.
             - **Connect & Collaborate**: Join the community, share insights, and learn together.
         """
-        )
+                 )
 
         st.write("""
             ### Why Choose GuruShishya? 🌟
@@ -119,7 +120,7 @@ class StudentPortal(BasePortal, ABC):
             - **Collaborative Team Dashboard**: Engage with your peers and track team progress.
             - **Networking with Team Connect**: Build connections and collaborate with fellow learners.
         """
-        )
+                 )
 
         st.write(
             "Ready to dive into your musical journey? Register & Login to explore all the exciting features available "
@@ -153,16 +154,18 @@ class StudentPortal(BasePortal, ABC):
             self.play_sound_effect(SoundEffect.AWARD)
 
     def hall_of_fame(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
         self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_WEEK)
         st.write("")
         self.divider(3)
         self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_MONTH)
 
     def recording_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 🎙️ Record Your Tracks 🎙️</h2>", unsafe_allow_html=True)
         self.divider()
         track = self.filter_tracks()
         if not track:
@@ -175,9 +178,8 @@ class StudentPortal(BasePortal, ABC):
         with st.spinner("Please wait.."):
             track_audio_path = self.download_to_temp_file_by_url(track['track_path'])
         load_recordings = False
-        badge_awarded = False
-
         col1, col2, col3 = st.columns([5, 5, 5])
+        recording_uploader = self.get_recording_uploader()
         with col1:
             self.display_track_files(track_audio_path)
             track_notes = self.raga_repo.get_notes(track['ragam_id'])
@@ -185,34 +187,31 @@ class StudentPortal(BasePortal, ABC):
                 load_recordings = True
 
         with col2:
-            recording_name, recording_id, is_success, timestamp = \
-                self.handle_file_upload(self.get_user_id(), track['id'])
-            if is_success:
-                additional_params = {
-                    "track_name": track['track_name'],
-                    "recording_name": recording_name,
-                }
-                self.user_activity_repo.log_activity(self.get_user_id(),
-                                                     self.get_session_id(),
-                                                     ActivityType.UPLOAD_RECORDING,
-                                                     additional_params)
-                self.user_session_repo.update_last_activity_time(self.get_session_id())
-                badge_awarded = self.badge_awarder.award_user_badge(
-                    self.get_org_id(), self.get_user_id(), UserBadges.FIRST_NOTE, timestamp)
+            uploaded, badge_awarded, recording_id, recording_name = recording_uploader.upload(
+                self.get_session_id(), self.get_org_id(),
+                self.get_user_id(), track, self.get_recordings_bucket())
         with col3:
-            if is_success:
+            if uploaded:
                 with st.spinner("Please wait..."):
-                    distance, score, analysis = self.display_student_performance(
-                        track_audio_path, recording_name, track_notes, track)
+                    distance, score, analysis = recording_uploader.analyze_recording(
+                        track, track_audio_path, recording_name)
+                    self.display_score(score)
                     self.recording_repo.update_score_and_analysis(
                         recording_id, distance, score, analysis)
+
         if badge_awarded:
             self.show_animations()
 
         if load_recordings:
             self.recordings(track['id'])
-        if is_success:
+
+        if uploaded:
             os.remove(recording_name)
+
+    def get_recording_uploader(self):
+        return RecordingUploader(
+            self.recording_repo, self.raga_repo, self.user_activity_repo, self.user_session_repo,
+            self.storage_repo, self.badge_awarder, self.audio_processor)
 
     @staticmethod
     def display_recordings_header():
@@ -244,9 +243,9 @@ class StudentPortal(BasePortal, ABC):
                 if recording['blob_url']:
                     filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
                     col1.write("")
-                    col1.audio(filename, format='core/m4a')
+                    col1.audio(filename, format='dashboards/m4a')
                 else:
-                    col1.write("No core data available.")
+                    col1.write("No dashboards data available.")
 
                 col2.write("")
                 # Get the remarks, replacing new lines with <br> for HTML display
@@ -275,7 +274,7 @@ class StudentPortal(BasePortal, ABC):
         if recording['blob_url']:
             filename = self.storage_repo.download_blob_by_name(recording['blob_name'])
             return f"<audio controls><source src='{filename}' type='audio/m4a'></audio>"
-        return "No core data available."
+        return "No dashboards data available."
 
     def format_timestamp(self, timestamp):
         formatted_timestamp = timestamp.strftime('%I:%M %p, ') + self.ordinal(
@@ -283,8 +282,9 @@ class StudentPortal(BasePortal, ABC):
         return formatted_timestamp
 
     def submissions_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 📝 Review Your Submissions & Feedback 📝</h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.4, 2, 1])
         with col2:
@@ -314,13 +314,13 @@ class StudentPortal(BasePortal, ABC):
                     unsafe_allow_html=True)
                 if submission['track_audio_url']:
                     track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
-                    col2.audio(track_audio, format='core/m4a')
+                    col2.audio(track_audio, format='dashboards/m4a')
                 else:
                     col2.warning("No audio available.")
 
                 if submission['recording_audio_url']:
                     track_audio = self.storage_repo.download_blob_by_url(submission['recording_audio_url'])
-                    col3.audio(track_audio, format='core/m4a')
+                    col3.audio(track_audio, format='dashboards/m4a')
                 else:
                     col3.warning("No audio available.")
 
@@ -344,8 +344,9 @@ class StudentPortal(BasePortal, ABC):
                 st.markdown("</div>", unsafe_allow_html=True)
 
     def progress_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
         self.divider()
         st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
         self.student_assessment_dashboard_builder.show_assessment(self.get_user_id())
@@ -464,136 +465,27 @@ class StudentPortal(BasePortal, ABC):
     def display_track_files(track_file):
         st.audio(track_file, format='audio/mp4')
 
-    def handle_file_upload(self, user_id, track_id):
-        with st.form("recording_uploader_form", clear_on_submit=True):
-            uploaded_student_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
-            original_date = st.date_input("Original File Date", value=None)  # Default value is None
-            uploaded = st.form_submit_button("Upload", type="primary")
-
-            if uploaded:
-                if uploaded_student_file is None:
-                    st.error("File is required.")
-                    return None, -1, False, datetime.datetime.now()
-
-                # If the original date is provided, use it to create a datetime object,
-                # otherwise use the current date and time.
-                if original_date:
-                    original_timestamp = datetime.datetime.combine(original_date, datetime.datetime.min.time())
-                else:
-                    original_timestamp = datetime.datetime.now()
-
-                with st.spinner("Please wait.."):
-                    recording_data = uploaded_student_file.getbuffer()
-                    file_hash = self.calculate_file_hash(recording_data)
-
-                    # Check for duplicates
-                    if self.recording_repo.is_duplicate_recording(user_id, track_id, file_hash):
-                        st.error("You have already uploaded this recording.")
-                        return "", -1, False, original_timestamp
-
-                    # Upload the recording to storage repo and recording repo
-                    recording_name, url, recording_id = self.add_recording(user_id,
-                                                                           track_id,
-                                                                           recording_data,
-                                                                           original_timestamp,
-                                                                           file_hash)
-
-                    st.audio(recording_name, format='audio/mp4')
-                return recording_name, recording_id, True, original_timestamp
-        return None, -1, False, datetime.datetime.now()
-
     @staticmethod
-    def calculate_file_hash(recording_data):
-        return hashlib.md5(recording_data).hexdigest()
-
-    def add_recording(self, user_id, track_id, recording_data, timestamp, file_hash):
-        recording_name = f"{user_id}-{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
-        blob_name = f'{self.get_recordings_bucket()}/{recording_name}'
-        blob_url = self.storage_repo.upload_blob(recording_data, blob_name)
-        self.storage_repo.download_blob(blob_url, recording_name)
-        duration = self.audio_processor.calculate_audio_duration(recording_name)
-        recording_id = self.recording_repo.add_recording(
-            user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash)
-        return recording_name, blob_url, recording_id
-
-    def display_student_performance(
-            self, track_file, student_path, track_notes, track):
-        if not student_path:
-            return -1, ""
-
-        offset = self.get_offset(track)
-        distance = self.get_audio_distance(track_file, student_path)
-        offset_corrected_distance = distance - offset
-        student_notes = self.get_filtered_student_notes(student_path)
-        error_notes, missing_notes = self.audio_processor.error_and_missing_notes(
-            track_notes, student_notes)
-        score = self.audio_processor.distance_to_score(
-            offset_corrected_distance, 0, offset)
-        analysis, score = self.display_score_and_analysis(score, error_notes, missing_notes)
-        return distance, score, analysis
-
-    @staticmethod
-    def get_offset(track):
-        # TODO: control it via settings
-        base = 1.1
-        multiplier = base ** (track['level']-1)
-        return int(round(multiplier * track['offset']))
-
-    def get_audio_distance(self, track_file, student_path):
-        return self.audio_processor.compare_audio(track_file, student_path)
-
-    def get_filtered_student_notes(self, student_path):
-        student_notes = self.audio_processor.get_notes(student_path)
-        return self.audio_processor.filter_consecutive_notes(student_notes)
-
-    def display_score_and_analysis(self, score, error_notes, missing_notes):
-        analysis, off_notes = self.audio_processor.generate_note_analysis(
-            error_notes, missing_notes)
-        new_score = self.display_score(score, off_notes)
-        # st.info(analysis)
-        encouragement_message = ""
-        """
-        encouragement_message = self.generate_message(new_score)
-        st.info(encouragement_message)
-        """
-        return analysis + encouragement_message, new_score
-
-    @staticmethod
-    def display_score(score, errors):
-        new_score = score
-        """
-        if score == 10 and errors > 0:
-            new_score = score - errors
-        """
-        message = f"Score: {new_score}\n"
+    def display_score(score):
+        message = f"Score: {score}\n"
         if score <= 3:
             st.error(message)
         elif score <= 7:
             st.warning(message)
         else:
             st.success(message)
-        return new_score
-
-    @staticmethod
-    def generate_message(score):
-        if score <= 3:
-            return "Keep trying. You can do better!"
-        elif score <= 7:
-            return "Good job. You are almost there!"
-        elif score <= 9:
-            return "Great work. Keep it up!"
-        else:
-            return "Excellent! You've mastered this track!"
 
     def badges_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
         self.badges_dashboard_builder.badges_dashboard(self.get_org_id(), self.get_user_id())
 
     def resources_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 📚 Access Your Learning Resources 📚</h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.4, 2, 1])
         with col2:
@@ -602,14 +494,16 @@ class StudentPortal(BasePortal, ABC):
         self.resource_dashboard_builder.resources_dashboard()
 
     def assignments_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
         self.divider()
         self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
 
     def practice_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
         self.divider()
         # Initialize session state variables if they aren't already
         if 'form_submitted' not in st.session_state:

@@ -19,7 +19,7 @@ import streamlit as st
 from prompts import  prompts
 
 
-class StudentAssessmentDashboardBuilder:
+class StudentAssessmentDashboard:
     def __init__(self,
                  user_repo: UserRepository,
                  recording_repo: RecordingRepository,

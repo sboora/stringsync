@@ -1,6 +1,6 @@
 import streamlit as st
 
-from core.ListBuilder import ListBuilder
+from components.ListBuilder import ListBuilder
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.RecordingRepository import RecordingRepository
 from repositories.SettingsRepository import SettingsRepository
@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.express as px
 
 
-class ProgressDashboardBuilder:
+class ProgressDashboard:
     def __init__(self,
                  settings_repo: SettingsRepository,
                  recording_repo: RecordingRepository,

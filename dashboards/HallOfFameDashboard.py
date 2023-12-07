@@ -1,15 +1,15 @@
 import base64
 import os
 
-from core.AvatarLoader import AvatarLoader
-from core.BadgeAwarder import BadgeAwarder
+from components.AvatarLoader import AvatarLoader
+from components.BadgeAwarder import BadgeAwarder
 from enums.Badges import UserBadges
 from enums.TimeFrame import TimeFrame
 from repositories.PortalRepository import PortalRepository
 import streamlit as st
 
 
-class HallOfFameDashboardBuilder:
+class HallOfFameDashboard:
     def __init__(self,
                  portal_repo: PortalRepository,
                  badge_awarder: BadgeAwarder,

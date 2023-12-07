@@ -1,12 +1,11 @@
 from abc import ABC
 
-from core.ListBuilder import ListBuilder
+from components.ListBuilder import ListBuilder
 from enums.Features import Features
 from enums.Settings import Portal
 from enums.UserType import UserType
 from portals.BasePortal import BasePortal
 import streamlit as st
-import streamlit_toggle as tog
 import os
 
 
@@ -29,7 +28,7 @@ class TenantPortal(BasePortal, ABC):
 
             **Your Centralized Platform for Multi-Organization Educational Oversight**
 
-            This portal is  designed to offer you a streamlined experience in managing multiple educational organizations. Here are the core functionalities you can leverage:
+            This portal is  designed to offer you a streamlined experience in managing multiple educational organizations. Here are the dashboards functionalities you can leverage:
             - 🏢 **Register New Tenants**: Seamlessly integrate new educational organizations into your existing network, complete with all essential details and administrative credentials.
             - 📋 **List All Tenants**: Gain a holistic view of all the educational organizations under your purview, including their administrative contacts and root organizations.
 

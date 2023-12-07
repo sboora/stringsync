@@ -41,7 +41,7 @@ class TimeFrame(enum.Enum):
             end_date = today.replace(month=1, day=1) - datetime.timedelta(seconds=1)
         elif self == TimeFrame.HISTORICAL:
             start_date = datetime.date.min
-            end_date = today  # In the historical case, it might be reasonable to include all of today
+            end_date = datetime.datetime.combine(today, datetime.time(23, 59))
         else:
             # Default case or unrecognized timeframe
             start_date = today

@@ -2,27 +2,26 @@ import base64
 import hashlib
 import os
 from abc import ABC
-from collections import defaultdict
 
-from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
-from core.HallOfFameDashboardBuilder import HallOfFameDashboardBuilder
 
 from langchain.llms.openai import AzureOpenAI
 
-from core.AudioProcessor import AudioProcessor
-from core.BadgeAwarder import BadgeAwarder
-from core.ListBuilder import ListBuilder
-from core.MessageDashboardBuilder import MessageDashboardBuilder
-from core.NotesDashboardBuilder import NotesDashboardBuilder
-from core.PracticeDashboardBuilder import PracticeDashboardBuilder
-from core.ProgressDashboardBuilder import ProgressDashboardBuilder
-from core.ResourceDashboardBuilder import ResourceDashboardBuilder
-from core.StudentAssessmentDashboardBuilder import StudentAssessmentDashboardBuilder
-from core.TeamDashboardBuilder import TeamDashboardBuilder
+from components.AudioProcessor import AudioProcessor
+from components.BadgeAwarder import BadgeAwarder
+from components.ListBuilder import ListBuilder
+from dashboards.AssignmentDashboard import AssignmentDashboard
+from dashboards.HallOfFameDashboard import HallOfFameDashboard
+from dashboards.MessageDashboard import MessageDashboard
+from dashboards.NotesDashboard import NotesDashboard
+from dashboards.PracticeDashboard import PracticeDashboard
+from dashboards.ProgressDashboard import ProgressDashboard
+from dashboards.ResourceDashboard import ResourceDashboard
+from dashboards.StudentAssessmentDashboard import StudentAssessmentDashboard
+from dashboards.TeamDashboard import TeamDashboard
 from enums.ActivityType import ActivityType
 from enums.Badges import TrackBadges
 from enums.Features import Features
-from enums.Settings import Portal, Settings
+from enums.Settings import Portal
 from enums.TimeFrame import TimeFrame
 from portals.BasePortal import BasePortal
 import streamlit as st
@@ -40,26 +39,26 @@ class TeacherPortal(BasePortal, ABC):
             self.settings_repo, self.recording_repo,
             self.user_achievement_repo, self.user_practice_log_repo,
             self.portal_repo, self.storage_repo)
-        self.practice_dashboard_builder = PracticeDashboardBuilder(
+        self.practice_dashboard_builder = PracticeDashboard(
             self.user_practice_log_repo)
-        self.progress_dashboard_builder = ProgressDashboardBuilder(
+        self.progress_dashboard_builder = ProgressDashboard(
             self.settings_repo, self.recording_repo, self.user_achievement_repo,
             self.user_practice_log_repo, self.track_repo, self.assignment_repo)
-        self.team_dashboard_builder = TeamDashboardBuilder(
+        self.team_dashboard_builder = TeamDashboard(
             self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
-        self.message_dashboard_builder = MessageDashboardBuilder(
+        self.message_dashboard_builder = MessageDashboard(
             self.message_repo, self.user_activity_repo, self.avatar_loader)
         self.notes_repo = NotesRepository(self.get_connection())
-        self.notes_dashboard_builder = NotesDashboardBuilder(self.notes_repo)
-        self.student_assessment_dashboard_builder = StudentAssessmentDashboardBuilder(
+        self.notes_dashboard_builder = NotesDashboard(self.notes_repo)
+        self.student_assessment_dashboard_builder = StudentAssessmentDashboard(
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
             self.portal_repo)
-        self.hall_of_fame_dashboard_builder = HallOfFameDashboardBuilder(
+        self.hall_of_fame_dashboard_builder = HallOfFameDashboard(
             self.portal_repo, self.badge_awarder, self.avatar_loader)
-        self.resource_dashboard_builder = ResourceDashboardBuilder(
+        self.resource_dashboard_builder = ResourceDashboard(
             self.resource_repo, self.storage_repo)
-        self.assignment_dashboard_builder = AssignmentDashboardBuilder(
+        self.assignment_dashboard_builder = AssignmentDashboard(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
 
@@ -576,7 +575,7 @@ class TeacherPortal(BasePortal, ABC):
             col2.write("")
             blob_url = track['track_path']
             audio_file_path = self.storage_repo.download_blob_by_url(blob_url)
-            col2.audio(audio_file_path, format='core/m4a')
+            col2.audio(audio_file_path, format='dashboards/m4a')
 
             col3.write("")
             col3.markdown(
@@ -760,9 +759,9 @@ class TeacherPortal(BasePortal, ABC):
                     f"Recording ID {recording['id']} - {recording['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"):
                 if recording['blob_url']:
                     filename = self.storage_repo.download_blob_by_url(recording['blob_url'])
-                    st.audio(filename, format='core/m4a')
+                    st.audio(filename, format='dashboards/m4a')
                 else:
-                    st.write("No core data available.")
+                    st.write("No dashboards data available.")
 
                 # Create a form for score, remarks, and timestamp
                 with st.form(f"recording_form_{recording['id']}"):
@@ -814,16 +813,16 @@ class TeacherPortal(BasePortal, ABC):
                 if submission['track_path']:
                     filename = self.storage_repo.download_blob_by_url(submission['track_path'])
                     st.markdown("<span style='font-size: 15px;'>Track:</span>", unsafe_allow_html=True)
-                    st.audio(filename, format='core/m4a')
+                    st.audio(filename, format='dashboards/m4a')
                 else:
-                    st.write("No core data available.")
+                    st.write("No dashboards data available.")
 
                 if submission['blob_url']:
                     filename = self.storage_repo.download_blob_by_name(submission['blob_name'])
                     st.markdown("<span style='font-size: 15px;'>Submission:</span>", unsafe_allow_html=True)
-                    st.audio(filename, format='core/m4a')
+                    st.audio(filename, format='dashboards/m4a')
                 else:
-                    st.write("No core data available.")
+                    st.write("No dashboards data available.")
 
                 score = st.text_input("Score", key=f"submission_score_{submission['id']}",
                                       value=submission['score'])

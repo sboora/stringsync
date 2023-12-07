@@ -9,7 +9,7 @@ from repositories.StorageRepository import StorageRepository
 from repositories.UserAchievementRepository import UserAchievementRepository
 
 
-class BadgesDashboardBuilder:
+class BadgesDashboard:
     def __init__(self,
                  settings_repo: SettingsRepository,
                  user_achievement_repo: UserAchievementRepository,
