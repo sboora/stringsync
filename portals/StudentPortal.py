@@ -1,6 +1,5 @@
 # Standard library imports
 import datetime
-import hashlib
 import json
 import os
 
@@ -23,7 +22,6 @@ from dashboards.ResourceDashboard import ResourceDashboard
 from dashboards.StudentAssessmentDashboard import StudentAssessmentDashboard
 from dashboards.TeamDashboard import TeamDashboard
 from enums.ActivityType import ActivityType
-from enums.Badges import UserBadges
 from enums.Features import Features
 from enums.Settings import Portal
 from enums.SoundEffect import SoundEffect
@@ -35,32 +33,52 @@ from components.AudioProcessor import AudioProcessor
 class StudentPortal(BasePortal, ABC):
     def __init__(self):
         super().__init__()
-        self.audio_processor = AudioProcessor()
         self.badge_awarder = BadgeAwarder(
             self.settings_repo, self.recording_repo,
             self.user_achievement_repo, self.user_practice_log_repo,
             self.portal_repo, self.storage_repo)
-        self.progress_dashboard_builder = ProgressDashboard(
-            self.settings_repo, self.recording_repo, self.user_achievement_repo,
-            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
         self.resource_dashboard_builder = ResourceDashboard(
             self.resource_repo, self.storage_repo)
-        self.practice_dashboard_builder = PracticeDashboard(
-            self.user_practice_log_repo)
-        self.team_dashboard_builder = TeamDashboard(
-            self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
-        self.assignment_dashboard_builder = AssignmentDashboard(
+
+    def get_recording_uploader(self):
+        return RecordingUploader(
+            self.recording_repo, self.raga_repo, self.user_activity_repo, self.user_session_repo,
+            self.storage_repo, self.badge_awarder, AudioProcessor())
+
+    def get_progress_dashboard(self):
+        return ProgressDashboard(
+            self.settings_repo, self.recording_repo, self.user_achievement_repo,
+            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
+
+    def get_practice_dashboard(self):
+        return PracticeDashboard(self.user_practice_log_repo)
+
+    def get_team_dashboard(self):
+        return TeamDashboard(
+            self.portal_repo, self.user_repo,
+            self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
+
+    def get_assignment_dashboard(self):
+        return AssignmentDashboard(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
-        self.message_dashboard_builder = MessageDashboard(
+
+    def get_message_dashboard(self):
+        return MessageDashboard(
             self.message_repo, self.user_activity_repo, self.avatar_loader)
-        self.badges_dashboard_builder = BadgesDashboard(
+
+    def get_badges_dashboard(self):
+        return BadgesDashboard(
             self.settings_repo, self.user_achievement_repo, self.storage_repo)
-        self.student_assessment_dashboard_builder = StudentAssessmentDashboard(
+
+    def get_student_assessment_dashboard(self):
+        return StudentAssessmentDashboard(
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
             self.portal_repo)
-        self.hall_of_fame_dashboard_builder = HallOfFameDashboard(
+
+    def get_hall_of_fame_dashboard(self):
+        return HallOfFameDashboard(
             self.portal_repo, self.badge_awarder, self.avatar_loader)
 
     def get_portal(self):
@@ -157,10 +175,11 @@ class StudentPortal(BasePortal, ABC):
         st.markdown(
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 30px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
-        self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_WEEK)
+        hall_of_fame_dashboard = self.get_hall_of_fame_dashboard()
+        hall_of_fame_dashboard.build(self.get_group_id(), TimeFrame.PREVIOUS_WEEK)
         st.write("")
         self.divider(3)
-        self.hall_of_fame_dashboard_builder.show_winners(self.get_group_id(), TimeFrame.PREVIOUS_MONTH)
+        hall_of_fame_dashboard.build(self.get_group_id(), TimeFrame.PREVIOUS_MONTH)
 
     def recording_dashboard(self):
         st.markdown(
@@ -182,7 +201,6 @@ class StudentPortal(BasePortal, ABC):
         recording_uploader = self.get_recording_uploader()
         with col1:
             self.display_track_files(track_audio_path)
-            track_notes = self.raga_repo.get_notes(track['ragam_id'])
             if st.button("Load Recordings", type="primary"):
                 load_recordings = True
 
@@ -207,11 +225,6 @@ class StudentPortal(BasePortal, ABC):
 
         if uploaded:
             os.remove(recording_name)
-
-    def get_recording_uploader(self):
-        return RecordingUploader(
-            self.recording_repo, self.raga_repo, self.user_activity_repo, self.user_session_repo,
-            self.storage_repo, self.badge_awarder, self.audio_processor)
 
     @staticmethod
     def display_recordings_header():
@@ -310,7 +323,8 @@ class StudentPortal(BasePortal, ABC):
                 col1, col2, col3, col4, col5, col6 = st.columns([0.9, 1, 1.1, 1, 1, 1])
 
                 col1.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission['track_name']}</div>",
+                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>"
+                    f"{submission['track_name']}</div>",
                     unsafe_allow_html=True)
                 if submission['track_audio_url']:
                     track_audio = self.storage_repo.download_blob_by_url(submission['track_audio_url'])
@@ -325,7 +339,8 @@ class StudentPortal(BasePortal, ABC):
                     col3.warning("No audio available.")
 
                 col4.markdown(
-                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>{submission.get('score', 'N/A')}</div>",
+                    f"<div style='padding-top:5px;color:black;font-size:14px;text-align:left;'>"
+                    f"{submission.get('score', 'N/A')}</div>",
                     unsafe_allow_html=True)
 
                 # Get the teacher_remarks, replacing new lines with <br> for HTML display
@@ -349,14 +364,14 @@ class StudentPortal(BasePortal, ABC):
             f"-size: 24px;'> 📈 Track Your Progress & Development 📈</h2>", unsafe_allow_html=True)
         self.divider()
         st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
-        self.student_assessment_dashboard_builder.show_assessment(self.get_user_id())
+        self.get_student_assessment_dashboard().show_assessment(self.get_user_id())
         self.divider(5)
         col1, col2, col3 = st.columns([2.5, 2, 1])
         with col2:
             if not st.button("Load Statistics", type="primary"):
                 return
 
-        self.progress_dashboard_builder.progress_dashboard(self.get_user_id())
+        self.get_progress_dashboard().build(self.get_user_id())
 
     def team_dashboard(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
@@ -377,7 +392,7 @@ class StudentPortal(BasePortal, ABC):
         )
 
         if self.get_group_id():
-            self.team_dashboard_builder.team_dashboard([self.get_group_id()], time_frame)
+            self.get_team_dashboard().build([self.get_group_id()], time_frame)
         else:
             st.info("Please wait for your teacher to assign you to a team!!")
 
@@ -386,7 +401,7 @@ class StudentPortal(BasePortal, ABC):
                     "font-size: 24px;'> 💼 Team Engagement & Insight 💼</h2>", unsafe_allow_html=True)
         self.divider()
         if self.get_group_id():
-            self.message_dashboard_builder.message_dashboard(
+            self.get_message_dashboard().build(
                 self.get_user_id(), self.get_group_id(), self.get_session_id())
         else:
             st.info("Please wait for your teacher to assign you to a team!!")
@@ -480,7 +495,7 @@ class StudentPortal(BasePortal, ABC):
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 24px;'> 🏆 Your Achievements & Badges 🏆</h2>", unsafe_allow_html=True)
         self.divider()
-        self.badges_dashboard_builder.badges_dashboard(self.get_org_id(), self.get_user_id())
+        self.get_badges_dashboard().build(self.get_org_id(), self.get_user_id())
 
     def resources_dashboard(self):
         st.markdown(
@@ -498,7 +513,7 @@ class StudentPortal(BasePortal, ABC):
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
         self.divider()
-        self.assignment_dashboard_builder.assignments_dashboard(self.get_user_id())
+        self.get_assignment_dashboard().build(self.get_user_id())
 
     def practice_dashboard(self):
         st.markdown(
@@ -561,7 +576,7 @@ class StudentPortal(BasePortal, ABC):
                     st.session_state.form_submitted = True
 
         with cols[1]:
-            self.practice_dashboard_builder.practice_dashboard(self.get_user_id())
+            self.get_practice_dashboard().build(self.get_user_id())
 
         if badge_awarded:
             st.session_state.badge_awarded_in_last_run = True

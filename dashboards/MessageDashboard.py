@@ -18,7 +18,7 @@ class MessageDashboard:
         self.user_activity_repo = user_activity_repo
         self.avatar_loader = avatar_loader
 
-    def message_dashboard(self, user_id, group_id, session_id):
+    def build(self, user_id, group_id, session_id):
         # Message posting area
         with st.form("post_message", clear_on_submit=True):
             message_content = st.text_area("Share an update with your team:", height=150)

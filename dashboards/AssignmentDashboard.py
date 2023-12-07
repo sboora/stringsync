@@ -13,14 +13,14 @@ class AssignmentDashboard:
                  track_repo: TrackRepository,
                  assignment_repo: AssignmentRepository,
                  storage_repo: StorageRepository,
-                 resource_dashboard_builder: ResourceDashboard):
+                 resource_dashboard: ResourceDashboard):
         self.resource_repo = resource_repo
         self.track_repo = track_repo
         self.assignment_repo = assignment_repo
-        self.resource_dashboard_builder = resource_dashboard_builder
+        self.resource_dashboard = resource_dashboard
         self.storage_repo = storage_repo
 
-    def assignments_dashboard(self, user_id):
+    def build(self, user_id):
         # Retrieve assignments for the specific user
         user_assignments = self.assignment_repo.get_assignments(user_id)
         if not user_assignments:
@@ -62,7 +62,7 @@ class AssignmentDashboard:
                     self._display_status_update(resource['assignment_detail_id'], user_id)
             st.write("")
 
-    def group_assignments_dashboard(self, group_id):
+    def build_by_group(self, group_id):
         # Retrieve assignments for the specific user
         user_assignments = self.assignment_repo.get_all_assignments_by_group(group_id)
         if not user_assignments:

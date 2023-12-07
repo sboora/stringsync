@@ -18,7 +18,7 @@ class BadgesDashboard:
         self.user_achievement_repo = user_achievement_repo
         self.storage_repo = storage_repo
 
-    def badges_dashboard(self, org_id, user_id):
+    def build(self, org_id, user_id):
         with st.spinner("Please wait.."):
             badges = self.user_achievement_repo.get_user_badges(user_id)
             if badges:  # If there are badges

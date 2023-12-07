@@ -10,7 +10,7 @@ class PracticeDashboard:
                  user_practice_log_repo: UserPracticeLogRepository):
         self.user_practice_log_repo = user_practice_log_repo
 
-    def practice_dashboard(self, user_id):
+    def build(self, user_id):
         practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
 
         # Check if practice_data is empty

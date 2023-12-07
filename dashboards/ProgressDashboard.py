@@ -26,7 +26,7 @@ class ProgressDashboard:
         self.track_repo = track_repo
         self.assignment_repo = assignment_repo
 
-    def progress_dashboard(self, user_id):
+    def build(self, user_id):
         with st.spinner("Please wait.."):
             tracks = self.get_tracks(user_id)
             if len(tracks) == 0:

@@ -18,7 +18,7 @@ class HallOfFameDashboard:
         self.badge_awarder = badge_awarder
         self.avatar_loader = avatar_loader
 
-    def show_winners(self, group_id, timeframe):
+    def build(self, group_id, timeframe):
         # Mapping of timeframes to badge types
         timeframe_to_badge_type = {
             TimeFrame.PREVIOUS_WEEK: 'Weekly',

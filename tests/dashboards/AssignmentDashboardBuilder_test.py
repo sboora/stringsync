@@ -35,7 +35,7 @@ def test_init(dashboard_builder, mock_repos):
 @patch("streamlit.info")
 def test_assignments_dashboard_no_assignments(mock_info, dashboard_builder, mock_repos):
     mock_repos["assignment_repo"].get_assignments.return_value = []
-    dashboard_builder.assignments_dashboard(user_id=123)
+    dashboard_builder.build(user_id=123)
     mock_info.assert_called_once_with("No assignments available.")
 
 

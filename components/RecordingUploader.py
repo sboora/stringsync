@@ -35,7 +35,7 @@ class RecordingUploader:
         with st.form("recording_uploader_form", clear_on_submit=True):
             uploaded_student_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             original_date = st.date_input("Original File Date", value=None)  # Default value is None
-            uploaded = st.form_submit_button("Upload", type="primary")
+            uploaded = st.form_submit_button("Recording", type="primary")
 
             upload_successful = False
             badge_awarded = False

@@ -3,7 +3,6 @@ import hashlib
 import os
 from abc import ABC
 
-
 from langchain.llms.openai import AzureOpenAI
 
 from components.AudioProcessor import AudioProcessor
@@ -39,17 +38,7 @@ class TeacherPortal(BasePortal, ABC):
             self.settings_repo, self.recording_repo,
             self.user_achievement_repo, self.user_practice_log_repo,
             self.portal_repo, self.storage_repo)
-        self.practice_dashboard_builder = PracticeDashboard(
-            self.user_practice_log_repo)
-        self.progress_dashboard_builder = ProgressDashboard(
-            self.settings_repo, self.recording_repo, self.user_achievement_repo,
-            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
-        self.team_dashboard_builder = TeamDashboard(
-            self.portal_repo, self.user_repo, self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
-        self.message_dashboard_builder = MessageDashboard(
-            self.message_repo, self.user_activity_repo, self.avatar_loader)
         self.notes_repo = NotesRepository(self.get_connection())
-        self.notes_dashboard_builder = NotesDashboard(self.notes_repo)
         self.student_assessment_dashboard_builder = StudentAssessmentDashboard(
             self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
             self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
@@ -58,9 +47,41 @@ class TeacherPortal(BasePortal, ABC):
             self.portal_repo, self.badge_awarder, self.avatar_loader)
         self.resource_dashboard_builder = ResourceDashboard(
             self.resource_repo, self.storage_repo)
-        self.assignment_dashboard_builder = AssignmentDashboard(
+
+    def get_progress_dashboard(self):
+        return ProgressDashboard(
+            self.settings_repo, self.recording_repo, self.user_achievement_repo,
+            self.user_practice_log_repo, self.track_repo, self.assignment_repo)
+
+    def get_practice_dashboard(self):
+        return PracticeDashboard(self.user_practice_log_repo)
+
+    def get_team_dashboard(self):
+        return TeamDashboard(
+            self.portal_repo, self.user_repo,
+            self.user_achievement_repo, self.badge_awarder, self.avatar_loader)
+
+    def get_assignment_dashboard(self):
+        return AssignmentDashboard(
             self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
+
+    def get_message_dashboard(self):
+        return MessageDashboard(
+            self.message_repo, self.user_activity_repo, self.avatar_loader)
+
+    def get_student_assessment_dashboard(self):
+        return StudentAssessmentDashboard(
+            self.user_repo, self.recording_repo, self.user_activity_repo, self.user_session_repo,
+            self.user_practice_log_repo, self.user_achievement_repo, self.assessment_repo,
+            self.portal_repo)
+
+    def get_hall_of_fame_dashboard(self):
+        return HallOfFameDashboard(
+            self.portal_repo, self.badge_awarder, self.avatar_loader)
+
+    def get_notes_dashboard(self):
+        return NotesDashboard(self.notes_repo)
 
     @staticmethod
     def load_llm(temperature):
@@ -85,9 +106,9 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_tab_dict(self):
         tabs = [
-            #("👥 Create a Team", self.create_team),
-            #("👩‍🎓 Students", self.list_students),
-            #("🔀 Team Assignments", self.team_assignments),
+            # ("👥 Create a Team", self.create_team),
+            # ("👩‍🎓 Students", self.list_students),
+            # ("🔀 Team Assignments", self.team_assignments),
             ("📚 Resources", self.resource_management),
             ("🎵 Create Track", self.create_track),
             ("🎵 List Tracks", self.list_tracks),
@@ -128,8 +149,9 @@ class TeacherPortal(BasePortal, ABC):
         """)
 
     def create_team(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 🛠️ Create Teams 🛠️️ </h2>", unsafe_allow_html=True)
         self.divider()
         with st.form(key='create_team_form', clear_on_submit=True):
             group_name = st.text_input("Team Name")
@@ -175,8 +197,9 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(row_data=row_data)
 
     def list_students(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📋 Students Listing 📋️ </h2>", unsafe_allow_html=True)
         self.divider()
         col1, col2, col3 = st.columns([2.6, 2, 1])
         with col2:
@@ -213,8 +236,9 @@ class TeacherPortal(BasePortal, ABC):
                         margin-bottom: 5px;'> {avatar_image_html} </div>""")
 
     def team_assignments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 🗂️ Team Management 🗂️ </h2>", unsafe_allow_html=True)
         self.divider()
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -269,8 +293,9 @@ class TeacherPortal(BasePortal, ABC):
                             st.rerun()
 
     def resource_management(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📚 Resources Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
         # Part for uploading new resources
@@ -299,8 +324,9 @@ class TeacherPortal(BasePortal, ABC):
             self.list_resources()
 
     def assignment_management(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📚 Assignments Management 📚</h2>", unsafe_allow_html=True)
         self.divider()
         assignment_title = st.text_input("Assignment Title", key="assignment_title")
         assignment_description = st.text_input("Assignment Description", key="assignment_desc")
@@ -384,8 +410,9 @@ class TeacherPortal(BasePortal, ABC):
         self.list_assignments()
 
     def list_assignments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📚 Assignments 📚</h2>", unsafe_allow_html=True)
         self.divider()
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -400,7 +427,7 @@ class TeacherPortal(BasePortal, ABC):
             return
 
         selected_group_id = group_options[selected_group_name]
-        self.assignment_dashboard_builder.group_assignments_dashboard(selected_group_id)
+        self.get_assignment_dashboard().build_by_group(selected_group_id)
 
     def handle_resource_upload(self, title, description, file, rtype, link):
         if rtype != "Link" and not file:
@@ -780,9 +807,10 @@ class TeacherPortal(BasePortal, ABC):
                         st.success("Remarks/Score updated successfully.")
 
     def submissions(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
-                    unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> ✅ Review Your Students' Submissions & Provide Feedback ✅ </h2>",
+            unsafe_allow_html=True)
         self.divider()
         # Show submissions summary
         self.show_submissions_summary()
@@ -873,8 +901,9 @@ class TeacherPortal(BasePortal, ABC):
             list_builder.build_row(submission)
 
     def progress_dashboard(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📊 Track Your Students' Progress & Development 📊 </h2>", unsafe_allow_html=True)
         self.divider()
         users = self.user_repo.get_users_by_org_id_and_type(
             self.get_org_id(), UserType.STUDENT.value)
@@ -897,13 +926,14 @@ class TeacherPortal(BasePortal, ABC):
         st.markdown("<h1 style='font-size: 20px;'>Report Card</h1>", unsafe_allow_html=True)
         self.student_assessment_dashboard_builder.show_assessment(selected_user_id)
         self.divider(5)
-        self.progress_dashboard_builder.progress_dashboard(selected_user_id)
+        self.get_progress_dashboard().build(selected_user_id)
         st.markdown("<h1 style='font-size: 20px;'>Practice Logs</h1>", unsafe_allow_html=True)
-        self.practice_dashboard_builder.practice_dashboard(selected_user_id)
+        self.get_practice_dashboard().build(selected_user_id)
 
     def assessments(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 📋 Student Assessments 📋 </h2>", unsafe_allow_html=True)
         self.divider()
 
         groups = self.user_repo.get_all_groups(self.get_org_id())
@@ -987,11 +1017,12 @@ class TeacherPortal(BasePortal, ABC):
                         llm = self.load_llm(0)
                         with st.spinner("Please wait.."):
                             for group_id in selected_group_ids:
-                                self.student_assessment_dashboard_builder.generate_assessments(group_id, llm, timeframe)
+                                self.student_assessment_dashboard_builder.generate_assessments(
+                                    group_id, llm, timeframe)
             if error_message:
                 st.error(error_message)
             st.write("")
-            self.team_dashboard_builder.team_dashboard(selected_group_ids, timeframe)
+            self.get_team_dashboard().build(selected_group_ids, timeframe)
         else:
             st.info("Please select a team to continue..")
 
@@ -1010,8 +1041,9 @@ class TeacherPortal(BasePortal, ABC):
                                              activity_type, additional_params)
 
     def hall_of_fame(self):
-        st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
-                    f"-size: 28px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
+            f"-size: 28px;'> 🏆 Hall of Fame 🏆️ </h2>", unsafe_allow_html=True)
         groups = self.user_repo.get_all_groups(self.get_org_id())
 
         if not groups:
@@ -1024,10 +1056,10 @@ class TeacherPortal(BasePortal, ABC):
             "Select a Team", group_options, key="hall_of_fame_group_selector")
         if selected_group != "--Select a Team--":
             selected_group_id = group_name_to_id[selected_group]
-            self.hall_of_fame_dashboard_builder.show_winners(selected_group_id, TimeFrame.PREVIOUS_WEEK)
+            self.hall_of_fame_dashboard_builder.build(selected_group_id, TimeFrame.PREVIOUS_WEEK)
             st.write("")
             self.divider(3)
-            self.hall_of_fame_dashboard_builder.show_winners(selected_group_id, TimeFrame.PREVIOUS_MONTH)
+            self.hall_of_fame_dashboard_builder.build(selected_group_id, TimeFrame.PREVIOUS_MONTH)
 
     def team_connect(self):
         st.markdown(f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; "
@@ -1046,7 +1078,7 @@ class TeacherPortal(BasePortal, ABC):
         # Only show the message dashboard if a group is selected
         if selected_group != "Select a Team":
             selected_group_id = group_name_to_id[selected_group]
-            self.message_dashboard_builder.message_dashboard(
+            self.get_message_dashboard().build(
                 self.get_user_id(), selected_group_id, self.get_session_id())
 
     def notes_dashboard(self):
@@ -1054,11 +1086,7 @@ class TeacherPortal(BasePortal, ABC):
                     "font-size: 28px;'> 📝 Notes 📝</h2>", unsafe_allow_html=True)
 
         self.divider()
-
-        self.notes_dashboard_builder.notes_dashboard(self.get_user_id())
-
-    def award_weekly_badges(self, group_id):
-        self.badge_awarder.auto_award_weekly_badges(group_id)
+        self.get_notes_dashboard().notes_dashboard(self.get_user_id())
 
     @staticmethod
     def calculate_file_hash(audio_data):
