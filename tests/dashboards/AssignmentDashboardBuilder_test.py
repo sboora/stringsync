@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from core.AssignmentDashboardBuilder import AssignmentDashboardBuilder
+
+from dashboards.AssignmentDashboard import AssignmentDashboard
 
 
 @pytest.fixture
@@ -17,7 +18,7 @@ def mock_repos():
 
 @pytest.fixture
 def dashboard_builder(mock_repos):
-    return AssignmentDashboardBuilder(
+    return AssignmentDashboard(
         resource_repo=mock_repos["resource_repo"],
         track_repo=mock_repos["track_repo"],
         assignment_repo=mock_repos["assignment_repo"],

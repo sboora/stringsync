@@ -38,7 +38,8 @@ from enums.TimeFrame import TimeFrame
 
     (TimeFrame.HISTORICAL,
      datetime.date.min,
-     datetime.date.today())
+     datetime.datetime.combine(datetime.date.today(), datetime.time(23, 59))
+     )
 ])
 def test_time_frame_ranges(time_frame, expected_start, expected_end):
     actual_start, actual_end = time_frame.get_date_range()
