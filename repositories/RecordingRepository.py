@@ -70,6 +70,10 @@ class RecordingRepository:
                    ORDER BY timestamp DESC;"""
         cursor.execute(query, (user_id, track_id))
         recordings = cursor.fetchall()
+        for recording in recordings:
+            local_timestamp = TimeConverter.convert_timestamp(
+                recording['timestamp'], timezone)
+            recording['timestamp'] = local_timestamp
         return recordings
 
     def get_recordings_by_user_id_and_track_id_and_assignment_id(
@@ -81,6 +85,11 @@ class RecordingRepository:
                    ORDER BY timestamp DESC;"""
         cursor.execute(query, (user_id, track_id, assignment_id))
         recordings = cursor.fetchall()
+        for recording in recordings:
+            local_timestamp = TimeConverter.convert_timestamp(
+                recording['timestamp'], timezone)
+            recording['timestamp'] = local_timestamp
+
         return recordings
 
     def get_all_recordings_by_user(self, user_id):
