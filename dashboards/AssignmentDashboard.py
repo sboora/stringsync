@@ -1,8 +1,11 @@
 import tempfile
+from datetime import datetime
 
 import streamlit as st
 
+from components.ListBuilder import ListBuilder
 from components.RecordingUploader import RecordingUploader
+from components.TimeConverter import TimeConverter
 from dashboards.ResourceDashboard import ResourceDashboard
 from repositories.AssignmentRepository import AssignmentRepository
 from repositories.RecordingRepository import RecordingRepository
@@ -28,7 +31,7 @@ class AssignmentDashboard:
         self.storage_repo = storage_repo
         self.recording_uploader = recording_uploader
 
-    def build(self, session_id, org_id, user_id, bucket):
+    def build(self, session_id, org_id, user_id, bucket, timezone='America/Los_Angeles'):
         # Retrieve assignments for the specific user
         user_assignments = self.assignment_repo.get_assignments(user_id)
         if not user_assignments:
@@ -59,6 +62,7 @@ class AssignmentDashboard:
             # Display assigned tracks with their own expanders and status updates
             assigned_tracks = self.assignment_repo.get_assigned_tracks(
                 selected_assignment['id'], user_id)
+            st.subheader("Tracks")
             for track in assigned_tracks:
                 with st.expander(f"**Track**: {track['track_name']}"):
                     st.write(f"**Instructions**: {track['description']}")
@@ -86,10 +90,15 @@ class AssignmentDashboard:
                             user_id, track['assignment_detail_id'], "Completed")
 
                     self._display_status_update(track['assignment_detail_id'], user_id)
+                    self._display_remarks_and_score_for_recordings(
+                        user_id, track['id'], selected_assignment['id'], timezone)
+                    st.write("")
 
+            st.divider()
             # Display assigned resources with their own expanders and status updates
             assigned_resources = self.assignment_repo.get_assigned_resources(
                 selected_assignment['id'], user_id)
+            st.subheader("Videos")
             for resource in assigned_resources:
                 with st.expander(f"Resource: {resource['title']} - Details"):
                     st.write(f"Description: {resource['description']}")
@@ -160,3 +169,26 @@ class AssignmentDashboard:
     @staticmethod
     def display_score(score):
         st.write(f"**{score}**")
+
+    def _display_remarks_and_score_for_recordings(
+            self, user_id, track_id, assignment_id, timezone='America/Los_Angeles'):
+        recordings = self.recording_repo.get_recordings_by_user_id_and_track_id_and_assignment_id(
+            user_id, track_id, assignment_id, timezone)
+        if not recordings:
+            return
+
+        column_widths = [33.33, 33.33, 33.33]
+        list_builder = ListBuilder(column_widths)
+        list_builder.build_header(
+            column_names=['Remarks', 'Score', 'Time'])
+
+        # Build rows for the user activities listing
+        for recording in recordings:
+            local_timestamp = recording['timestamp'].strftime('%-I:%M %p | %b %d') \
+                if isinstance(recording['timestamp'], datetime) else recording['timestamp']
+
+            list_builder.build_row(row_data={
+                'Activity Type': recording['remarks'],
+                'Score': recording['score'],
+                'Timestamp': local_timestamp
+            })

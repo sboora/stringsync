@@ -6,6 +6,7 @@ import streamlit as st
 
 from components.AudioProcessor import AudioProcessor
 from components.BadgeAwarder import BadgeAwarder
+from components.TimeConverter import TimeConverter
 from enums.ActivityType import ActivityType
 from enums.Badges import UserBadges
 from repositories.RagaRepository import RagaRepository
@@ -31,13 +32,14 @@ class RecordingUploader:
         self.badge_awarder = badge_awarder
         self.audio_processor = audio_processor
 
-    def upload(self, session_id, org_id, user_id, track, bucket, assignment_id=None):
+    def upload(self, session_id, org_id, user_id,
+               track, bucket, assignment_id=None, timezone='America/Los_Angeles'):
         track_id = track["id"]
         if assignment_id:
             form_key = f"recording_upload_{track['id']-assignment_id}"
         else:
             form_key = f"recording_upload_{track['id']}"
-
+        print(assignment_id)
         with st.form(form_key, clear_on_submit=True):
             uploaded_student_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             original_date = st.date_input("Original File Date", value=None)  # Default value is None
@@ -59,6 +61,7 @@ class RecordingUploader:
                         original_date, datetime.datetime.min.time())
                 else:
                     original_timestamp = datetime.datetime.now()
+                print(original_timestamp)
 
                 with st.spinner("Please wait.."):
                     recording_data = uploaded_student_file.getbuffer()
@@ -71,7 +74,8 @@ class RecordingUploader:
 
                     # Upload the recording to storage repo and recording repo
                     recording_name, url, recording_id = self.add_recording(
-                        user_id, track_id, recording_data, original_timestamp, file_hash, bucket)
+                        user_id, track_id, recording_data, original_timestamp,
+                        file_hash, bucket, assignment_id)
 
                     st.audio(recording_name, format='audio/mp4')
                     # Success
@@ -88,14 +92,16 @@ class RecordingUploader:
 
         return upload_successful, badge_awarded, recording_id, recording_name
 
-    def add_recording(self, user_id, track_id, recording_data, timestamp, file_hash, bucket):
+    def add_recording(self, user_id, track_id, recording_data,
+                      timestamp, file_hash, bucket, assignment_id):
         recording_name = f"{user_id}-{track_id}-{timestamp.strftime('%Y%m%d%H%M%S')}.m4a"
         blob_name = f'{bucket}/{recording_name}'
         blob_url = self.storage_repo.upload_blob(recording_data, blob_name)
         self.storage_repo.download_blob(blob_url, recording_name)
         duration = self.audio_processor.calculate_audio_duration(recording_name)
         recording_id = self.recording_repo.add_recording(
-            user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, bucket)
+            user_id, track_id, blob_name, blob_url, timestamp,
+            duration, file_hash, "", "", assignment_id)
         return recording_name, blob_url, recording_id
 
     def analyze_recording(self, track, track_audio_path, recording_name):

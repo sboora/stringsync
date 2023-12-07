@@ -1,6 +1,5 @@
 import pymysql.cursors
-import pytz
-
+from components.TimeConverter import TimeConverter
 from enums.TimeFrame import TimeFrame
 
 
@@ -15,6 +14,7 @@ class RecordingRepository:
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT,
             track_id INT,
+            assignment_id INT,  
             blob_name VARCHAR(255),
             blob_url TEXT,
             timestamp DATETIME,
@@ -23,18 +23,24 @@ class RecordingRepository:
             distance INT,
             analysis TEXT,
             remarks TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-            file_hash VARCHAR(32)  
-        ); """
+            file_hash VARCHAR(32),
+            FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE SET NULL,
+            FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL
+        );
+        """
         cursor.execute(create_table_query)
         self.connection.commit()
 
-    def add_recording(self, user_id, track_id, blob_name, blob_url,
-                      timestamp, duration, file_hash, analysis="", remarks=""):
+    def add_recording(self, user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis="",
+                      remarks="", assignment_id=None):
         cursor = self.connection.cursor()
-        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks)
-                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
+        print("AssignmentId:", assignment_id)
+        add_recording_query = """INSERT INTO recordings (user_id, track_id, blob_name, blob_url, timestamp, duration, 
+                                                         file_hash, analysis, remarks, assignment_id)
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor.execute(add_recording_query,
-                       (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks))
+                       (user_id, track_id, blob_name, blob_url, timestamp, duration, file_hash, analysis, remarks,
+                        assignment_id))
         self.connection.commit()
         return cursor.lastrowid
 
@@ -64,11 +70,17 @@ class RecordingRepository:
                    ORDER BY timestamp DESC;"""
         cursor.execute(query, (user_id, track_id))
         recordings = cursor.fetchall()
-        for recording in recordings:
-            local_tz = pytz.timezone(timezone)
-            utc_timestamp = pytz.utc.localize(recording['timestamp'])
-            local_timestamp = utc_timestamp.astimezone(local_tz)
-            recording['timestamp'] = local_timestamp
+        return recordings
+
+    def get_recordings_by_user_id_and_track_id_and_assignment_id(
+            self, user_id, track_id, assignment_id, timezone='America/Los_Angeles'):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """SELECT id, user_id, blob_name, blob_url, timestamp, duration, track_id, score, remarks 
+                   FROM recordings 
+                   WHERE user_id = %s AND track_id = %s AND assignment_id = %s
+                   ORDER BY timestamp DESC;"""
+        cursor.execute(query, (user_id, track_id, assignment_id))
+        recordings = cursor.fetchall()
         return recordings
 
     def get_all_recordings_by_user(self, user_id):
@@ -204,5 +216,3 @@ class RecordingRepository:
         cursor.execute(query, (user_id, start_date, end_date))
         results = cursor.fetchall()
         return list(results) if results else []
-
-

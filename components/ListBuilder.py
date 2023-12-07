@@ -19,7 +19,7 @@ class ListBuilder:
     def build_row(self, row_data, col0=""):
         num_columns = len(row_data)
 
-        row_html = "<div style='padding:5px;border-radius:3px;border:1px solid black;'>"
+        row_html = "<div style='background-color:white;padding:5px;border-radius:3px;border:1px solid black;'>"
         row_html += col0
         for (column_name, value), width in zip(row_data.items(), self.column_widths):
             display_value = 'N/A' if value is None else value

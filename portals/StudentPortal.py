@@ -13,6 +13,7 @@ from streamlit_lottie import st_lottie
 from components.BadgeAwarder import BadgeAwarder
 from components.ListBuilder import ListBuilder
 from components.RecordingUploader import RecordingUploader
+from components.TimeConverter import TimeConverter
 from dashboards.AssignmentDashboard import AssignmentDashboard
 from dashboards.BadgesDashboard import BadgesDashboard
 from dashboards.HallOfFameDashboard import HallOfFameDashboard
@@ -523,11 +524,7 @@ class StudentPortal(BasePortal, ABC):
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 24px;'> 🎼 Log Your Practice Sessions 🎼</h2>", unsafe_allow_html=True)
         self.divider()
-        # Convert timezone string to a pytz timezone object
-        local_tz = pytz.timezone(timezone)
-        # Get the current datetime in the local timezone
-        local_time = datetime.datetime.now(local_tz)
-        local_date = local_time.date()
+        local_date, local_time = TimeConverter.get_current_date_and_time(timezone)
         # Initialize session state variables if they aren't already
         if 'form_submitted' not in st.session_state:
             st.session_state.form_submitted = False
@@ -559,14 +556,12 @@ class StudentPortal(BasePortal, ABC):
                 submit = st.form_submit_button("Log Practice", type="primary")
 
                 if submit and not st.session_state.form_submitted:
-                    practice_datetime = local_tz.localize(
-                        datetime.datetime.combine(practice_date, practice_time), is_dst=None)
+                    practice_datetime = TimeConverter.get_local_datetime(
+                        practice_date, practice_time, timezone)
                     if practice_datetime > local_time:
                         st.error("The practice time cannot be in the future.")
                     else:
                         user_id = self.get_user_id()
-                        practice_datetime = datetime.datetime.combine(
-                            practice_date, practice_time, local_tz)
                         self.user_practice_log_repo.log_practice(
                             user_id, practice_datetime, practice_minutes)
                         st.success(f"Logged {practice_minutes} minutes of practice on {practice_datetime}.")
