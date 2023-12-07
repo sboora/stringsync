@@ -63,7 +63,8 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_assignment_dashboard(self):
         return AssignmentDashboard(
-            self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
+            self.resource_repo, self.track_repo, self.recording_repo,
+            self.assignment_repo, self.storage_repo,
             self.resource_dashboard_builder)
 
     def get_message_dashboard(self):

@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import uuid
 
 import streamlit as st
 
@@ -30,12 +31,17 @@ class RecordingUploader:
         self.badge_awarder = badge_awarder
         self.audio_processor = audio_processor
 
-    def upload(self, session_id, org_id, user_id, track, bucket):
+    def upload(self, session_id, org_id, user_id, track, bucket, assignment_id=None):
         track_id = track["id"]
-        with st.form("recording_uploader_form", clear_on_submit=True):
+        if assignment_id:
+            form_key = f"recording_upload_{track['id']-assignment_id}"
+        else:
+            form_key = f"recording_upload_{track['id']}"
+
+        with st.form(form_key, clear_on_submit=True):
             uploaded_student_file = st.file_uploader("Choose an audio file", type=["m4a", "mp3"])
             original_date = st.date_input("Original File Date", value=None)  # Default value is None
-            uploaded = st.form_submit_button("Recording", type="primary")
+            uploaded = st.form_submit_button("Upload", type="primary")
 
             upload_successful = False
             badge_awarded = False

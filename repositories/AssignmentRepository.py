@@ -171,7 +171,8 @@ class AssignmentRepository:
     def get_assigned_tracks(self, assignment_id, user_id):
         with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute("""
-                SELECT t.id, t.name, ad.description, t.track_path, ad.id AS assignment_detail_id
+                SELECT t.id, t.name as track_name, ad.description, t.track_path, t.level, 
+                t.offset, t.ragam_id, ad.id AS assignment_detail_id
                 FROM assignment_details ad
                 JOIN tracks t ON ad.track_id = t.id
                 JOIN user_assignments ua ON ad.id = ua.assignment_detail_id

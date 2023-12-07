@@ -60,8 +60,9 @@ class StudentPortal(BasePortal, ABC):
 
     def get_assignment_dashboard(self):
         return AssignmentDashboard(
-            self.resource_repo, self.track_repo, self.assignment_repo, self.storage_repo,
-            self.resource_dashboard_builder)
+            self.resource_repo, self.track_repo, self.recording_repo,
+            self.assignment_repo, self.storage_repo,
+            self.resource_dashboard_builder, self.get_recording_uploader())
 
     def get_message_dashboard(self):
         return MessageDashboard(
@@ -472,7 +473,7 @@ class StudentPortal(BasePortal, ABC):
         with col1:
             st.markdown(f"{custom_style}<h2>Track</h2>{divider}", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"{custom_style}<h2>Upload</h2>{divider}", unsafe_allow_html=True)
+            st.markdown(f"{custom_style}<h2>Recording</h2>{divider}", unsafe_allow_html=True)
         with col3:
             st.markdown(f"{custom_style}<h2>Analysis</h2>{divider}", unsafe_allow_html=True)
 
@@ -513,7 +514,8 @@ class StudentPortal(BasePortal, ABC):
             f"<h2 style='text-align: center; font-weight: bold; color: {self.get_tab_heading_font_color()}; font"
             f"-size: 24px;'> 📚 Your Music Assignments & Progress 📚</h2>", unsafe_allow_html=True)
         self.divider()
-        self.get_assignment_dashboard().build(self.get_user_id())
+        self.get_assignment_dashboard().build(
+            self.get_session_id(), self.get_org_id(), self.get_user_id(), self.get_recordings_bucket())
 
     def practice_dashboard(self):
         st.markdown(
