@@ -276,10 +276,9 @@ class StudentPortal(BasePortal, ABC):
                 col3.markdown(
                     f"<div style='padding-top:8px;color:black;font-size:14px;'>{recording.get('score')}</div>",
                     unsafe_allow_html=True)
-                formatted_timestamp = recording['timestamp'].strftime('%I:%M %p, ') + self.ordinal(
-                    int(recording['timestamp'].strftime('%d'))) + recording['timestamp'].strftime(' %b, %Y')
+                local_timestamp = recording['timestamp'].strftime('%-I:%M %p | %b %d')
                 col4.write("")
-                col4.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{formatted_timestamp}</div>",
+                col4.markdown(f"<div style='padding-top:5px;color:black;font-size:14px;'>{local_timestamp}</div>",
                               unsafe_allow_html=True)
 
                 badge = self.user_achievement_repo.get_badge_by_recording(recording['id'])
