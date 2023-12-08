@@ -250,11 +250,14 @@ class BasePortal(ABC):
         """
         st.write(css, unsafe_allow_html=True)
         css = f"""
-        <style>
-            [data-testid="stExpander"] {{
-                background: {self.get_tab_background_color()};
-            }}
-        </style>
+            <style>
+                div[data-testid="stExpander"] > div[role="button"] p {{
+                    font-size: 20px;  
+                }}
+                [data-testid="stExpander"] {{
+                    background: {self.get_tab_background_color()};
+                }}
+            </style>
         """
         st.write(css, unsafe_allow_html=True)
 

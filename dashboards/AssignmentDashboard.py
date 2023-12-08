@@ -65,7 +65,8 @@ class AssignmentDashboard:
                 selected_assignment['id'], user_id)
             st.subheader("Tracks")
             for track in assigned_tracks:
-                with st.expander(f"**Track**: {track['track_name']}"):
+                expander_label = f"**{track['track_name']}** :musical_note:"
+                with st.expander(expander_label):
                     st.write(f"**Instructions**: {track['description']}")
                     # Assume self.storage_repo has a method to get the audio URL directly
                     st.write("**Track**")
