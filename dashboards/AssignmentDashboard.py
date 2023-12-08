@@ -2,6 +2,8 @@ import os
 import tempfile
 from datetime import datetime
 
+import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from components.ListBuilder import ListBuilder
@@ -40,32 +42,39 @@ class AssignmentDashboard:
             return
 
         # Create a list of assignment options with title and due date
-        assignment_options = [f"{assignment['title']} - Due: {assignment['due_date'].strftime('%Y-%m-%d')}"
+        assignment_options = ["--Select an Assignment--"] + \
+                             [f"{assignment['title']} - Due: {assignment['due_date'].strftime('%Y-%m-%d')}"
                               for assignment in user_assignments]
 
         # Create a select box for assignments
         selected_assignment_name = st.selectbox("Select an Assignment", options=assignment_options)
 
-        # Find the selected assignment from the list
-        selected_assignment = next((assignment for assignment in user_assignments
-                                    if f"{assignment['title']} - Due: {assignment['due_date'].strftime('%Y-%m-%d')}"
-                                    == selected_assignment_name), None)
+        # Check if a valid assignment was selected
+        if selected_assignment_name == "--Select an Assignment--":
+            st.info("Please select an assignment to continue.")
+            selected_assignment = None
+        else:
+            # Find the selected assignment from the list
+            selected_assignment = next((assignment for assignment in user_assignments
+                                        if f"{assignment['title']} - Due: {assignment['due_date'].strftime('%Y-%m-%d')}"
+                                        == selected_assignment_name), None)
 
         if selected_assignment:
-            st.markdown(f"""
-                <h3 style='font-weight: bold; font-size: 20px; text-align: left; margin-bottom: 0;'>
-                    {selected_assignment['title']} - Due: {selected_assignment['due_date'].strftime('%Y-%m-%d')}
-                </h3>
-                <hr style="height:2px;border-width:0;color:gray;background-color:gray;margin-top: 0;">
-                """, unsafe_allow_html=True)
-            st.write(selected_assignment['description'])
-
             # Display assigned tracks with their own expanders and status updates
             assigned_tracks = self.assignment_repo.get_assigned_tracks(
                 selected_assignment['id'], user_id)
-            st.subheader("Tracks")
+            st.markdown(f"""
+                        <div style='font-weight: bold; color:#212F3C; font-size: 20px; text-align: left; margin-bottom: 10px;'>
+                            Tracks
+                        </div>
+                        """, unsafe_allow_html=True)
             for track in assigned_tracks:
-                expander_label = f"**{track['track_name']}** :musical_note:"
+                st.markdown(f"""
+                    <div style='font-size: 16px; color:#212F3C; text-align: left; margin-bottom: 2px;'>
+                        {track['track_name']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                expander_label = "▶▶️️&nbsp;&nbsp;🎻&nbsp;&nbsp;▶▶️️"
                 with st.expander(expander_label):
                     st.write(f"**Instructions**: {track['description']}")
                     # Assume self.storage_repo has a method to get the audio URL directly
@@ -92,19 +101,37 @@ class AssignmentDashboard:
                             user_id, track['assignment_detail_id'], "Completed")
 
                     self._display_status_update(track['assignment_detail_id'], user_id)
-                    self._display_remarks_and_score_for_recordings(
-                        user_id, track['id'], selected_assignment['id'], timezone)
+
+                    # Create two columns for the layout
+                    col1, col2 = st.columns(2)
+
+                    # Display the table in the first column
+                    with col1:
+                        recordings = self._display_remarks_and_score_for_recordings(
+                            user_id, track['id'], selected_assignment['id'], timezone)
+
+                    # Display the graph in the second column
+                    with col2:
+                        self._display_track_score_trends(track['id'], recordings)
+                    st.write("")
                     if recording_path:
                         os.remove(recording_path)
                     if recording_name:
                         os.remove(recording_name)
                     st.write("")
 
-            st.divider()
+            self.divider()
             # Display assigned resources with their own expanders and status updates
             assigned_resources = self.assignment_repo.get_assigned_resources(
                 selected_assignment['id'], user_id)
-            st.subheader("Videos")
+            if not assigned_resources:
+                return
+
+            st.markdown(f"""
+                        <div style='font-weight: bold; font-size: 20px; text-align: left; margin-bottom: 10px;'>
+                            Videos
+                        </div>
+                        """, unsafe_allow_html=True)
             for resource in assigned_resources:
                 with st.expander(f"Resource: {resource['title']} - Details"):
                     st.write(f"Description: {resource['description']}")
@@ -181,8 +208,9 @@ class AssignmentDashboard:
         recordings = self.recording_repo.get_recordings_by_user_id_and_track_id_and_assignment_id(
             user_id, track_id, assignment_id, timezone)
         if not recordings:
-            return
+            return None
 
+        st.write("**Recordings**")
         column_widths = [33.33, 33.33, 33.33]
         list_builder = ListBuilder(column_widths)
         list_builder.build_header(
@@ -198,3 +226,38 @@ class AssignmentDashboard:
                 'Score': recording['score'],
                 'Timestamp': local_timestamp
             })
+
+        return recordings
+
+    @staticmethod
+    def _display_track_score_trends(track_id, recordings):
+        if not recordings:
+            return
+
+        st.write("**Score Trends**")
+        # Convert recordings data to a DataFrame
+        df = pd.DataFrame(recordings)
+        df.sort_values(by='timestamp', inplace=True)
+
+        # Use the DataFrame index as x-axis
+        df.reset_index(inplace=True)
+
+        # Plotting the line graph for score trend
+        fig_line = px.line(
+            df,
+            x='index',
+            y='score',
+            title=f'',
+            labels={'index': 'Recordings', 'score': 'Score'}
+        )
+
+        # Set the y-axis to start from 0
+        fig_line.update_yaxes(range=[0, max(10, df['score'].max())])
+
+        # Adding the line graph to the Streamlit app
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    @staticmethod
+    def divider():
+        divider = f"<hr style='height:{2}px; margin-top: 0; border-width:0; background: lightblue;'>"
+        st.markdown(f"{divider}", unsafe_allow_html=True)

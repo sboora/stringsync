@@ -105,14 +105,15 @@ class RecordingRepository:
 
     def get_track_statistics_by_user(self, user_id):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        query = """SELECT track_id, 
+        query = """SELECT r.track_id, t.name as name,
                           COALESCE(COUNT(*), 0) AS num_recordings, 
-                          COALESCE(MAX(score), 0) AS max_score, 
-                          COALESCE(MIN(score), 0) AS min_score, 
-                          COALESCE(AVG(score), 0) as avg_score
-                   FROM recordings 
-                   WHERE user_id = %s 
-                   GROUP BY track_id;"""
+                          COALESCE(MAX(r.score), 0) AS max_score, 
+                          COALESCE(MIN(r.score), 0) AS min_score, 
+                          COALESCE(AVG(r.score), 0) as avg_score
+                   FROM recordings r
+                   LEFT JOIN tracks t ON r.track_id = t.id
+                   WHERE r.user_id = %s 
+                   GROUP BY r.track_id, t.name;"""
 
         cursor.execute(query, (user_id,))
         results = cursor.fetchall()

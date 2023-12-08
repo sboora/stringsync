@@ -72,7 +72,6 @@ class ProgressDashboard:
 
     def get_tracks(self, user_id):
         # Fetch all tracks and track statistics for this user
-        tracks = self.track_repo.get_all_tracks()
         track_statistics = self.recording_repo.get_track_statistics_by_user(user_id)
 
         # Create a dictionary for quick lookup of statistics by track_id
@@ -82,12 +81,12 @@ class ProgressDashboard:
         track_details = [
             {
                 'track': track,
-                'num_recordings': stats_dict.get(track['id'], {}).get('num_recordings', 0),
-                'avg_score': stats_dict.get(track['id'], {}).get('avg_score', 0),
-                'min_score': stats_dict.get(track['id'], {}).get('min_score', 0),
-                'max_score': stats_dict.get(track['id'], {}).get('max_score', 0)
+                'num_recordings': stats_dict.get('track_id', {}).get('num_recordings', 0),
+                'avg_score': stats_dict.get('track_id', {}).get('avg_score', 0),
+                'min_score': stats_dict.get('track_id', {}).get('min_score', 0),
+                'max_score': stats_dict.get('track_id', {}).get('max_score', 0)
             }
-            for track in tracks
+            for track in track_statistics
         ]
 
         return track_details
@@ -158,9 +157,9 @@ class ProgressDashboard:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.plotly_chart(fig_duration)
+            st.plotly_chart(fig_duration, use_container_width=True)
         with col2:
-            st.plotly_chart(fig_tracks)
+            st.plotly_chart(fig_tracks, use_container_width=True)
 
     def show_practice_trends(self, user_id):
         practice_data = self.user_practice_log_repo.fetch_daily_practice_minutes(user_id)
@@ -201,7 +200,7 @@ class ProgressDashboard:
         fig_line.update_yaxes(range=[0, max(60, df['total_minutes'].max())])
 
         # Adding the line graph to the Streamlit app
-        st.plotly_chart(fig_line, use_column_width=True)
+        st.plotly_chart(fig_line, use_container_width=True)
 
     @staticmethod
     def show_score_graph_by_track(tracks):
@@ -230,7 +229,7 @@ class ProgressDashboard:
             labels={'Track Name': 'Track', 'Average Score': 'Average Score'},
             title='Average Score per Track Comparison'
         )
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
     @staticmethod
     def show_attempt_graph_by_track(tracks):
@@ -261,4 +260,4 @@ class ProgressDashboard:
             labels={'Track Name': 'Track', 'Number of Recordings': 'Attempts'},
             title='Attempt Comparison per Track'
         )
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)

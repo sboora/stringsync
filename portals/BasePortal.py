@@ -255,7 +255,7 @@ class BasePortal(ABC):
                     font-size: 20px;  
                 }}
                 [data-testid="stExpander"] {{
-                    background: {self.get_tab_background_color()};
+                    background: #AED6F1;
                 }}
             </style>
         """
