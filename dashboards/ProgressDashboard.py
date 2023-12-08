@@ -29,6 +29,7 @@ class ProgressDashboard:
     def build(self, user_id):
         with st.spinner("Please wait.."):
             tracks = self.get_tracks(user_id)
+            print("Tracks:", tracks)
             if len(tracks) == 0:
                 st.info("Please wait for lessons to be available.")
                 return
@@ -81,10 +82,10 @@ class ProgressDashboard:
         track_details = [
             {
                 'track': track,
-                'num_recordings': stats_dict.get('track_id', {}).get('num_recordings', 0),
-                'avg_score': stats_dict.get('track_id', {}).get('avg_score', 0),
-                'min_score': stats_dict.get('track_id', {}).get('min_score', 0),
-                'max_score': stats_dict.get('track_id', {}).get('max_score', 0)
+                'num_recordings': stats_dict.get(track['track_id'], {}).get('num_recordings', 0),
+                'avg_score': stats_dict.get(track['track_id'], {}).get('avg_score', 0),
+                'min_score': stats_dict.get(track['track_id'], {}).get('min_score', 0),
+                'max_score': stats_dict.get(track['track_id'], {}).get('max_score', 0)
             }
             for track in track_statistics
         ]
@@ -100,6 +101,7 @@ class ProgressDashboard:
         list_builder.build_header(
             column_names=["Track", "Number of Recordings", "Average Score", "Min Score", "Max Score"])
         for track_detail in tracks:
+            print(track_detail)
             row_data = {
                 "Track": track_detail['track']['name'],
                 "Number of Recordings": track_detail['num_recordings'],

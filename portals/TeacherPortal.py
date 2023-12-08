@@ -8,6 +8,7 @@ from langchain.llms.openai import AzureOpenAI
 from components.AudioProcessor import AudioProcessor
 from components.BadgeAwarder import BadgeAwarder
 from components.ListBuilder import ListBuilder
+from components.RecordingUploader import RecordingUploader
 from dashboards.AssignmentDashboard import AssignmentDashboard
 from dashboards.HallOfFameDashboard import HallOfFameDashboard
 from dashboards.MessageDashboard import MessageDashboard
@@ -65,7 +66,7 @@ class TeacherPortal(BasePortal, ABC):
         return AssignmentDashboard(
             self.resource_repo, self.track_repo, self.recording_repo,
             self.assignment_repo, self.storage_repo,
-            self.resource_dashboard_builder)
+            self.resource_dashboard_builder, self.get_recording_uploader())
 
     def get_message_dashboard(self):
         return MessageDashboard(
@@ -83,6 +84,11 @@ class TeacherPortal(BasePortal, ABC):
 
     def get_notes_dashboard(self):
         return NotesDashboard(self.notes_repo)
+
+    def get_recording_uploader(self):
+        return RecordingUploader(
+            self.recording_repo, self.raga_repo, self.user_activity_repo, self.user_session_repo,
+            self.storage_repo, self.badge_awarder, AudioProcessor())
 
     @staticmethod
     def load_llm(temperature):
