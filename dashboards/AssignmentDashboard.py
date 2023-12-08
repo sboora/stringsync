@@ -193,7 +193,7 @@ class AssignmentDashboard:
                 if isinstance(recording['timestamp'], datetime) else recording['timestamp']
 
             list_builder.build_row(row_data={
-                'Activity Type': recording['remarks'],
+                'Remarks': recording['remarks'],
                 'Score': recording['score'],
                 'Timestamp': local_timestamp
             })
